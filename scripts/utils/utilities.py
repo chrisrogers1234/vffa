@@ -1,7 +1,9 @@
+import copy
 import os
+import shutil
+
 import numpy
 import ROOT
-import shutil
 
 import xboa.common
 import xboa.hit
@@ -19,17 +21,32 @@ def clear_dir(dir_name):
 def sub_to_name(sub_key):
     sub_name = sub_key[2:-2]
     sub_name = sub_name.replace("_", " ")
+    sub_name = sub_name[0].upper()+sub_name[1:]
     return sub_name
-
 
 def sub_to_units(sub_key):
     units = {
         "energy":"MeV"
     }
-    name = sub_to_name(sub_key)
+    name = sub_to_name(sub_key).lower()
     if name in units:
         return " ["+units[name]+"]"
     return ""
+
+def clear_dir(a_dir):
+    try:
+        shutil.rmtree(a_dir)
+    except OSError:
+        pass
+    os.makedirs(a_dir)
+
+def do_lattice(config, subs, overrides):
+    subs = copy.deepcopy(subs)
+    subs.update(overrides)
+    lattice_in = config.tracking["lattice_file"]
+    lattice_out = config.tracking["lattice_file_out"]
+    xboa.common.substitute(lattice_in, lattice_out, subs)
+    return subs
 
 def reference(config, energy, x=0., px=0.):
     """
@@ -52,6 +69,7 @@ def setup_tracking(config, probes, ref_energy):
     log = config.tracking["tracking_log"]
     beam = config.tracking["beam_file_out"]
     tracking = OpalTracking(lattice, beam, ref_hit, probes, opal_exe, log)
+    tracking.verbose = config.tracking["verbose"]
     return tracking
 
 def tune_lines(canvas, min_order=0, max_order=8):
@@ -76,28 +94,56 @@ def tune_lines(canvas, min_order=0, max_order=8):
             graph.Draw("SAMEL")
     canvas.Update()
 
-def get_substitutions_axis(data):
-    subs_ref = data[0]['substitutions']
+def get_substitutions_axis(data, subs_key):
+    subs_ref = data[0][subs_key]
     axis_candidates = {}
     for item in data:
-        subs = item['substitutions']
+        subs = item[subs_key]
         for key in subs.keys():
             if subs[key] != subs_ref[key]:
+                #print key, subs[key], subs_ref[key]
                 try:
                     float(subs[key])
                     axis_candidates[key] = []
-                except TypeError:
+                except (TypeError, ValueError):
                     continue
     if axis_candidates == {}:
         print "All of", len(data), "items look the same - nothing to plot"
         print "First:"
-        print " ", data[0]['substitutions']
+        print " ", data[0][subs_key]
         print "Last:"
-        print " ", data[-1]['substitutions']
+        print " ", data[-1][subs_key]
     for item in data:
         for key in axis_candidates:
-            axis_candidates[key].append(item['substitutions'][key])
+            #print key, axis_candidates.keys()
+            #print item.keys()
+            #print item[subs_key].keys()
+            axis_candidates[key].append(item[subs_key][key])
     return axis_candidates
+
+def get_groups(data, group_axis, subs_key):
+    axis_candidates = get_substitutions_axis(data, subs_key)
+    if group_axis != None and group_axis not in axis_candidates:
+        raise RuntimeError("Did not recognise group axis "+str(group_axis))
+    if group_axis == None:
+        group_list = [item for item in data]
+        return {"":{"item_list":[i for i in range(len(data))]}}
+    else:
+        # group_list is lists the possible groups
+        # e.g. list of all possible values of "__bump_field_1__"
+        group_list = [item[subs_key][group_axis] for item in data]
+        group_list = list(set(group_list)) # unique list
+        # tmp_group_dict is mapping from group value to the items having that value
+        tmp_group_dict = dict([(group, []) for group in group_list])
+        for key in tmp_group_dict:
+            tmp_group_dict[key] = [i for i, item in enumerate(data) \
+                                        if item[subs_key][group_axis] == key]
+    group_dict = {}
+    for key in tmp_group_dict:
+        new_key = sub_to_name(group_axis)+" "+format(key, "3.3g")
+        group_dict[new_key] = {'item_list':tmp_group_dict[key]}
+        print new_key, ":", group_dict[new_key]
+    return group_dict
 
 def setup_gstyle():
     stops = [0.0000, 0.1250, 0.2500, 0.3750, 0.5000, 0.6250, 0.7500, 0.8750, 1.0000]

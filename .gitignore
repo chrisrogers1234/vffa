@@ -1,1 +1,4 @@
 *.pyc
+output
+env.sh
+

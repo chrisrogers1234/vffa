@@ -34,8 +34,6 @@ REAL STEP_SIZE=__step_size__; // m
 REAL N_TURNS=__n_turns__;
 
 ////////// MAIN MAGNET PARAMETERS/////////
-REAL F_TILT_ANGLE=__f_tilt_angle__;
-REAL D_TILT_ANGLE=__d_tilt_angle__;
 REAL M_INDEX=__m_index__;
 REAL F_CENTRE_LENGTH=__f_length__;
 REAL F_END_LENGTH=__f_end_length__;
@@ -49,7 +47,6 @@ REAL POS_EXTENT=__pos_extent__;
 REAL BB_LENGTH=__bb_length__; 
 REAL MAG_WIDTH=__magnet_width__;
 
-REAL MAGNET_SEPARATION=__magnet_separation__;
 REAL D_OFFSET=__d_offset__;
 REAL F_OFFSET=__f_offset__;
 
@@ -77,7 +74,7 @@ magnetF: VERTICALFFAMAGNET,
           FIELD_INDEX=M_INDEX,
           MAX_HORIZONTAL_POWER=MAX_HORIZONTAL_POWER,
           END_LENGTH=F_END_LENGTH,
-          CENTRE_LENGTH=F_CENTRE_LENGTH*2,
+          CENTRE_LENGTH=F_CENTRE_LENGTH,
           HEIGHT_NEG_EXTENT=NEG_EXTENT,
           HEIGHT_POS_EXTENT=POS_EXTENT,
           WIDTH=MAG_WIDTH,
@@ -88,7 +85,7 @@ magnetD: VERTICALFFAMAGNET,
           FIELD_INDEX=M_INDEX,
           MAX_HORIZONTAL_POWER=MAX_HORIZONTAL_POWER,
           END_LENGTH=D_END_LENGTH,
-          CENTRE_LENGTH=D_CENTRE_LENGTH*2,
+          CENTRE_LENGTH=D_CENTRE_LENGTH,
           HEIGHT_NEG_EXTENT=NEG_EXTENT,
           HEIGHT_POS_EXTENT=POS_EXTENT,
           WIDTH=MAG_WIDTH,
@@ -149,7 +146,7 @@ REVERSE_MAGNET_OFFSET(delta_x, delta_y, tilt, bb_length, x_out, y_out, tx_out, t
 REAL VD1_DX=D_CENTRE_LENGTH/2.+DRIFT_1/2.;
 REAL VD1_DY=D_OFFSET;
 REAL VD1_BB=BB_LENGTH;
-REAL VD1_TILT=-1*D_TILT_ANGLE*DEGREE;
+REAL VD1_TILT=0;
 
 REAL VD1_X1=0;
 REAL VD1_Y1=0;
@@ -163,57 +160,26 @@ REAL VD1_TY2=0;
 MAGNET_OFFSET        (VD1_DX, VD1_DY, VD1_TILT, VD1_BB, VD1_X1, VD1_Y1, VD1_TX1, VD1_TY1);
 REVERSE_MAGNET_OFFSET(VD1_DX, VD1_DY, VD1_TILT, VD1_BB, VD1_X2, VD1_Y2, VD1_TX2, VD1_TY2);
 
-vd1_offset_out: LOCAL_CARTESIAN_OFFSET,
+vd_offset_out: LOCAL_CARTESIAN_OFFSET,
                 end_position_x=VD1_X1,
                 end_position_y=VD1_Y1,
                 end_normal_x=VD1_TX1,
                 end_normal_y=VD1_TY1;
 
-vd1_offset_back: LOCAL_CARTESIAN_OFFSET,
+vd_offset_back: LOCAL_CARTESIAN_OFFSET,
                 end_position_x=VD1_X2,
                 end_position_y=VD1_Y2,
                 end_normal_x=VD1_TX2,
                 end_normal_y=VD1_TY2;
 
-///////////////////////// PLACEMENTS FOR MAGNET VD2 //////////////////////
+///////////////////////////// D_SINGLE ///////////////////////////////
 
-REAL VD2_DX=D_CENTRE_LENGTH*3./2.+DRIFT_1/2.+MAGNET_SEPARATION;
-REAL VD2_DY=D_OFFSET;
-REAL VD2_BB=BB_LENGTH;
-REAL VD2_TILT=D_TILT_ANGLE*DEGREE;
-
-REAL VD2_X1=0;
-REAL VD2_Y1=0;
-REAL VD2_TX1=0;
-REAL VD2_TY1=0;
-REAL VD2_X2=0;
-REAL VD2_Y2=0;
-REAL VD2_TX2=0;
-REAL VD2_TY2=0;
-
-MAGNET_OFFSET        (VD2_DX, VD2_DY, VD2_TILT, VD2_BB, VD2_X1, VD2_Y1, VD2_TX1, VD2_TY1);
-REVERSE_MAGNET_OFFSET(VD2_DX, VD2_DY, VD2_TILT, VD2_BB, VD2_X2, VD2_Y2, VD2_TX2, VD2_TY2);
-
-vd2_offset_out: LOCAL_CARTESIAN_OFFSET,
-                end_position_x=VD2_X1,
-                end_position_y=VD2_Y1,
-                end_normal_x=VD2_TX1,
-                end_normal_y=VD2_TY1;
-
-vd2_offset_back: LOCAL_CARTESIAN_OFFSET,
-                end_position_x=VD2_X2,
-                end_position_y=VD2_Y2,
-                end_normal_x=VD2_TX2,
-                end_normal_y=VD2_TY2;
-
-///////////////////////////// D_PAIR ///////////////////////////////
-
-d_pair: Line = (vd1_offset_out, magnetD, vd1_offset_back, vd2_offset_out, magnetD, vd2_offset_back);
+d_single: Line = (vd_offset_out, magnetD, vd_offset_back);
 
 //////////////////////////// DRIFT /////////////////////////////////
 
-REAL D_HALF_CELL_LENGTH=D_CENTRE_LENGTH*2+MAGNET_SEPARATION+DRIFT_1/2.+DRIFT_2/2.;
-REAL D_HALF_CELL_ANGLE=360/20*DEGREE;
+REAL D_HALF_CELL_LENGTH=D_CENTRE_LENGTH+DRIFT_1/2.+DRIFT_2/2.;
+REAL D_HALF_CELL_ANGLE=360/N_CELLS/2*DEGREE;
 
 d_half_cell_drift: LOCAL_CARTESIAN_OFFSET,
                 end_position_x=D_HALF_CELL_LENGTH,
@@ -226,7 +192,7 @@ d_half_cell_drift: LOCAL_CARTESIAN_OFFSET,
 REAL VF1_DX=F_CENTRE_LENGTH/2.+DRIFT_2/2.;
 REAL VF1_DY=F_OFFSET;
 REAL VF1_BB=BB_LENGTH;
-REAL VF1_TILT=-1*F_TILT_ANGLE*DEGREE;
+REAL VF1_TILT=0;
 
 REAL VF1_X1=0;
 REAL VF1_Y1=0;
@@ -240,57 +206,27 @@ REAL VF1_TY2=0;
 MAGNET_OFFSET        (VF1_DX, VF1_DY, VF1_TILT, VF1_BB, VF1_X1, VF1_Y1, VF1_TX1, VF1_TY1);
 REVERSE_MAGNET_OFFSET(VF1_DX, VF1_DY, VF1_TILT, VF1_BB, VF1_X2, VF1_Y2, VF1_TX2, VF1_TY2);
 
-vf1_offset_out: LOCAL_CARTESIAN_OFFSET,
+vf_offset_out: LOCAL_CARTESIAN_OFFSET,
                 end_position_x=VF1_X1,
                 end_position_y=VF1_Y1,
                 end_normal_x=VF1_TX1,
                 end_normal_y=VF1_TY1;
 
-vf1_offset_back: LOCAL_CARTESIAN_OFFSET,
+vf_offset_back: LOCAL_CARTESIAN_OFFSET,
                 end_position_x=VF1_X2,
                 end_position_y=VF1_Y2,
                 end_normal_x=VF1_TX2,
                 end_normal_y=VF1_TY2;
 
-///////////////////////// PLACEMENTS FOR MAGNET VF2 //////////////////////
 
-REAL VF2_DX=F_CENTRE_LENGTH*3./2.+DRIFT_2/2.+MAGNET_SEPARATION;
-REAL VF2_DY=F_OFFSET;
-REAL VF2_BB=BB_LENGTH;
-REAL VF2_TILT=F_TILT_ANGLE*DEGREE;
+///////////////////////////// F_SINGLE ///////////////////////////////
 
-REAL VF2_X1=0;
-REAL VF2_Y1=0;
-REAL VF2_TX1=0;
-REAL VF2_TY1=0;
-REAL VF2_X2=0;
-REAL VF2_Y2=0;
-REAL VF2_TX2=0;
-REAL VF2_TY2=0;
-
-MAGNET_OFFSET        (VF2_DX, VF2_DY, VF2_TILT, VF2_BB, VF2_X1, VF2_Y1, VF2_TX1, VF2_TY1);
-REVERSE_MAGNET_OFFSET(VF2_DX, VF2_DY, VF2_TILT, VF2_BB, VF2_X2, VF2_Y2, VF2_TX2, VF2_TY2);
-
-vf2_offset_out: LOCAL_CARTESIAN_OFFSET,
-                end_position_x=VF2_X1,
-                end_position_y=VF2_Y1,
-                end_normal_x=VF2_TX1,
-                end_normal_y=VF2_TY1;
-
-vf2_offset_back: LOCAL_CARTESIAN_OFFSET,
-                end_position_x=VF2_X2,
-                end_position_y=VF2_Y2,
-                end_normal_x=VF2_TX2,
-                end_normal_y=VF2_TY2;
-
-///////////////////////////// F_PAIR ///////////////////////////////
-
-f_pair: Line = (vf1_offset_out, magnetF, vf1_offset_back, vf2_offset_out, magnetF, vf2_offset_back);
+f_single: Line = (vf_offset_out, magnetF, vf_offset_back);
 
 //////////////////////////// DRIFT /////////////////////////////////
 
-REAL F_HALF_CELL_LENGTH=F_CENTRE_LENGTH*2+MAGNET_SEPARATION+DRIFT_1/2.+DRIFT_2/2.;
-REAL F_HALF_CELL_ANGLE=360/20*DEGREE;
+REAL F_HALF_CELL_LENGTH=F_CENTRE_LENGTH+DRIFT_1/2.+DRIFT_2/2.;
+REAL F_HALF_CELL_ANGLE=360/N_CELLS/2*DEGREE;
 
 f_half_cell_drift: LOCAL_CARTESIAN_OFFSET,
                 end_position_x=F_HALF_CELL_LENGTH,
@@ -303,7 +239,9 @@ IF (DO_TEST_MAP) {
     REAL TEST_DY=0.;
     REAL TEST_DX=0.;
     REAL TEST_DTHETA=(360/4/N_CELLS)*DEGREE;
-    REAL TEST_BB=3*BB_LENGTH/2;
+    // distance between *end* of bounding boxes
+    REAL TEST_GAP=F_CENTRE_LENGTH/2+D_CENTRE_LENGTH/2+DRIFT_1/2+DRIFT_2/2-BB_LENGTH;
+    REAL TEST_BB=TEST_GAP+2*BB_LENGTH;
 
     REAL TEST_X1=0;
     REAL TEST_Y1=0;
@@ -330,7 +268,7 @@ IF (DO_TEST_MAP) {
                     end_normal_y=0;
 
     vtest_gap: LOCAL_CARTESIAN_OFFSET,
-                    end_position_x=-BB_LENGTH/2,
+                    end_position_x=TEST_GAP,
                     end_position_y=0.,
                     end_normal_x=0,
                     end_normal_y=0;
@@ -371,7 +309,7 @@ BUILD_PROBE(NAME, ANGLE): MACRO {
     NAME: PROBE, xstart=RMIN*1000*cos(ANGLE),  xend=RMAX*1000*cos(ANGLE),  ystart=RMIN*1000*sin(ANGLE),  yend=RMAX*1000*sin(ANGLE);
 }
 
-REAL THIS_PROBE_PHI=0.0;
+REAL THIS_PROBE_PHI=PI/2;
 BUILD_PROBE(RingProbe01, THIS_PROBE_PHI);
 THIS_PROBE_PHI = EVAL(THIS_PROBE_PHI+2.*PI/N_CELLS);
 BUILD_PROBE(RingProbe02, THIS_PROBE_PHI);
@@ -404,12 +342,13 @@ BUILD_PROBE(RingProbe15, THIS_PROBE_PHI);
 THIS_PROBE_PHI = EVAL(THIS_PROBE_PHI+2.*PI/N_CELLS);
 
 ringprobe: Line = (RingProbe01, RingProbe02, RingProbe03, RingProbe04, RingProbe05, 
-                   RingProbe06, RingProbe07, RingProbe08, RingProbe09, RingProbe10);
+                   RingProbe06, RingProbe07, RingProbe08, RingProbe09, RingProbe10,
+                   RingProbe11, RingProbe12, RingProbe13, RingProbe14, RingProbe15);
 
 IF (DO_MAGNET_FIELD_MAPS) {
     DUMPEMFIELDS, COORDINATE_SYSTEM=CYLINDRICAL, FILE_NAME="FieldMapRPHI.dat",
-        R_START=3.5, R_STEPS=361, DR=0.0025,
-        PHI_START=-24.*DEGREE, PHI_STEPS=360.*4, DPHI=0.25*DEGREE,
+        R_START=RMIN, R_STEPS=401, DR=(RMAX-RMIN)/400,
+        PHI_START=90.*DEGREE, PHI_STEPS=360.*4, DPHI=0.25/4.*DEGREE,
         Z_START=0, Z_STEPS=1, DZ=0.100,
         T_START=0, T_STEPS=1, DT=1.;
 
@@ -425,13 +364,15 @@ IF (DO_MAGNET_FIELD_MAPS) {
 }
 
 ringdef: RINGDEFINITION, HARMONIC_NUMBER=1, LAT_RINIT=R0, LAT_PHIINIT=0,
-         LAT_THETAINIT=180.0-360/4/N_CELLS, BEAM_PHIINIT=0, BEAM_PRINIT=0,
+         LAT_THETAINIT=180.0-360/4/N_CELLS, BEAM_PHIINIT=90, BEAM_PRINIT=0,
          BEAM_RINIT=0.0, SYMMETRY=1, RFFREQ=1, IS_CLOSED=false,
-         MIN_R=0., MAX_R=10;
+         MIN_R=0., MAX_R=40;
 // magnet_d_placement_in, magnet_d_placement_out, 
-cell: Line = (d_pair, d_half_cell_drift, f_pair, f_half_cell_drift);
+cell: Line = (d_single, d_half_cell_drift, f_single, f_half_cell_drift);
 l1: Line = (ringdef, ringprobe, f_test,
-            cell, cell, cell, cell, cell, cell, cell, cell, cell, cell
+            cell, cell, cell, cell, cell,
+            cell, cell, cell, cell, cell,
+            cell, cell, cell, cell, cell
            );
 
 Dist1: DISTRIBUTION, TYPE=fromfile, FNAME="disttest.dat", INPUTMOUNITS=NONE;

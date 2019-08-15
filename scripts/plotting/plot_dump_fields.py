@@ -25,7 +25,7 @@ class PlotDumpFields(object):
             canvas_xy = self.plot_dump_fields("x", "y", "bz")
         return canvas_xy
 
-    def plot_1d(self, cuts, ax1, ax2):
+    def plot_1d(self, cuts, ax1, ax2, canvas_1d = None, xminmax= None, linecolor=1):
         value1, value2 = [], []
         n_points = len(self.field_map.values()[0])
         for i in range(n_points):
@@ -37,7 +37,10 @@ class PlotDumpFields(object):
                 continue
             value1.append(self.field_map[ax1][i])
             value2.append(self.field_map[ax2][i])
-        x_min, x_max = min(value1), max(value1)
+        if xminmax == None:
+            x_min, x_max = min(value1), max(value1)
+        else:
+            x_min, x_max = xminmax
         y_min, y_max = min(value2), max(value2)
         y_delta = (y_max-y_min)*0.1
         y_min -= y_delta
@@ -47,17 +50,23 @@ class PlotDumpFields(object):
             print "y values:", value2
             print "x_min:", x_min, "x_max:", x_max, "y_min:", y_min, "y_max:", y_max
             raise ValueError("Bad axis range")
-        canvas_1d = ROOT.TCanvas(self.file_name+": "+ax1+" vs "+ax2, ax1+" vs "+ax2)
-        hist = ROOT.TH2D(ax1+" vs "+ax2, ";"+ax1+";"+ax2,
-                         1000, x_min, x_max,
-                         1000, y_min, y_max)
-        hist.SetStats(False)
+        if canvas_1d == None:
+            canvas_1d = ROOT.TCanvas(self.file_name+": "+ax1+" vs "+ax2, ax1+" vs "+ax2)
+            hist = ROOT.TH2D(ax1+" vs "+ax2, ";"+ax1+";"+ax2,
+                            1000, x_min, x_max,
+                            1000, y_min, y_max)
+            hist.SetStats(False)
+            hist.Draw()
+            self.root_objects.append(hist)
+
+        canvas_1d.cd()
         graph = ROOT.TGraph(len(value1))
         graph.SetLineWidth(2)
+        graph.SetLineColor(linecolor)
+        
         for i, x in enumerate(value1):
             y = value2[i]
             graph.SetPoint(i, x, y)
-        hist.Draw()
         graph.Draw("SAMEL")
         self.graph = graph
         self.canvas = canvas_1d
@@ -65,20 +74,21 @@ class PlotDumpFields(object):
         self.y_list = value2
         canvas_1d.Update()
         self.root_objects.append(canvas_1d)
-        self.root_objects.append(hist)
         self.root_objects.append(graph)
-        return canvas_1d, hist, graph
+        return canvas_1d, graph
 
     def calculate_cylindrical_fields(self):
         n_points = len(self.field_map['bx'])
         self.field_map['bphi'] = [None]*n_points
         self.field_map['br'] = [None]*n_points
+        phi = 0.
         for i in range(n_points):
             x = self.field_map['x'][i]
             y = self.field_map['y'][i]
             bx = self.field_map['bx'][i]
             by = self.field_map['by'][i]
-            phi = math.atan2(y, x)
+            if abs(y) < 1e-9 and abs(x) < 1e-9:
+                phi = math.atan2(y, x)
             br = bx*math.cos(phi) + by*math.sin(phi)
             bphi = -bx*math.sin(phi) + by*math.cos(phi)
             self.field_map['br'][i] = br

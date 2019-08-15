@@ -21,6 +21,7 @@ class RootObjects:
     histograms = []
     canvases = []
     graphs = []
+    other = []
 
 class Colors:
     ref_colours = numpy.array([ROOT.kRed, ROOT.kOrange+2, ROOT.kYellow+2, 
@@ -47,6 +48,8 @@ def r_phi_track_file(data):
         data["r"][i] = (data["x"][i]**2+data["y"][i]**2.)**0.5
         phi = math.atan2(data["y"][i], data["x"][i])
         data["phi"][i] = math.degrees(phi)
+        if data["phi"][i] < 0.:
+            data["phi"][i] += 360.
         p = (data["px"][i]**2+data["py"][i]**2)**0.5
         data["pr"][i] = p*math.sin(phi)
         data["pphi"][i] = p*math.cos(phi)
@@ -132,7 +135,7 @@ def plot_r_phi_projection(step_list, canvas = None):
         canvas = ROOT.TCanvas("x_y_projection", "x_y_projection")
         canvas.Draw()
         axes = ROOT.TH2D("x_y_projection_axes", ";#phi [degree];r [m]",
-                         1000, -180., 180.,
+                         1000, 90., 150.,
                          1000, 1., 4.)
         axes.SetStats(False)
         axes.Draw()
@@ -151,23 +154,34 @@ def plot_r_phi_projection(step_list, canvas = None):
     RootObjects.graphs.append(graph)
     return canvas, axes, graph
 
-def plot_x_z_projection(step_list):
-    canvas = ROOT.TCanvas("x_z_projection", "x_z_projection")
-    axes = ROOT.TH2D("x_z_projection_axes", ";phi [rad];z [m]",
-                     1000, -math.pi, math.pi,
-                     1000, -0.20, 0.20)
-    axes.SetStats(False)
-    graph = ROOT.TGraph(len(step_list))
-    canvas.Draw()
-    axes.Draw()
-    for i in range(len(step_list["x"])):
-        graph.SetPoint(i, math.atan2(step_list["y"][i], step_list["x"][i]), step_list["z"][i])
-    graph.Draw("l")
+def plot_x_z_projection(step_list, canvas = None):
+    if canvas == None:
+        canvas = ROOT.TCanvas("x_z_projection", "x_z_projection")
+        axes = ROOT.TH2D("x_z_projection_axes", ";#phi [degree];z [m]",
+                        1000, 0, 360./5,
+                        1000, 0.0, 0.2)
+        axes.SetStats(False)
+        canvas.Draw()
+        axes.Draw()
+        RootObjects.histograms.append(axes)
+        RootObjects.canvases.append(canvas)
+    graph_list = []
+    points = zip(step_list["phi"], step_list["z"])
+    old_phi = max(step_list["phi"])+1.0
+    index = 0
+    for i in range(len(step_list["z"])):
+        phi, z = points[i]
+        if phi < old_phi:
+            index = 0
+            graph_list.append(ROOT.TGraph())
+        graph_list[-1].SetPoint(index, points[i][0], points[i][1])
+        index += 1
+        old_phi = phi
+    for graph in graph_list:
+        graph.Draw("l")
     canvas.Update()
-    RootObjects.histograms.append(axes)
-    RootObjects.canvases.append(canvas)
     RootObjects.graphs.append(graph)
-    return canvas, axes, graph
+    return canvas, graph_list
 
 def step_statistics(step_list):
     delta_r_list = []
@@ -216,6 +230,34 @@ def plot_beam_pipe(inner_radius, outer_radius, n_periods, canvas=None):
     canvas.Update()
     RootObjects.graphs.append(graph_inner)
     RootObjects.graphs.append(graph_outer)
+
+def plot_axis(axis_radius, n_periods, canvas=None):
+    if canvas == None:
+        canvas = ROOT.TCanvas("beam_pipe", "beam_pipe")
+        canvas.Draw()
+        axes = ROOT.TH2D("beam_pipe_axes", ";x [mm];y [mm]",
+                         1000, -25., 25.,
+                         1000, -25., 25.)
+        axes.Draw()
+        RootObjects.histograms.append(axes)
+        RootObjects.canvases.append(canvas)
+    canvas.cd()
+    graph_axis = ROOT.TGraph(n_periods+1)
+    for i in range(n_periods+1):
+        if (n_periods/4)*4 == n_periods:
+            index = i
+        else:
+            index = i+0.5
+        phi = index*math.pi*2./n_periods
+        graph_axis.SetPoint(i,
+                            axis_radius*math.cos(phi),
+                            axis_radius*math.sin(phi))
+
+    RootObjects.graphs.append(graph_axis)
+    graph_axis.SetLineColor(ROOT.kGray)
+    graph_axis.Draw("l")
+    canvas.Update()
+
 
 def plot_b_field(step_list):
     canvas = ROOT.TCanvas("bfield", "bfield")
@@ -278,14 +320,6 @@ def plot_elements_xy(log_file, canvas):
 def plot_cylindrical(output_dir, opal_run_dir, step_list_of_lists):
     field_plot = plot_dump_fields.PlotDumpFields(opal_run_dir+"FieldMapRPHI.dat", True)
     field_plot.load_dump_fields()
-    try:
-        canvas_1d , hist, graph = field_plot.plot_1d({"r":4.}, "phi", "bz")
-        for format in ["png"]:
-            canvas_1d.Print(output_dir+"bz_1d."+format)
-        Colors.reset()
-    except Exception:
-        sys.excepthook(*sys.exc_info())
-    
     canvas_bz_offset = field_plot.plot_dump_fields("phi", "r", "bz")
     for step_list in step_list_of_lists:
         plot_r_phi_projection(step_list, canvas_bz_offset)
@@ -293,6 +327,14 @@ def plot_cylindrical(output_dir, opal_run_dir, step_list_of_lists):
         canvas_bz_offset.Print(output_dir+"closed_orbit_cylindrical_bz."+format)
     Colors.reset()
 
+    canvas = None
+    for step_list in step_list_of_lists:
+        canvas, graph = plot_x_z_projection(step_list, canvas)
+    for format in ["png"]:
+        canvas.Print(output_dir+"closed_orbit_elevation."+format)
+    Colors.reset()
+
+    return
     canvas_br_offset = field_plot.plot_dump_fields("phi", "r", "br")
     for step_list in step_list_of_lists:
         plot_r_phi_projection(step_list, canvas_br_offset)
@@ -321,12 +363,24 @@ def plot_cylindrical(output_dir, opal_run_dir, step_list_of_lists):
         canvas_bphi_offset.Print(output_dir+"closed_orbit_cylindrical_by."+format)
     Colors.reset()
 
-    for step_list in step_list_of_lists:
-        canvas, axes, graph = plot_x_z_projection(step_list)
-    #plot_elements_xz(opal_run_dir+"log", canvas)
-    for format in ["png"]:
-        canvas.Print(output_dir+"closed_orbit_elevation."+format)
-    Colors.reset()
+    try:
+        canvas_1d = None
+        for field, color in ("bz", 1), ("bphi", 2), ("br", 4):
+            canvas_1d, graph = field_plot.plot_1d({"r":4.}, "phi", field,
+                                                  canvas_1d, (0., 36.), color)
+        for format in ["png"]:
+            canvas_1d.Print(output_dir+"bfield_1d_a."+format)
+        canvas_1d = None
+        for field, color in ("bz", 1), ("bphi", 2), ("br", 4):
+            canvas_1d, graph = field_plot.plot_1d({"r":4.}, "phi", field,
+                                                  canvas_1d, (108., 144.), color)
+        for format in ["png"]:
+            canvas_1d.Print(output_dir+"bfield_1d_b."+format)
+        Colors.reset()
+    except Exception:
+        sys.excepthook(*sys.exc_info())
+    
+
 
 def plot_zoom(output_dir, opal_run_dir, step_list_of_lists):
     field_plot = plot_dump_fields.PlotDumpFields(opal_run_dir+"FieldMapXY-zoom.dat")
@@ -343,15 +397,18 @@ def plot_zoom(output_dir, opal_run_dir, step_list_of_lists):
 def plot_cartesian(output_dir, opal_run_dir, step_list):
     field_plot = plot_dump_fields.PlotDumpFields(opal_run_dir+"FieldMapXY.dat")
     field_plot.load_dump_fields()
-    inner_radius, outer_radius, ncells = 3., 5., 20
+    #inner_radius, axis_radius, outer_radius, ncells = 13.5, 14.350, 15.5, 30
+    inner_radius, axis_radius, outer_radius, ncells = 3.5, 3.995, 4.5, 20
 
     canvas = field_plot.plot_dump_fields("x", "y", "bz")
     canvas, axes, graph = plot_x_y_projection(step_list, canvas)
     plot_beam_pipe(inner_radius, outer_radius, ncells, canvas)
+    plot_axis(axis_radius, ncells, canvas)
     #plot_elements_xy(opal_run_dir+"log", canvas)
     for format in ["png"]:
         canvas.Print(output_dir+"closed_orbit_plan_bz."+format)
 
+    return
     canvas = field_plot.plot_dump_fields("x", "y", "bx")
     canvas, axes, graph = plot_x_y_projection(step_list, canvas)
     plot_beam_pipe(inner_radius, outer_radius, ncells, canvas)
@@ -380,6 +437,33 @@ def plot_cartesian(output_dir, opal_run_dir, step_list):
     for format in ["png"]:
         canvas.Print(output_dir+"closed_orbit_cartesian_bphi."+format)
 
+    canvas, graph = plot_x_z_projection(step_list)
+    for format in ["png"]:
+        canvas.Print(output_dir+"closed_orbit_cartesian_vertical."+format)
+
+def plot_test_field(output_dir, opal_run_dir):
+    field_plot = plot_dump_fields.PlotDumpFields(opal_run_dir+"FieldMapTest.dat")
+    field_plot.load_dump_fields()
+    canvas_1d = None
+    for field, color in ("bx", 4), ("bz", 1), ("by", 2):
+        canvas_1d, graph = field_plot.plot_1d({}, "x", field,
+                                                canvas_1d, (-2, 2), color)
+        if field == "bz":
+            for delta in -1.5, +1.5:
+                eqn = "0.5*[0]*(tanh((x-0.5*[1]-[3])/[2])-tanh((x+0.5*[1]-[3])/[2]))"
+                fit = ROOT.TF1("fa1", eqn, delta-0.5, delta+0.5)
+                fit.SetParameter(0, 0.25)
+                fit.SetParameter(1, 0.125)
+                fit.SetParameter(2, 0.1)
+                fit.SetParameter(3, delta)
+                fit.SetLineColor(ROOT.kGreen)
+                fit.SetLineStyle(3)
+                print "Fitting", eqn
+                graph.Fit(fit)
+                fit.Draw("SAME")
+                RootObjects.other.append(fit)
+    canvas_1d.Print(output_dir+"test_field.png")
+
 def print_track(tgt_phi, step_list_of_lists):
     for step_list in step_list_of_lists:
         for i, phi in enumerate(step_list['phi']):
@@ -388,34 +472,32 @@ def print_track(tgt_phi, step_list_of_lists):
         print "step list item", i
         for key in sorted(step_list):
             print "    ", key, step_list[key][i]
-        print step_list['pr'][i]**2+step_list['pphi'][i]**2
-        print step_list['px'][i]**2+step_list['py'][i]**2
+        for j in 0, i:
+            print "p_tot at", j, ":",
+            p_tot = (step_list['px'][j]**2+step_list['py'][j]**2+step_list['pz'][j]**2)**0.5
+            print format(p_tot, "8.4g")
         print
 
 def main(output_dir, run_dir, run_file_list):
     output_dir += "/"
-    opal_run_dir = output_dir+run_dir
+    opal_run_dir = output_dir+run_dir+"/"
+    print "OPAL RUN DIR", opal_run_dir
     step_list_of_lists = []
     for run_file in run_file_list:
         step_list_of_lists.append(parse_track_file(opal_run_dir+run_file))
-    plot_cartesian(output_dir, run_dir, step_list_of_lists[0])
-    print_track(0.1*360./15, step_list_of_lists)
+    plot_cartesian(output_dir, opal_run_dir, step_list_of_lists[0])
+    #plot_cylindrical(output_dir, opal_run_dir, step_list_of_lists)
+    #plot_test_field(output_dir, opal_run_dir)
+    #print_track(0.1*360./15, step_list_of_lists)
     return
-    #try:
-    #    plot_zoom(output_dir, opal_run_dir, step_list)
-    #except Exception:
-    #    sys.excepthook(*sys.exc_info())
-    #try:
-    #    plot_cartesian(output_dir, opal_run_dir, step_list)
-    #except Exception:
-    #    sys.excepthook(*sys.exc_info())
 
     step_statistics(step_list)
 
 if __name__ == "__main__":
     utilities.setup_gstyle()
-    output_dir = os.path.split(sys.argv[1])[0]
-    run_dir = ""
+    tgt_dir = os.path.split(sys.argv[1])[0]
+    output_dir = os.path.split(tgt_dir)[0]
+    run_dir = os.path.split(tgt_dir)[1]
     run_file_list = [os.path.split(arg)[1] for arg in sys.argv[1:]]
     main(output_dir, run_dir, run_file_list)
 

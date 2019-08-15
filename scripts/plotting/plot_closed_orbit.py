@@ -2,47 +2,184 @@ import glob
 import os
 import json
 import sys
+import math
+import numpy
 
-import xboa.common as common
+import ROOT
+import xboa.common
+import utils.utilities as utilities
+from xboa.hit import Hit
+from utils.decoupled_transfer_matrix import DecoupledTransferMatrix
 
-import utilities
 
-def load_file(file_name):
-    fin = open(file_name)
-    data_out = []
-    for line in fin.readlines():
-        data_out.append(json.loads(line))
-    return data_out
+class ClosedOrbitsPlotter(object):
+    def __init__(self, file_list):
+        self.data = []
+        self.tm_lambda = None
+        self.output_dir = os.path.split(file_list[0])[0]
+        self.phase_advance_axis = 0
+        self.subs_key = "substitutions"
+        for file_name in file_list:
+            self.load_file(file_name)
 
-def plot_closed_orbit(data, co_axis, plot_dir):
-    print "\nclosed orbit",
-    axis_candidates = utilities.get_substitutions_axis(data)
-    metres = 1e-3
-    for key in axis_candidates:
-        sys.stdout.flush()
-        x_name = utilities.sub_to_name(key)
-        x_list = axis_candidates[key]
-        y_list = [item["hits"][0][co_axis] for item in data]
-        y_list = [y*metres for y in y_list]
-        canvas = common.make_root_canvas("closed orbit vs "+x_name)
-        x_name += utilities.sub_to_units(key)
-        hist, graph = common.make_root_graph("closed orbit", x_list, x_name, y_list, "Radial position [m]")
-        hist.Draw()
-        graph.SetMarkerStyle(4)
-        graph.Draw("psame")
-        canvas.Update()
-        for format in "eps", "png", "root":
-            canvas.Print(plot_dir+"/"+co_axis+"_closed_orbit."+format)
+    def load_file(self, file_name):
+        print "Loading", file_name
+        fin = open(file_name)
+        for line in fin.readlines():
+            self.data.append(json.loads(line))
+
+    def do_plots_all_in(self):
+        self.plot_item_2("x", lambda item: item["seed"][0],
+                         "y", lambda item: item["seed"][2],
+                         "delta", self.get_co, None)
+        self.plot_item_2("x", lambda item: item["seed"][0],
+                         "y", lambda item: item["seed"][2],
+                         "delta", self.get_co, None)
+
+    def do_plots_by_sub(self):
+        subs_axes = utilities.get_substitutions_axis(self.data, self.subs_key)
+        print subs_axes
+        for axis in subs_axes:
+            axis_name = utilities.sub_to_name(axis).lower().replace(" ", "_")
+            for name in "x", "x'", "y", "y'":
+                canvas, mgraph = self.plot_item(
+                    name,
+                    lambda item: Hit.new_from_dict(item["seed_hit"])[name],
+                    axis, None, None)
+                mgraph.Draw("AP")
+                canvas.Print(self.output_dir+"/"+axis_name+"_vs_"+name+".png")
+
+            DecoupledTransferMatrix.det_tolerance = 1e6
+            canvas, mgraph = None, None
+            for self.phase_advance_axis in 0, 1:
+                self.tm_lambda = self.tm_phase_advance
+                name = "Phase Advance "+str(self.phase_advance_axis)
+                canvas, mgraph = self.plot_item(name, self.get_tm, axis, canvas, mgraph)
+            mgraph.Draw("AP")
+            canvas.Print(self.output_dir+"/"+axis_name+"_vs_phase_advance.png")
+
+            self.tm_lambda = self.tm_det
+            name = "Determinant"
+            canvas, mgraph = self.plot_item(name, self.get_tm, axis, None, None)
+            mgraph.Draw("AP")
+            canvas.Print(self.output_dir+"/"+axis_name+"_vs_determinant.png")
+
+    def plot_item_2(self, x_name, x_lambda, y_name, y_lambda, z_name, z_lambda, canvas):
+        name = x_name+" vs "+y_name+" vs "+z_name
+        x_data, y_data, z_data = [], [], []
+        for item in self.data:
+            try:
+                x_i = x_lambda(item)
+                y_i = y_lambda(item)
+                z_i = z_lambda(item)
+            except Exception:
+                sys.excepthook(*sys.exc_info())
+            x_data.append(x_i)
+            y_data.append(y_i)
+            z_data.append(z_i)
+        print "Plotting ", name
+        print "   ", x_data
+        print "   ", y_data
+        print "   ", z_data
+
+        n_points = len(self.data)
+        if canvas == None:
+            canvas = xboa.common.make_root_canvas(name)
+            canvas.Draw()
+            x_min_max = xboa.common.min_max(x_data)
+            y_min_max = xboa.common.min_max(y_data)
+            z_min_max = xboa.common.min_max(z_data)
+            hist = ROOT.TH3D("", "",
+                             10, x_min_max[0], x_min_max[1],
+                             10, y_min_max[0], y_min_max[1],
+                             10, z_min_max[0], z_min_max[1],
+                    )
+            hist.GetXaxis().SetTitleOffset(3)
+            hist.SetStats(False)
+            hist.Draw()
+            self.root_objects.append(hist)
+        canvas.cd()
+        graph2d = ROOT.TGraph2D(n_points)
+        self.root_objects.append(graph2d)
+        #ROOT.gStyle.SetPalette(1)
+        graph2d.SetMarkerStyle(20)
+        graph2d.SetTitle("")
+        graph2d.Draw('same pcolz')
+        for i in range(n_points):
+            graph2d.SetPoint(i, x_data[i], y_data[i], z_data[i])
+        name = name.replace(" ", "_")
+        canvas.SetTheta(90)
+        canvas.SetPhi(-90)
+        canvas.SetLogz()
+        canvas.Print(self.output_dir+"/"+name+".png")
+        return canvas, graph2d
+
+    def plot_item(self, y_name, get_item_lambda, axis, canvas, mgraph):
+        x_data = [item[self.subs_key][axis] for item in self.data]
+        x_name = utilities.sub_to_name(axis)+utilities.sub_to_units(axis)
+        y_data = []
+        for item in self.data:
+            try:
+                y_data.append(get_item_lambda(item))
+            except Exception:
+                #sys.excepthook(*sys.exc_info())
+                y_data.append(0.)
+        name = utilities.sub_to_name(axis)+" vs "+y_name
+        hist, graph = xboa.common.make_root_graph(name, x_data, x_name, y_data, y_name)
+        if canvas == None:
+            canvas = xboa.common.make_root_canvas(name)
+            canvas.Draw()
+            mgraph = ROOT.TMultiGraph()
+            mgraph.SetTitle(";"+x_name+";"+y_name)
+            self.root_objects.append(mgraph)
+        if not mgraph.GetListOfGraphs():
+            index = 0
+        else:
+            index = mgraph.GetListOfGraphs().GetEntries()
+        color_list = [ROOT.kRed, ROOT.kBlue]
+        if len(x_data) < 25:
+            style_list = [20, 20]
+        else:
+            style_list = [7, 7]
+        graph.SetMarkerColor(color_list[index])
+        graph.SetMarkerStyle(style_list[index])
+        mgraph.Add(graph)
+        return canvas, mgraph
+
+    def get_tm(self, item):
+        tm = item["tm"]
+        tm = [row[1:5] for row in tm]
+        tm = DecoupledTransferMatrix(tm)
+        return self.tm_lambda(tm)
+
+    def tm_det(self, tm):
+        det =  numpy.linalg.det(tm.m)
+        return det
+
+    def tm_phase_advance(self, tm):
+        pa = [tm.get_phase_advance(j) for j in range(2)]
+        pa = sorted(pa)
+        pa = pa[self.phase_advance_axis]/2./math.pi
+        return pa
+
+    def get_co(self, item):
+        var_list = ["x", "x'", "y", "y'"]
+        units = {"x":1., "x'":1e3, "y":1., "y'":1e3}
+        ref_0 = Hit.new_from_dict(item["ref_track"][0])
+        ref_1 = Hit.new_from_dict(item["ref_track"][2])
+        delta = [(ref_0[var]-ref_1[var])*units[var] for var in var_list]
+        delta_mag = sum([x*x for x in delta])**0.5
+        return delta_mag
+
+    root_objects = []
 
 def main():
-    for file_name in glob.glob("output/rogers_hack/find_closed_orbit.out"):
-        plot_dir = os.path.split(file_name)[0]
-        print file_name
-        data = load_file(file_name)
-        if len(data) == 0:
-            continue
-        plot_closed_orbit(data, 'x', plot_dir) # or ring tune
-    
+    utilities.setup_gstyle()
+    if len(sys.argv[1:]) == 0:
+        print "Usage - python plot_closed_orbits [file_name_1] [file_name_2] ..."
+    co_plotter = ClosedOrbitsPlotter(sys.argv[1:])
+    co_plotter.do_plots_by_sub()
+    co_plotter.do_plots_all_in()
 
 if __name__ == "__main__":
     main()

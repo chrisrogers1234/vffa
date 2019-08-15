@@ -3,83 +3,83 @@ import os
 
 def get_baseline_substitution():
     baseline = {
+        # ring
+        "__n_cells__":10,
+        "__radius__":3.995285, #m
+        "__drift_1__":0.75,
+        "__drift_2__":0.75,
         # beam
         "__energy__":3., # MeV
-        "__beam_theta__":0.,
-        "__beam_charge__":1.,
-        "__beam_phi_init__":0.0,
-        "__beamfile__":'disttest.dat',
-        "__current__":1.6e-19,
-        "__n_events__":1,
-        "__lattice_phi_offset__":0.0,
         # tracking
-        "__step_size__":1., # mm
-        "__n_turns__":2.1,
-        "__solver__":"None",
-        "__mx__":5,
-        "__my__":5,
-        "__mt__":5,
-        "__test_probe__":0.0,
+        "__step_size__":0.001, # m
+        "__n_turns__":0.2,
         # main magnets
-        "__b_mean__":-3.*(1.*4.8-0.36*2.4)/24.,
-        "__df_ratio__":-0.36,
-        "__d_length__":0.1,
-        "__f_length__":0.2,
-        "__d_end_length__":(1.0/math.cos(math.radians(41)))/1.0/2.4,  #*0.9/2.,
-        "__f_end_length__":(1.0/math.cos(math.radians(41)))/3.65/4.8,  #*0.5/2.,
-        "__tan_delta__":-math.tan(math.radians(41)),
-        "__field_index__":7.1,
-        "__max_y_power__":2,
-        "__neg_extent__":0.2,
-        "__pos_extent__":0.8,
-        # rf
-        "__cavity__":"no_cavity",
-        "__rf_voltage__":0.,
-        "__rf_phase__":1.90862003999-math.radians(20), # [rad]
-        "__rf_freq_0__":0.93656519779, # [MHz]
-        "__rf_freq_1__":0.,
-        "__rf_freq_2__":0.,
-        "__rf_freq_3__":0.,
-        "__no_field_maps__":"// ", # set to "" to enable field maps; set to "// " to comment them
-        "__cavity_angle__":41.,
-        # bump magnets
-        "__bump_length__":0.1,
-        "__bump_fringe__":0.1,
-        "__bump_width__":1.0,
-        "__bump_offset__":0.0, # radial offset, m
-        "__bump_angle__":41.0, # angular tilt of bump cavity
-        "__phi_foil_probe__":3.2,
-        "__phi_bump_1__":+0.35,
-        "__phi_bump_2__":-0.65,
-        "__phi_bump_3__":-1.3,
-        "__phi_bump_4__":-1.65,
-        "__bump_field_1__":0.0, #-0.153622540713,
-        "__bump_field_2__":0.0, #+0.0,
-        "__bump_field_3__":0.0, #+0.157288331088,
-        "__bump_field_4__":0.0, #-0.20832864219,
-        "__septum_field__":0.0, #-0.20832864219,
+        "__bf__":-0.25/0.44, # T
+        "__bd__":0.25, #+0.20, # T
+        "__d_length__":0.2, # m
+        "__f_length__":0.2, # m
+        "__d_offset__":-0.154, # m
+        "__f_offset__":0.154, # m
+        "__d_end_length__":0.125,  # m
+        "__f_end_length__":0.125, # m
+        "__m_index__":1.58, # m^-1 # 1.58
+        "__max_x_power__":6,
+        "__neg_extent__":2.0, # m
+        "__pos_extent__":4.0, # m
+        "__magnet_separation__":0.1, # m
+        "__f_tilt_angle__":-8.0,
+        "__d_tilt_angle__":+4.0,
+        # NOTE BB length 0.125 m -> width 1.0 m; length 2.0 m; double for safety
+        "__magnet_width__":2.0, # m
+        "__bb_length__":8.0, # m
+        # field maps
+        "__do_magnet_field_maps__":True,
+        "__cartesian_x_min__":-5., # m
+        "__cartesian_dx__":0.01, # m (1001 steps)
+        "__cartesian_y_min__":-5., # m
+        "__cartesian_dy__":0.01, # m (1001 steps)
     }
     return baseline
 
+# Status 19/07/2019:
+# * Tracking finds closed orbit using Shinji lattice
+# * DA is tiny (0) and TM declares phase advance 0.5, 0.0
+# Ideas
+# * Try tracking backwards (with reversed polarities)
+# * Try searching for good tune; first by tweaking end length, then by tweaking DF ratio
+
+# Finder is failing; does not seem to be improved by adjusting step size. Check 
+# the lattice? Try constraining fringe field and check probe field is 0 (in which
+# case lattice should be perfect)?
+
 class Config(object):
     def __init__(self):
-        self.find_closed_orbits = {
-            "seed":[[4000.0, -8.47136893],],
-            "output_file":"find_closed_orbit",
-            "subs_overrides":{"__n_turns__":1.1, "__no_field_maps__":""},
+        self.find_closed_orbits = { 
+            "seed":[[3957.3378704328647, 22.748878261530315, -3.106790633028175, 1.0895278377208744]],
+            # I tried with deltas [5., 0.05, 5., 0.05] and the TM determinant
+            # converged on ~ 0.85 as a function of step size
+            "deltas":[1., 0.01, 1., 0.01],
+            "adapt_deltas":False,
+            "output_file":"closed_orbits_cache",
+            "subs_overrides":{"__n_turns__":0.21, "__do_magnet_field_maps__":"False"},
+            "final_subs_overrides":{"__n_turns__":10.1, "__do_magnet_field_maps__":"True"},
             "root_batch":0,
-            "max_iterations":10,
+            "max_iterations":5, 
+            "tolerance":0.1,
+            "ds_cell":2,
             "do_plot_orbit":False,
-            "run_dir":"tmp/find_closed_orbits/",
+            "run_dir":"tmp2/",
             "probe_files":"RINGPROBE*.loss",
+            "overwrite":True,
+            "orbit_file":"VerticalFFAGMagnet-trackOrbit.dat",
         }
         self.find_tune = {
             "run_dir":"tmp/find_tune/",
-            "probe_files":"RINGPROBE01.loss",
-            "subs_overrides":{"__n_turns__":50.1, "__no_field_maps__":"// ", "__step_size__":0.1},
+            "probe_files":"RINGPROBE*.loss",
+            "subs_overrides":{"__n_turns__":5.1, "__do_magnet_field_maps__":"True"},
             "root_batch":0,
-            "delta_x":2.,
-            "delta_y":1.,
+            "delta_1":1.,
+            "delta_2":1.,
             "max_n_cells":0.1,
             "output_file":"find_tune",
             "row_list":None,
@@ -105,11 +105,12 @@ class Config(object):
         self.substitution_list = [get_baseline_substitution()]
         
         self.run_control = {
-            "find_closed_orbits":True,
+            "find_closed_orbits_4d":True,
             "find_tune":False,
             "find_da":False,
             "clean_output_dir":False,
             "output_dir":os.path.join(os.getcwd(), "output/baseline"),
+            "root_verbose":6000,
         }
 
         self.tracking = {
@@ -124,5 +125,47 @@ class Config(object):
             "step_size":1.,
             "pdg_pid":2212,
             "clear_files":"*.loss",
+            "verbose":False,
         }
+
+
+def get_baseline_substitution_rogers():
+    baseline = {
+        # ring
+        "__n_cells__":10,
+        "__radius__":3.995285, #m 
+        "__drift_1__":0.55,
+        "__drift_2__":0.55,
+        # beam
+        "__energy__":3., # MeV
+        # tracking
+        "__step_size__":0.001, # m
+        "__n_turns__":0.2,
+        # main magnets
+        "__bf__":-0.43, # T
+        "__bd__":0.2, #+0.20, # T
+        "__d_length__":0.4, # m
+        "__f_length__":0.4, # m
+        "__d_offset__":-0.15, # m
+        "__f_offset__":0.15, # m
+        "__d_end_length__":0.125,  # m
+        "__f_end_length__":0.125, # m
+        "__m_index__":1.7, # m^-1
+        "__max_x_power__":6,
+        "__neg_extent__":0.2, # m
+        "__pos_extent__":0.8, # m
+        "__magnet_separation__":-0.1, # m
+        "__f_tilt_angle__":-8.0,
+        "__d_tilt_angle__":+4.0,
+        # NOTE BB length 0.125 m -> width 1.0 m; length 2.0 m; double for safety
+        "__magnet_width__":0.5, # m
+        "__bb_length__":4.0, # m
+        # field maps
+        "__do_magnet_field_maps__":True,
+        "__cartesian_x_min__":-5., # m
+        "__cartesian_dx__":0.01, # m (1001 steps)
+        "__cartesian_y_min__":-5., # m
+        "__cartesian_dy__":0.01, # m (1001 steps)
+    }
+    return baseline
 

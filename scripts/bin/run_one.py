@@ -1,20 +1,15 @@
-
-
 import os
 import shutil
 import sys
 import importlib
 
+import ROOT
+
 import xboa.common
 
-import analysis.find_closed_orbits
+import analysis.find_closed_orbits_4d
 import analysis.find_tune
 import analysis.find_da
-import analysis.find_rf_parameters
-import analysis.find_fixed_frequency_rf
-import analysis.find_bump_parameters
-import analysis.track_bump
-import analysis.track_beam
 from utils import utilities
 
 def get_config():
@@ -48,23 +43,14 @@ def main():
     config = get_config()
     output_dir(config)
     utilities.setup_gstyle()
+    ROOT.gErrorIgnoreLevel = config.run_control["root_verbose"]
     #master_substitutions(config)
-    if config.run_control["find_closed_orbits"]:
-        analysis.find_closed_orbits.main(config)
+    if config.run_control["find_closed_orbits_4d"]:
+        analysis.find_closed_orbits_4d.main(config)
     if config.run_control["find_tune"]:
         analysis.find_tune.main(config)
-    if config.run_control["find_rf_parameters"]:
-        analysis.find_rf_parameters.main(config)
-    if config.run_control["find_bump_parameters"]:
-        analysis.find_bump_parameters.main(config)
-    if config.run_control["track_bump"]:
-        analysis.track_bump.main(config)
     if config.run_control["find_da"]:
         analysis.find_da.main(config)
-    if config.run_control["track_beam"]:
-        analysis.track_beam.main(config)
-    if config.run_control["find_fixed_frequency_rf"]:
-        analysis.find_fixed_frequency_rf.main(config)
 
 if __name__ == "__main__":
     main()

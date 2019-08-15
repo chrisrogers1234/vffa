@@ -192,17 +192,16 @@ class OpalTracking(TrackingBase):
         fout = open(self.beam_filename, "w")
         print >> fout, len(list_of_hits)
         for i, hit in enumerate(list_of_hits):
-            keys = ['x', 'y', 'z', 'px', 'py', 'pz', 'kinetic_energy']
             if self.verbose:
                 print '           ',
-                for key in keys:
+                for key in self.print_keys:
                     print key.ljust(8),
                 if i < 1 or i == len(list_of_hits)-1:
                     print '\n    hit ...',
-                    for key in keys:
+                    for key in self.print_keys:
                         print str(round(hit[key], 3)).ljust(8),
                     print '\n    ref ...',
-                    for key in 'x', 'y', 'z', 'px', 'py', 'pz', 'kinetic_energy':
+                    for key in self.print_keys:
                         print str(round(self.ref[key], 3)).ljust(8),
                     print
                 if i == 1 and len(list_of_hits) > 2:
@@ -289,3 +288,5 @@ class OpalTracking(TrackingBase):
         hit_dict["pz"] = - px*math.sin(phi) + py*math.cos(phi)
         hit = Hit.new_from_dict(hit_dict, "energy")
         return event, hit
+
+    print_keys = ['x', 'y', 'z', 'px', 'py', 'pz', 'kinetic_energy']
