@@ -6,6 +6,7 @@ import os
 import sys
 import copy
 import math
+import glob
 import numpy
 from utils import utilities
 import plot_dump_fields
@@ -33,7 +34,11 @@ class Colors:
         a_colour = cls.colours[0]
         cls.colours = numpy.roll(cls.colours, 1)
         return a_colour
-    
+
+    @classmethod
+    def current(cls):
+        return cls.colours[0]
+
     @classmethod
     def reset(cls):
         cls.colours = copy.deepcopy(cls.ref_colours)
@@ -107,9 +112,10 @@ def load_track_orbit(file_name):
         step_list.append(step)
     return step_list
 
-def plot_x_y_projection(step_list, canvas = None):
+def plot_x_y_projection(step_list_of_lists, canvas = None):
     axes = None
     if canvas == None:
+        Colors.reset()
         canvas = ROOT.TCanvas("x_y_projection", "x_y_projection")
         canvas.Draw()
         axes = ROOT.TH2D("x_y_projection_axes", ";x [m];y [m]",
@@ -120,13 +126,16 @@ def plot_x_y_projection(step_list, canvas = None):
         RootObjects.histograms.append(axes)
     else:
         canvas.cd()
-    graph = ROOT.TGraph(len(step_list))
-    for i in range(len(step_list["x"])):
-        graph.SetPoint(i, step_list["x"][i], step_list["y"][i])
-    graph.Draw("l")
+    for step_list in step_list_of_lists:
+        graph = ROOT.TGraph(len(step_list))
+        for i in range(len(step_list["x"])):
+            graph.SetPoint(i, step_list["x"][i], step_list["y"][i])
+        graph.SetMarkerColor(Colors.next())
+        graph.SetLineColor(Colors.current())
+        graph.Draw("l")
+        RootObjects.graphs.append(graph)
     canvas.Update()
     RootObjects.canvases.append(canvas)
-    RootObjects.graphs.append(graph)
     return canvas, axes, graph
 
 def plot_r_phi_projection(step_list, canvas = None):
@@ -139,6 +148,7 @@ def plot_r_phi_projection(step_list, canvas = None):
                          1000, 1., 4.)
         axes.SetStats(False)
         axes.Draw()
+        Colors.reset()
         RootObjects.histograms.append(axes)
     else:
         canvas.cd()
@@ -154,33 +164,37 @@ def plot_r_phi_projection(step_list, canvas = None):
     RootObjects.graphs.append(graph)
     return canvas, axes, graph
 
-def plot_x_z_projection(step_list, canvas = None):
+def plot_x_z_projection(step_list_of_lists, phi0, phi1, z0, z1, canvas = None):
     if canvas == None:
         canvas = ROOT.TCanvas("x_z_projection", "x_z_projection")
         axes = ROOT.TH2D("x_z_projection_axes", ";#phi [degree];z [m]",
-                        1000, 0, 360./5,
-                        1000, 0.0, 0.2)
+                        1000, phi0, phi1,
+                        1000, z0, z1)
         axes.SetStats(False)
         canvas.Draw()
         axes.Draw()
         RootObjects.histograms.append(axes)
         RootObjects.canvases.append(canvas)
     graph_list = []
-    points = zip(step_list["phi"], step_list["z"])
-    old_phi = max(step_list["phi"])+1.0
-    index = 0
-    for i in range(len(step_list["z"])):
-        phi, z = points[i]
-        if phi < old_phi:
-            index = 0
-            graph_list.append(ROOT.TGraph())
-        graph_list[-1].SetPoint(index, points[i][0], points[i][1])
-        index += 1
-        old_phi = phi
+    for step_list in step_list_of_lists:
+        graph_list.append(ROOT.TGraph())
+        graph_list[-1].SetLineColor(Colors.next())
+        points = zip(step_list["phi"], step_list["z"])
+        old_phi = max(step_list["phi"])+1.0
+        index = 0
+        for i in range(len(step_list["z"])):
+            phi, z = points[i]
+            if phi < old_phi and abs(phi-old_phi) > 90.0:
+                index = 0
+                graph_list.append(ROOT.TGraph())
+                graph_list[-1].SetLineColor(Colors.current())
+            graph_list[-1].SetPoint(index, points[i][0], points[i][1])
+            index += 1
+            old_phi = phi
     for graph in graph_list:
-        graph.Draw("l")
+        graph.Draw("l SAME")
+        RootObjects.graphs.append(graph)
     canvas.Update()
-    RootObjects.graphs.append(graph)
     return canvas, graph_list
 
 def step_statistics(step_list):
@@ -192,6 +206,34 @@ def step_statistics(step_list):
         delta_r_list.append((delta_x**2+delta_y**2+delta_z**2)**0.5)
     print len(step_list), "steps with mean size:", numpy.mean(delta_r_list),
     print "and RMS:", numpy.std(delta_r_list)
+
+def plot_phi_pipe(n_periods, phi0, phi1, y0, y1, color, canvas):
+    line_style=2
+    canvas.cd()
+    print "PLOT PHI PIPE", n_periods, y0, y1, phi0, phi1, color
+    for i in range(n_periods):
+        phi = phi0+(phi1-phi0)/float(n_periods-1)*i
+        graph = ROOT.TGraph(2)
+        graph.SetPoint(0, phi, y0)
+        graph.SetPoint(1, phi, y1)
+        graph.SetLineStyle(line_style)
+        graph.SetLineColor(color)
+        graph.Draw("l SAME")
+        RootObjects.graphs.append(graph)
+    graph = ROOT.TGraph(2)
+    graph.SetPoint(0, phi0, y0)
+    graph.SetPoint(1, phi1, y0)
+    graph.SetLineStyle(line_style)
+    graph.SetLineColor(color)
+    graph.Draw("l SAME")
+    RootObjects.graphs.append(graph)
+    graph = ROOT.TGraph(2)
+    graph.SetPoint(0, phi0, y1)
+    graph.SetPoint(1, phi1, y1)
+    graph.SetLineStyle(line_style)
+    graph.SetLineColor(color)
+    graph.Draw("l SAME")
+    RootObjects.graphs.append(graph)
 
 def plot_beam_pipe(inner_radius, outer_radius, n_periods, canvas=None):
     n_steps = 361 # number of azimuthal steps
@@ -258,6 +300,44 @@ def plot_axis(axis_radius, n_periods, canvas=None):
     graph_axis.Draw("l")
     canvas.Update()
 
+def load_probe(a_file):
+    data = []
+    fin = open(a_file)
+    fin.readline()
+    for line in fin.readlines():
+        words = line.split()
+        numbers = []
+        for a_word in words:
+            try:
+                a_word = float(a_word)
+                numbers.append(a_word)
+            except ValueError:
+                pass
+        if len(numbers) == 0:
+            continue
+        data.append({
+            "x":numbers[0],
+            "y":numbers[1],
+            "z":numbers[2],
+            "phi":math.degrees(math.atan2(numbers[1], numbers[0])),
+            "r":(numbers[0]**2+numbers[1]**2)**0.5
+        })
+    return data
+
+def plot_probes(canvas, probe_files, axis_1, axis_2):
+    canvas.cd()
+    for a_file in sorted(glob.glob(probe_files)):
+        data_list = load_probe(a_file)
+        graph = ROOT.TGraph(len(data_list))
+        for i, item in enumerate(data_list):
+            fname = os.path.split(a_file)[1]
+            #print fname.ljust(20), "r:", format(item["r"], "8.4g"), "phi:", format(item["phi"], "8.4g"),
+            #print "x:", format(item["x"], "8.4g"), "y:", format(item["y"], "8.4g")
+            graph.SetPoint(i, item[axis_1], item[axis_2])
+        graph.SetMarkerStyle(24)
+        graph.Draw("P SAME")
+        graph.SetName(a_file)
+        RootObjects.graphs.append(graph)
 
 def plot_b_field(step_list):
     canvas = ROOT.TCanvas("bfield", "bfield")
@@ -399,14 +479,58 @@ def plot_cartesian(output_dir, opal_run_dir, step_list):
     field_plot.load_dump_fields()
     #inner_radius, axis_radius, outer_radius, ncells = 13.5, 14.350, 15.5, 30
     inner_radius, axis_radius, outer_radius, ncells = 3.5, 3.995, 4.5, 20
+    inner_radius_a, axis_radius_a, outer_radius_a, ncells_a = 3.4, 3.995, 4.5, 10
 
+    Colors.reset()
     canvas = field_plot.plot_dump_fields("x", "y", "bz")
     canvas, axes, graph = plot_x_y_projection(step_list, canvas)
     plot_beam_pipe(inner_radius, outer_radius, ncells, canvas)
+    plot_beam_pipe(inner_radius_a, outer_radius_a, ncells_a, canvas)
     plot_axis(axis_radius, ncells, canvas)
-    #plot_elements_xy(opal_run_dir+"log", canvas)
+    plot_probes(canvas, opal_run_dir+"*.loss", "x", "y")
     for format in ["png"]:
         canvas.Print(output_dir+"closed_orbit_plan_bz."+format)
+
+    Colors.reset()
+    canvas = field_plot.plot_dump_fields("x", "y", "br")
+    canvas, axes, graph = plot_x_y_projection(step_list, canvas)
+    plot_beam_pipe(inner_radius, outer_radius, ncells, canvas)
+    plot_beam_pipe(inner_radius_a, outer_radius_a, ncells_a, canvas)
+    plot_axis(axis_radius, ncells, canvas)
+    plot_probes(canvas, opal_run_dir+"*.loss", "x", "y")
+    for format in ["png"]:
+        canvas.Print(output_dir+"closed_orbit_plan_br."+format)
+
+    Colors.reset()
+    canvas = field_plot.plot_dump_fields("x", "y", "bphi")
+    canvas, axes, graph = plot_x_y_projection(step_list, canvas)
+    plot_beam_pipe(inner_radius, outer_radius, ncells, canvas)
+    plot_beam_pipe(inner_radius_a, outer_radius_a, ncells_a, canvas)
+    plot_axis(axis_radius, ncells, canvas)
+    plot_probes(canvas, opal_run_dir+"*.loss", "x", "y")
+    for format in ["png"]:
+        canvas.Print(output_dir+"closed_orbit_plan_bphi."+format)
+
+    Colors.reset()
+    canvas = field_plot.plot_dump_fields("x", "y", "btot")
+    canvas, axes, graph = plot_x_y_projection(step_list, canvas)
+    plot_beam_pipe(inner_radius, outer_radius, ncells, canvas)
+    plot_beam_pipe(inner_radius_a, outer_radius_a, ncells_a, canvas)
+    plot_axis(axis_radius, ncells, canvas)
+    plot_probes(canvas, opal_run_dir+"*.loss", "x", "y")
+    for format in ["png"]:
+        canvas.Print(output_dir+"closed_orbit_plan_btot."+format)
+
+    Colors.reset()
+    canvas = None
+    canvas, graph = plot_x_z_projection(step_list, 0, 360, -0.1, 0.1, canvas)
+    #plot_probes(canvas, opal_run_dir+"*.loss", "phi", "z")
+    plot_phi_pipe(21, 0, 360, -2.0, 2.0, 1, canvas)
+    plot_phi_pipe(2, 108-36*0.07, 108+36*0.07, -0.02, -0.05, ROOT.kGray, canvas)
+    plot_phi_pipe(2, 0, 360, -0.02, -0.05, ROOT.kGray, canvas)
+    for format in ["png"]:
+        canvas.Print(output_dir+"closed_orbit_elevation."+format)
+    Colors.reset()
 
     return
     canvas = field_plot.plot_dump_fields("x", "y", "bx")
@@ -422,21 +546,6 @@ def plot_cartesian(output_dir, opal_run_dir, step_list):
     #plot_elements_xy(opal_run_dir+"log", canvas)
     for format in ["png"]:
         canvas.Print(output_dir+"closed_orbit_cartesian_by."+format)
-
-    canvas = field_plot.plot_dump_fields("x", "y", "br")
-    canvas, axes, graph = plot_x_y_projection(step_list, canvas)
-    plot_beam_pipe(inner_radius, outer_radius, ncells, canvas)
-    #plot_elements_xy(opal_run_dir+"log", canvas)
-    for format in ["png"]:
-        canvas.Print(output_dir+"closed_orbit_cartesian_br."+format)
-
-    canvas = field_plot.plot_dump_fields("x", "y", "bphi")
-    canvas, axes, graph = plot_x_y_projection(step_list, canvas)
-    plot_beam_pipe(inner_radius, outer_radius, ncells, canvas)
-    #plot_elements_xy(opal_run_dir+"log", canvas)
-    for format in ["png"]:
-        canvas.Print(output_dir+"closed_orbit_cartesian_bphi."+format)
-
     canvas, graph = plot_x_z_projection(step_list)
     for format in ["png"]:
         canvas.Print(output_dir+"closed_orbit_cartesian_vertical."+format)
@@ -446,7 +555,7 @@ def plot_test_field(output_dir, opal_run_dir):
     field_plot.load_dump_fields()
     canvas_1d = None
     for field, color in ("bx", 4), ("bz", 1), ("by", 2):
-        canvas_1d, graph = field_plot.plot_1d({}, "x", field,
+        canvas_1d, graph = field_plot.plot_1d({}, "y", field,
                                                 canvas_1d, (-2, 2), color)
         if field == "bz":
             for delta in -1.5, +1.5:
@@ -485,7 +594,7 @@ def main(output_dir, run_dir, run_file_list):
     step_list_of_lists = []
     for run_file in run_file_list:
         step_list_of_lists.append(parse_track_file(opal_run_dir+run_file))
-    plot_cartesian(output_dir, opal_run_dir, step_list_of_lists[0])
+    plot_cartesian(output_dir, opal_run_dir, step_list_of_lists)
     #plot_cylindrical(output_dir, opal_run_dir, step_list_of_lists)
     #plot_test_field(output_dir, opal_run_dir)
     #print_track(0.1*360./15, step_list_of_lists)

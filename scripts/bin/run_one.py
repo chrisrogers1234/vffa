@@ -10,6 +10,9 @@ import xboa.common
 import analysis.find_closed_orbits_4d
 import analysis.find_tune
 import analysis.find_da
+import analysis.find_bump_parameters
+import analysis.track_bump
+
 from utils import utilities
 
 def get_config():
@@ -51,6 +54,10 @@ def main():
         analysis.find_tune.main(config)
     if config.run_control["find_da"]:
         analysis.find_da.main(config)
+    if config.run_control["find_bump_parameters"]:
+        analysis.find_bump_parameters.main(config)
+    if config.run_control["track_bump"]:
+        analysis.track_bump.main(config)
 
 if __name__ == "__main__":
     main()

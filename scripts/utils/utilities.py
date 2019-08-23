@@ -48,7 +48,7 @@ def do_lattice(config, subs, overrides):
     xboa.common.substitute(lattice_in, lattice_out, subs)
     return subs
 
-def reference(config, energy, x=0., px=0.):
+def reference(config, energy, x=0., px=0., y=0., py=0.):
     """
     Generate a reference particle
     """
@@ -58,6 +58,8 @@ def reference(config, energy, x=0., px=0.):
     hit_dict["charge"] = 1
     hit_dict["x"] = x
     hit_dict["px"] = px
+    hit_dict["y"] = y
+    hit_dict["py"] = py
     hit_dict["kinetic_energy"] = energy
     hit = xboa.hit.Hit.new_from_dict(hit_dict, "pz")
     return hit

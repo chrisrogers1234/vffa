@@ -59,8 +59,14 @@ REAL MAP_C_DX=__cartesian_dx__; // 1001 steps
 REAL MAP_C_Y_MIN=__cartesian_y_min__;
 REAL MAP_C_DY=__cartesian_dy__; // 1001 steps
 
+//////////// OUTPUT ///////////////////
 
+BOOL DO_REF_PROBES=True;
 
+REAL REF_PROBE_X_=14219.6/1000.;
+REAL REF_PROBE_Y_=0.0;
+REAL REF_PROBE_X_NORM_=-237.8;
+REAL REF_PROBE_Y_NORM_=924.133;
 
 start: LOCAL_CARTESIAN_OFFSET,
                 end_position_x=R0,
@@ -306,7 +312,8 @@ IF (DO_TEST_MAP) {
 ////////////////// PROBES
 REAL RING_PROBE_PHI_OFFSET=0.0;
 BUILD_PROBE(NAME, ANGLE): MACRO {
-    NAME: PROBE, xstart=RMIN*1000*cos(ANGLE),  xend=RMAX*1000*cos(ANGLE),  ystart=RMIN*1000*sin(ANGLE),  yend=RMAX*1000*sin(ANGLE);
+    NAME: PROBE, xstart=RMIN*1000*cos(ANGLE),  xend=RMAX*1000*cos(ANGLE),
+                 ystart=RMIN*1000*sin(ANGLE),  yend=RMAX*1000*sin(ANGLE);
 }
 
 REAL THIS_PROBE_PHI=PI/2;
@@ -341,6 +348,41 @@ THIS_PROBE_PHI = EVAL(THIS_PROBE_PHI+2.*PI/N_CELLS);
 BUILD_PROBE(RingProbe15, THIS_PROBE_PHI);
 THIS_PROBE_PHI = EVAL(THIS_PROBE_PHI+2.*PI/N_CELLS);
 
+IF (DO_REF_PROBES) {
+    // build a probe centred on XREF, YREF, Z=0, with normal XNORM, YNORM, ZNORM
+    // then rotated azimuthally by PHI (which sets Z)
+    BUILD_REF_PROBE(NAME, REF_PROBE_X, REF_PROBE_Y, ANGLE, REF_PROBE_X_NORM, REF_PROBE_Y_NORM): MACRO {
+        REAL REF_RN = (REF_PROBE_X_NORM^2+REF_PROBE_Y_NORM^2)^0.5;
+        REAL REF_XN = REF_PROBE_X_NORM/REF_RN;
+        REAL REF_YN = REF_PROBE_Y_NORM/REF_RN;
+        REAL REF_DX = -REF_YN;
+        REAL REF_DY = REF_XN;
+        REAL REF_X0 = (REF_PROBE_X-REF_DX)*1000*cos(ANGLE);
+        REAL REF_X1 = (REF_PROBE_X+REF_DX)*1000*cos(ANGLE);
+        REAL REF_Y0 = (REF_PROBE_Y-REF_DY)*1000*sin(ANGLE);
+        REAL REF_Y1 = (REF_PROBE_Y+REF_DY)*1000*sin(ANGLE);
+
+        ECHO,MESSAGE=NAME;
+        VALUE, VALUE={ANGLE, REF_X0, REF_X1, REF_Y0, REF_Y1};
+
+        NAME: PROBE, xstart=REF_X0,  xend=REF_X1, ystart=REF_Y0,  yend=REF_Y1;
+    }
+
+    REAL THIS_PROBE_PHI=PI/2;
+    BUILD_REF_PROBE(RefProbe01, REF_PROBE_X_, REF_PROBE_Y_, THIS_PROBE_PHI, REF_PROBE_X_NORM_, REF_PROBE_Y_NORM_);
+
+    refprobe: Line = (RefProbe01)
+        //, RefProbe02, RefProbe03, RefProbe04, RefProbe05, 
+        //              RefProbe06, RefProbe07, RefProbe08, RefProbe09, RefProbe10,
+        //              RefProbe11, RefProbe12, RefProbe13, RefProbe14, RefProbe15);
+} ELSE {
+    dummy_offset: LOCAL_CARTESIAN_OFFSET,
+                    end_position_x=0., end_position_y=0.,
+                    end_normal_x=1.0, end_normal_y=0.;
+
+    refprobe: Line = (dummy_offset);
+}
+
 ringprobe: Line = (RingProbe01, RingProbe02, RingProbe03, RingProbe04, RingProbe05, 
                    RingProbe06, RingProbe07, RingProbe08, RingProbe09, RingProbe10,
                    RingProbe11, RingProbe12, RingProbe13, RingProbe14, RingProbe15);
@@ -361,6 +403,12 @@ IF (DO_MAGNET_FIELD_MAPS) {
                 X_START=RMIN, X_STEPS=1001, DX=(RMAX-RMIN)/1000,
                 Y_START=0., Y_STEPS=1, DY=1e-3,
                 Z_START=0, Z_STEPS=1, DZ=1e-3;
+
+//    DUMPEMFIELDS, COORDINATE_SYSTEM=CYLINDRICAL, FILE_NAME="FieldMapJB.dat",
+//        R_START=13.5, R_STEPS=101, DR=0.01,
+//        PHI_START=0.*DEGREE, PHI_STEPS=25*24, DPHI=0.04*DEGREE,
+//        Z_START=0, Z_STEPS=51, DZ=0.01,
+//        T_START=0, T_STEPS=1, DT=1.;
 }
 
 ringdef: RINGDEFINITION, HARMONIC_NUMBER=1, LAT_RINIT=R0, LAT_PHIINIT=0,
@@ -369,7 +417,7 @@ ringdef: RINGDEFINITION, HARMONIC_NUMBER=1, LAT_RINIT=R0, LAT_PHIINIT=0,
          MIN_R=0., MAX_R=40;
 // magnet_d_placement_in, magnet_d_placement_out, 
 cell: Line = (d_single, d_half_cell_drift, f_single, f_half_cell_drift);
-l1: Line = (ringdef, ringprobe, f_test,
+l1: Line = (ringdef, ringprobe, refprobe, f_test,
             cell, cell, cell, cell, cell,
             cell, cell, cell, cell, cell,
             cell, cell, cell, cell, cell
@@ -398,3 +446,34 @@ RUN, METHOD="CYCLOTRON-T", BEAM=beam1, FIELDSOLVER=Fs1, DISTRIBUTION=Dist1;
 ENDTRACK;
 STOP;
 
+IF (False) {
+    THIS_PROBE_PHI = EVAL(THIS_PROBE_PHI+2.*PI/N_CELLS);
+    BUILD_REF_PROBE(RefProbe02, REF_PROBE_X_, REF_PROBE_Y_, THIS_PROBE_PHI, REF_PROBE_X_NORM_, REF_PROBE_Y_NORM_);
+    THIS_PROBE_PHI = EVAL(THIS_PROBE_PHI+2.*PI/N_CELLS);
+    BUILD_REF_PROBE(RefProbe03, REF_PROBE_X_, REF_PROBE_Y_, THIS_PROBE_PHI, REF_PROBE_X_NORM_, REF_PROBE_Y_NORM_);
+    THIS_PROBE_PHI = EVAL(THIS_PROBE_PHI+2.*PI/N_CELLS);
+    BUILD_REF_PROBE(RefProbe04, REF_PROBE_X_, REF_PROBE_Y_, THIS_PROBE_PHI, REF_PROBE_X_NORM_, REF_PROBE_Y_NORM_);
+    THIS_PROBE_PHI = EVAL(THIS_PROBE_PHI+2.*PI/N_CELLS);
+    BUILD_REF_PROBE(RefProbe05, REF_PROBE_X_, REF_PROBE_Y_, THIS_PROBE_PHI, REF_PROBE_X_NORM_, REF_PROBE_Y_NORM_);
+    THIS_PROBE_PHI = EVAL(THIS_PROBE_PHI+2.*PI/N_CELLS);
+    BUILD_REF_PROBE(RefProbe06, REF_PROBE_X_, REF_PROBE_Y_, THIS_PROBE_PHI, REF_PROBE_X_NORM_, REF_PROBE_Y_NORM_);
+    THIS_PROBE_PHI = EVAL(THIS_PROBE_PHI+2.*PI/N_CELLS);
+    BUILD_REF_PROBE(RefProbe07, REF_PROBE_X_, REF_PROBE_Y_, THIS_PROBE_PHI, REF_PROBE_X_NORM_, REF_PROBE_Y_NORM_);
+    THIS_PROBE_PHI = EVAL(THIS_PROBE_PHI+2.*PI/N_CELLS);
+    BUILD_REF_PROBE(RefProbe08, REF_PROBE_X_, REF_PROBE_Y_, THIS_PROBE_PHI, REF_PROBE_X_NORM_, REF_PROBE_Y_NORM_);
+    THIS_PROBE_PHI = EVAL(THIS_PROBE_PHI+2.*PI/N_CELLS);
+    BUILD_REF_PROBE(RefProbe09, REF_PROBE_X_, REF_PROBE_Y_, THIS_PROBE_PHI, REF_PROBE_X_NORM_, REF_PROBE_Y_NORM_);
+    THIS_PROBE_PHI = EVAL(THIS_PROBE_PHI+2.*PI/N_CELLS);
+    BUILD_REF_PROBE(RefProbe10, REF_PROBE_X_, REF_PROBE_Y_, THIS_PROBE_PHI, REF_PROBE_X_NORM_, REF_PROBE_Y_NORM_);
+    THIS_PROBE_PHI = EVAL(THIS_PROBE_PHI+2.*PI/N_CELLS);
+    BUILD_REF_PROBE(RefProbe11, REF_PROBE_X_, REF_PROBE_Y_, THIS_PROBE_PHI, REF_PROBE_X_NORM_, REF_PROBE_Y_NORM_);
+    THIS_PROBE_PHI = EVAL(THIS_PROBE_PHI+2.*PI/N_CELLS);
+    BUILD_REF_PROBE(RefProbe12, REF_PROBE_X_, REF_PROBE_Y_, THIS_PROBE_PHI, REF_PROBE_X_NORM_, REF_PROBE_Y_NORM_);
+    THIS_PROBE_PHI = EVAL(THIS_PROBE_PHI+2.*PI/N_CELLS);
+    BUILD_REF_PROBE(RefProbe13, REF_PROBE_X_, REF_PROBE_Y_, THIS_PROBE_PHI, REF_PROBE_X_NORM_, REF_PROBE_Y_NORM_);
+    THIS_PROBE_PHI = EVAL(THIS_PROBE_PHI+2.*PI/N_CELLS);
+    BUILD_REF_PROBE(RefProbe14, REF_PROBE_X_, REF_PROBE_Y_, THIS_PROBE_PHI, REF_PROBE_X_NORM_, REF_PROBE_Y_NORM_);
+    THIS_PROBE_PHI = EVAL(THIS_PROBE_PHI+2.*PI/N_CELLS);
+    BUILD_REF_PROBE(RefProbe15, REF_PROBE_X_, REF_PROBE_Y_, THIS_PROBE_PHI, REF_PROBE_X_NORM_, REF_PROBE_Y_NORM_);
+
+}

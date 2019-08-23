@@ -14,18 +14,18 @@ def get_baseline_substitution():
         # ring
         "__n_cells__":15,
         "__radius__":R0, #m
-        "__drift_1__":2.4,
-        "__drift_2__":2.4,
+        "__drift_1__":1.8,
+        "__drift_2__":1.8,
         # beam
         "__energy__":400., # MeV
         # tracking
-        "__step_size__":0.001, # m
+        "__step_size__":0.01, # m
         "__n_turns__":0.2,
         # main magnets
-        "__bf__":-3.0, # T
-        "__bd__":+1.0, # T
-        "__d_length__":0.6, # m
-        "__f_length__":0.6, # m
+        "__bf__":-3.0*1.64, # T
+        "__bd__":+1.0*1.64, # T
+        "__d_length__":1.2, # m
+        "__f_length__":1.2, # m
         "__d_offset__":-0.347745, # m
         "__f_offset__":0.347745, # m
         "__d_end_length__":0.3,  # m
@@ -35,8 +35,8 @@ def get_baseline_substitution():
         "__neg_extent__":1.0, # m
         "__pos_extent__":3.0, # m
         # NOTE BB length 0.125 m -> width 1.0 m; length 2.0 m; double for safety
-        "__magnet_width__":1.0, # m
-        "__bb_length__":4.0, # m
+        "__magnet_width__":4.0, # m
+        "__bb_length__":8.0, # m
         # field maps
         "__do_magnet_field_maps__":True,
         #"__cartesian_x_min__":-20.0, # m
@@ -59,36 +59,34 @@ for ri in range(7):
             rp = -0.1-0.1*rpi
             z = 1150.+50.*zi
             seeds.append([r, rp, z, 0.0])
-#14250         -0          0          0
 
 class Config(object):
     def __init__(self):
         self.find_closed_orbits = {
-            "seed":[[14224., -0.227, 1484.49, -0.00749917]],
-            # I tried with deltas [5., 0.05, 5., 0.05] and the TM determinant
-            # converged on ~ 0.85 as a function of step size
-            "deltas":[1., 0.01, 1., 0.01],
+            "seed":[[14219.553976127481, -237.79984426297338, 72.12451531568003, -6.8732782958471725]],
+                #[[14219.523614290156, -0.2573059678153996*1000, 72.17318674617552, -0.0074218697584373106*1000]], #  631.531
+            "deltas":[5, 5, 5, 5],
             "adapt_deltas":False,
             "output_file":"closed_orbits_cache",
-            "subs_overrides":{"__n_turns__":0.21, "__do_magnet_field_maps__":"False"},
-            "final_subs_overrides":{"__n_turns__":10.1, "__do_magnet_field_maps__":"True"},
+            "subs_overrides":{"__n_turns__":0.11, "__do_magnet_field_maps__":"False"},
+            "final_subs_overrides":{"__n_turns__":1.01, "__do_magnet_field_maps__":"True"},
             "root_batch":0,
-            "max_iterations":0,  
+            "max_iterations":1,
             "tolerance":0.1,
             "ds_cell":2,
             "do_plot_orbit":False,
-            "run_dir":"tmp/",
+            "run_dir":"tmp/find_closed_orbits",
             "probe_files":"RINGPROBE*.loss",
             "overwrite":True,
             "orbit_file":"VerticalFFAGMagnet-trackOrbit.dat",
         }
         self.find_tune = {
-            "run_dir":"tmp/find_tune/",
+            "run_dir":"tmp/find_tune2/",
             "probe_files":"RINGPROBE*.loss",
-            "subs_overrides":{"__n_turns__":5.1, "__do_magnet_field_maps__":"True"},
+            "subs_overrides":{"__n_turns__":10.1, "__do_magnet_field_maps__":"True"},
             "root_batch":0,
-            "delta_1":1.,
-            "delta_2":1.,
+            "delta_1":5,
+            "delta_2":5,
             "max_n_cells":0.1,
             "output_file":"find_tune",
             "row_list":None,
@@ -115,8 +113,10 @@ class Config(object):
         
         self.run_control = {
             "find_closed_orbits_4d":True,
-            "find_tune":False,
+            "find_tune":True,
             "find_da":False,
+            "find_bump_parameters":False,
+            "track_bump":False,
             "clean_output_dir":False,
             "output_dir":os.path.join(os.getcwd(), "output/jan_baseline"),
             "root_verbose":6000,

@@ -81,31 +81,42 @@ class PlotDumpFields(object):
         n_points = len(self.field_map['bx'])
         self.field_map['bphi'] = [None]*n_points
         self.field_map['br'] = [None]*n_points
-        phi = 0.
+        self.field_map['btot'] = [None]*n_points
         for i in range(n_points):
             x = self.field_map['x'][i]
             y = self.field_map['y'][i]
             bx = self.field_map['bx'][i]
             by = self.field_map['by'][i]
+            bz = self.field_map['bz'][i]
+
             if abs(y) < 1e-9 and abs(x) < 1e-9:
+                phi = 0.
+            else:
                 phi = math.atan2(y, x)
             br = bx*math.cos(phi) + by*math.sin(phi)
             bphi = -bx*math.sin(phi) + by*math.cos(phi)
             self.field_map['br'][i] = br
             self.field_map['bphi'][i] = bphi
+            self.field_map['btot'][i] = (bx**2+by**2+bz**2)**0.5
+        self.field_map['btot'][0] = -1.0
 
     def calculate_cartesian_fields(self):
         n_points = len(self.field_map['br'])
         self.field_map['bx'] = [None]*n_points
         self.field_map['by'] = [None]*n_points
+        self.field_map['btot'] = [None]*n_points
         for i in range(n_points):
             phi = self.field_map['phi'][i]*math.pi/180.
             bphi = self.field_map['bphi'][i]
             br = self.field_map['br'][i]
+            bz = self.field_map['bz'][i]
             bx = br*math.cos(phi) - bphi*math.sin(phi)
             by = bphi*math.cos(phi) + br*math.sin(phi)
             self.field_map['bx'][i] = bx
             self.field_map['by'][i] = by
+            self.field_map['btot'][i] = (bx**2+by**2+bz**2)**0.5
+        self.field_map['btot'][0] = -1.0
+
 
     def load_dump_fields(self):
         print "Loading", self.file_name

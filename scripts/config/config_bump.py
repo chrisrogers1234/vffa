@@ -10,7 +10,6 @@ def get_baseline_substitution():
         "__drift_2__":0.75,
         # beam
         "__energy__":3., # MeV
-        "__beam_phi_init__":0., # fraction of cell length
         # tracking
         "__step_size__":0.001, # m
         "__n_turns__":0.2,
@@ -41,9 +40,16 @@ def get_baseline_substitution():
         "__cartesian_dy__":0.01, # m (1001 steps)
         # bump magnets
         "__do_bump__":True,
-        "__foil_probe_phi__":3.07,
-        "__foil_probe_dphi__":0,
-        "__foil_probe_dr__":0,
+        "__bump_length__":0.1,
+        "__bump_fringe__":0.1,
+        "__bump_width__":2.0,
+        "__bump_offset__":0.0, # radial offset, m
+        "__bump_angle__":41.0, # angular tilt of bump cavity
+        "__phi_foil_probe__":3.2,
+        "__phi_bump_1__":+0.35,
+        "__phi_bump_2__":-0.65,
+        "__phi_bump_3__":-1.3,
+        "__phi_bump_4__":-1.65,
         "__h_bump_1_field__":10.0,
         "__h_bump_2_field__":10.0,
         "__h_bump_3_field__":10.0,
@@ -52,14 +58,6 @@ def get_baseline_substitution():
         "__v_bump_2_field__":10.0,
         "__v_bump_3_field__":10.0,
         "__v_bump_4_field__":10.0,
-        "__h_bump_1_phi__":1.43,
-        "__h_bump_2_phi__":2.43,
-        "__h_bump_3_phi__":3.43,
-        "__h_bump_4_phi__":4.43,
-        "__v_bump_1_phi__":1.03,
-        "__v_bump_2_phi__":2.03,
-        "__v_bump_3_phi__":3.03,
-        "__v_bump_4_phi__":4.03,
         "__septum_field__":0.0, #-0.20832864219,
         "__septum_length__":0.15, # m
         "__septum_fringe__":0.1, # fraction of septum_length
@@ -86,7 +84,7 @@ class Config(object):
             "run_dir":"tmp/find_closed_orbits",
             "probe_files":"RINGPROBE*.loss",
             "overwrite":True,
-            "orbit_file":"VerticalFFA-trackOrbit.dat",
+            "orbit_file":"VerticalFFAGMagnet-trackOrbit.dat",
         }
         self.find_tune = {
             "run_dir":"tmp/find_tune/",
@@ -118,11 +116,9 @@ class Config(object):
         }
         self.find_bump_parameters = {
             "n_h_bumps":4,
-            "n_v_bumps":4,
-            "bump":[[0.0, 0.0, -50.0, 0.0] for i in range(1)],
+            "bump":[[0.0, 0.0, 0.0, 0.0 ] for i in range(1)],
             "output_file":"find_bump_parameters",
             "closed_orbit":[3932.3656651884976, -26.152597049937057, 28.78211467244023, -0.3868433565977967],
-            "foil_closed_orbit":[3872.7, -22.884, 29.248, 0.31536],
             "magnet_min_field":-1.0,
             "magnet_max_field":+1.0,
             "max_iterations":500,
@@ -136,44 +132,25 @@ class Config(object):
                 "__n_turns__":1.1,
                 "__do_magnet_field_maps__":True,
             },
-            "fix_bumps":["__v_bump_3_field__"],
-            "seed_field":[0.02758, 0.03066, -0.1342, 0.01218,
-                          0.072160, -0.03327, 0.10, -0.064005],
-            "seed_errors":[0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01],
+            "fix_bumps":["__v_bump_1__"],
+            "seed_field":[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            "seed_errors":[0.1, 0.1, 0.1, 0.1],
+            "foil_probe_phi":3.2,
             "bump_probe_station":0,
-            "ignore_stations":[2, 3, 4, 5, 6],
-            "ref_probe_files":["FOILPROBE.loss", "RINGPROBE*.loss"],
-            "run_dir":"tmp/find_bump_2/",
+            "ignore_stations":[3, 4, 5, 6],
+            "ref_probe_files":["RINGPROBE*.loss"],
+            "run_dir":"tmp/find_bump/",
             "energy":3.0,
-            "min_n_hits":3
         }
-        self.track_bump = {
-            "input_file":"find_bump_parameters.out",
-            "injection_orbit":0, # reference to item from bump_list
-            "subs_overrides":{
-                "__n_turns__":1.2,
-                "__no_field_maps__":"",
-            },
-            "bump_list":None, # list of bumps which we will track (default to find_bump_parameters)
-            "n_turns_list":None, # number of turns for forward tracking (default 1)
-            "foil_probe_files":["FOILPROBE.loss"], # PROBE where the beam is injected
-            "ramp_probe_files":["RINGPROBE06.loss"], # PROBE where the magnet is ramped
-            "ramp_probe_phi":5, # cell number where we start the beam following an injection
-            "run_dir":"tmp/track_bump/",
-            "energy":3.0,
-            "bump_probe_station":0,
-        }
-
+        
         self.substitution_list = [get_baseline_substitution()]
         
         self.run_control = {
-            "find_closed_orbits_4d":False,
+            "find_closed_orbits_4d":True,
             "find_tune":False,
             "find_da":False,
-            "find_bump_parameters":True,
-            "track_bump":True,
             "clean_output_dir":False,
-            "output_dir":os.path.join(os.getcwd(), "output/bump_v3=0.10"),
+            "output_dir":os.path.join(os.getcwd(), "output/baseline"),
             "root_verbose":6000,
         }
 
@@ -183,7 +160,7 @@ class Config(object):
             "n_cores":4,
             "links_folder":["VerticalFFA",], # link relative to lattice/VerticalFFA.in
             "lattice_file":os.path.join(os.getcwd(), "lattice/VerticalFFA.in"),
-            "lattice_file_out":"VerticalFFA.tmp",
+            "lattice_file_out":"VerticalFFAGMagnet.tmp",
             "opal_path":os.path.expandvars("/home/vol08/scarf148/data/OPAL/opal_src_test/src/opal"), #"${OPAL_EXE_PATH}/opal"),
             "tracking_log":"log",
             "step_size":1.,
