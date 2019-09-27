@@ -4,9 +4,11 @@ import os
 def r0(n_cells, half_cell_length):
     phi = 2.*math.pi/n_cells/4.
     radius = half_cell_length/2./math.sin(phi)
-    print "R0", radius
+    print("R0", radius)
     return radius
 
+# Machida TUNES 0.232180291582827 -0.183879862734979
+# Rogers TUNES 0.2389296203830 0.17677569135392243
 
 def get_baseline_substitution():
     R0 = r0(15, 3)
@@ -19,7 +21,7 @@ def get_baseline_substitution():
         # beam
         "__energy__":400., # MeV
         # tracking
-        "__step_size__":0.01, # m
+        "__step_size__":0.001, # m
         "__n_turns__":0.2,
         # main magnets
         "__bf__":-3.0*1.64, # T
@@ -30,23 +32,23 @@ def get_baseline_substitution():
         "__f_offset__":0.347745, # m
         "__d_end_length__":0.3,  # m
         "__f_end_length__":0.3, # m
-        "__m_index__":0.877262, # m^-1 # 1.58
-        "__max_x_power__":6,
+        "__m_index__":0.87721, # m^-1
+        "__max_x_power__":10,
         "__neg_extent__":1.0, # m
         "__pos_extent__":3.0, # m
         # NOTE BB length 0.125 m -> width 1.0 m; length 2.0 m; double for safety
-        "__magnet_width__":4.0, # m
+        "__magnet_width__":2.0, # m
         "__bb_length__":8.0, # m
         # field maps
         "__do_magnet_field_maps__":True,
-        #"__cartesian_x_min__":-20.0, # m
-        #"__cartesian_dx__":40/1000., # m (1001 steps)
-        #"__cartesian_y_min__":-20.0, # m
-        #"__cartesian_dy__":40/1000., # m (1001 steps)
-        "__cartesian_x_min__":-6.0, # m
-        "__cartesian_dx__":6/1000., # m (1001 steps)
-        "__cartesian_y_min__":R0-3.0, # m
-        "__cartesian_dy__":6/1000., # m (1001 steps)
+        "__cartesian_x_min__":-20.0, # m
+        "__cartesian_dx__":40/1000., # m (1001 steps)
+        "__cartesian_y_min__":-20.0, # m
+        "__cartesian_dy__":40/1000., # m (1001 steps)
+        #"__cartesian_x_min__":-6.0, # m
+        #"__cartesian_dx__":6/1000., # m (1001 steps)
+        #"__cartesian_y_min__":R0-3.0, # m
+        #"__cartesian_dy__":6/1000., # m (1001 steps)
     }
     return baseline
 
@@ -63,25 +65,25 @@ for ri in range(7):
 class Config(object):
     def __init__(self):
         self.find_closed_orbits = {
-            "seed":[[14219.553976127481, -237.79984426297338, 72.12451531568003, -6.8732782958471725]],
+            "seed":[[14222.486846033247, -235.56577518528238, 67.33679096440049, -6.319732909645213]],
                 #[[14219.523614290156, -0.2573059678153996*1000, 72.17318674617552, -0.0074218697584373106*1000]], #  631.531
-            "deltas":[5, 5, 5, 5],
+            "deltas":[0.01, 0.01, 0.01, 0.01],
             "adapt_deltas":False,
             "output_file":"closed_orbits_cache",
             "subs_overrides":{"__n_turns__":0.11, "__do_magnet_field_maps__":"False"},
-            "final_subs_overrides":{"__n_turns__":1.01, "__do_magnet_field_maps__":"True"},
+            "final_subs_overrides":{"__n_turns__":0.21, "__do_magnet_field_maps__":"True"},
             "root_batch":0,
-            "max_iterations":1,
-            "tolerance":0.1,
-            "ds_cell":2,
+            "max_iterations":10,
+            "tolerance":0.01,
+            "ds_cell":1,
             "do_plot_orbit":False,
             "run_dir":"tmp/find_closed_orbits",
-            "probe_files":"RINGPROBE*.loss",
+            "probe_files":"RINGPROBE*.h5",
             "overwrite":True,
             "orbit_file":"VerticalFFAGMagnet-trackOrbit.dat",
         }
         self.find_tune = {
-            "run_dir":"tmp/find_tune2/",
+            "run_dir":"tmp/find_tune/",
             "probe_files":"RINGPROBE*.loss",
             "subs_overrides":{"__n_turns__":10.1, "__do_magnet_field_maps__":"True"},
             "root_batch":0,
@@ -113,7 +115,7 @@ class Config(object):
         
         self.run_control = {
             "find_closed_orbits_4d":True,
-            "find_tune":True,
+            "find_tune":False,
             "find_da":False,
             "find_bump_parameters":False,
             "track_bump":False,
@@ -133,8 +135,9 @@ class Config(object):
             "tracking_log":"log",
             "step_size":1.,
             "pdg_pid":2212,
-            "clear_files":"*.loss",
+            "clear_files":"*.h5",
             "verbose":False,
+            "file_format":"hdf5",
         }
 
 

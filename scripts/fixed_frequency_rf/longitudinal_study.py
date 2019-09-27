@@ -42,13 +42,13 @@ class ToyLongitudinal(object):
             mean_tof = numpy.mean(tof_list)
             tof_list = [tof for tof in tof_list if abs(tof-mean_tof) < mean_tof/2.]
             mean_tof = numpy.mean(tof_list)
-            print "Mean tof", mean_tof, "rms tof", numpy.std(tof_list)
+            print("Mean tof", mean_tof, "rms tof", numpy.std(tof_list))
             t = mean_tof*n_cells
             my_list.append((r, p, t))
         my_list = sorted(my_list)
-        r_list, p_list, t_list = zip(*my_list)
+        r_list, p_list, t_list = list(zip(*my_list))
         for i, p in enumerate(p_list):
-            print i, format(p, "8.4g"), format(r_list[i], "8.4g"), format(t_list[i], "8.4g")
+            print(i, format(p, "8.4g"), format(r_list[i], "8.4g"), format(t_list[i], "8.4g"))
         self.lookup_tof = interp1d(p_list, t_list, kind='cubic')
         self.lookup_tof.bounds_error = False
         self.lookup_tof.fill_value = 'extrapolate'
@@ -85,13 +85,13 @@ class ToyLongitudinal(object):
         p = self.p0
         title = ["p", "ke", "r", "By", "TOF"]
         for key in title:
-            print key.rjust(8),
-        print
+            print(key.rjust(8), end=' ')
+        print()
         while p <= self.p1+1e-6:
             value_list = [p, self.ke(p), self.radius(p), self.mean_bfield(p), self.tof(p)]
             for value in value_list:
-                print str(round(value, 2)).rjust(8),
-            print
+                print(str(round(value, 2)).rjust(8), end=' ')
+            print()
             p += (self.p1-self.p0)/27.
 
     def setup_phi_eff(self):
@@ -204,25 +204,25 @@ class ToyLongitudinal(object):
         while relative_phase < 0.:
             relative_phase += 2.*math.pi
         relative_time = relative_phase/self.omega
-        print "Phase to time", ref_phase, relative_phase, relative_time
+        print("Phase to time", ref_phase, relative_phase, relative_time)
         return relative_time
 
     def evolve_rf(self, momentum, time):
         out_list = []
         tof0 = self.tof(self.p0)
-        print "Energy Kick",
+        print("Energy Kick", end=' ')
         for name in ["ke_in", "RF period", "time", "time0", "dphi/2pi", "delta_E", "ke_out"]:
-            print name.rjust(10),
-        print
+            print(name.rjust(10), end=' ')
+        print()
         for turn in range(self.n_turns):
             theta = 0.
-            print "Turn", turn
+            print("Turn", turn)
             delta_energy = 0.
             for rf_station in range(0, self.n_stations):
                 time = self.time_kick(momentum, time, rf_station)
                 momentum = self.energy_kick(momentum, time, rf_station)
                 #delta_energy += self.delta_energy(momentum, time, rf_station)
-                print "    Station", rf_station, "t:", time, "p:", momentum
+                print("    Station", rf_station, "t:", time, "p:", momentum)
             #energy = (momentum**2+self.mass**2)**0.5+delta_energy
             #momentum = (energy**2-self.mass**2)**0.5
             time = self.time_kick(momentum, time, self.n_stations)
@@ -317,12 +317,12 @@ class ToyLongitudinal(object):
         for i, r in enumerate(radius):
             p = momentum[i]
             v = voltage[i]*10. # kV
-            print >> fout, format(r-self.r0, "15.8g"), format(v, "15.8g")
+            print(format(r-self.r0, "15.8g"), format(v, "15.8g"), file=fout)
         return canvas, hist, graph
 
     def plot_waveform(self, momentum, line_color, station = None, axes = False, canvas = None):
         if station == None:
-            rf_stations = range(self.n_stations)
+            rf_stations = list(range(self.n_stations))
         else:
             rf_stations = [station]
         n_points = 101
@@ -336,12 +336,12 @@ class ToyLongitudinal(object):
         for a_station in rf_stations:
             omega, v, phase = self.get_rf(momentum, 0., a_station)
             if station != None:
-                print "    plot_waveform station:", a_station, "omega:", omega, "v:", v, "phi_i:", phase
+                print("    plot_waveform station:", a_station, "omega:", omega, "v:", v, "phi_i:", phase)
             for i, t in enumerate(time):
                 voltage[i] += v*math.sin(t*omega+2.*math.pi*phase)
             ref_voltage += v*math.sin(phi_eff+2.*math.pi*phase)
         if station == None:
-            print "Ref voltage", ref_voltage
+            print("Ref voltage", ref_voltage)
         hist, graph = xboa.common.make_root_graph("v", time, "t [ns]", voltage, "V [MV]")
         if canvas == None:
             canvas = xboa.common.make_root_canvas("v")
@@ -375,7 +375,7 @@ def get_toy_fets_ring():
     toy.cavity_phase = [0., 0.25, 0.5, 0.75] # fixed actual phase of cavity
     toy.azimuthal_angle = [0.]+[0., 0.25, 0.5, 0.75]+[1.] # position of cavity
     toy.setup_lookup("data/find_closed_orbit.out", n_cells=15)
-    print "Built ring with frequency", toy.omega/2./math.pi, "scallop factor", toy.scallop_factor
+    print("Built ring with frequency", toy.omega/2./math.pi, "scallop factor", toy.scallop_factor)
 
     toy.plot_dir = "plots/fets_ring/"
 
@@ -414,8 +414,8 @@ def math_test():
     dt = 1e-2
     keys = ["v0", "v1", "c2-s2", "v0*s0", "v1*c0", "v_tot", "v'_tot", "dv"]
     for key in keys:
-	print str(key).rjust(8),
-    print
+	print(str(key).rjust(8), end=' ')
+    print()
 
     for i in range(0, 100):
         time = rf_period*i/100.
@@ -432,8 +432,8 @@ def math_test():
 
         values = [v0, v1, cos**2 - sin**2, v0*sin, v1*cos, v_tot, v_prime, dv_tot]
         for value in values:
-            print str(round(value, 4)).rjust(8),
-        print
+            print(str(round(value, 4)).rjust(8), end=' ')
+        print()
 
 def plot_cavities(toy):
     momenta = [toy.p0, (toy.p0+toy.p1)/2., toy.p1] #[(toy.p1 - toy.p0)*i/2.+toy.p0 for i in range(3)]
@@ -469,9 +469,9 @@ def main():
         time_in = toy.get_phi_eff(p)/toy.omega
         #time = toy.phase_to_time(p, phase_in)
         phase_out = toy.time_to_phase(p, time_in)
-        print "Phase test", time_in, phase_out
-    print math.tan(toy.phi_s*2*math.pi), toy.omega*toy.tof(toy.p0), toy.omega*toy.tof(toy.p0)*math.tan(toy.phi_s*2*math.pi)-1
-    raw_input("Ready to track - continue?")
+        print("Phase test", time_in, phase_out)
+    print(math.tan(toy.phi_s*2*math.pi), toy.omega*toy.tof(toy.p0), toy.omega*toy.tof(toy.p0)*math.tan(toy.phi_s*2*math.pi)-1)
+    input("Ready to track - continue?")
     colours = iter([ROOT.kGreen-9, ROOT.kGreen, ROOT.kGreen+2,
                     ROOT.kBlue-9, ROOT.kBlue, ROOT.kBlue+2,
                     ROOT.kMagenta-9, ROOT.kMagenta-2, ROOT.kMagenta,
@@ -489,8 +489,8 @@ def main():
         out_list_of_lists.append(out_list)
         canvas = toy.plot_acceleration(out_list, next(colours), canvas)
     for i, out_list in enumerate(out_list_of_lists):
-        print "Event", i, "made n_turns:", len(out_list), "Start:", out_list[0][1], "Finish:", out_list[-1][1]
-    print "RF Period was", 2.*math.pi/toy.omega
+        print("Event", i, "made n_turns:", len(out_list), "Start:", out_list[0][1], "Finish:", out_list[-1][1])
+    print("RF Period was", 2.*math.pi/toy.omega)
     canvas = None
     n_turns_list = [len(out_list) for out_list in out_list_of_lists]
     min_n_turns = min(n_turns_list)
@@ -499,7 +499,7 @@ def main():
         canvas = toy.plot_bucket(out_list[:min_n_turns], ref_list[:min_n_turns], i+2, canvas)
     for index in 0, -1:
         toy.plot_snapshot(out_list_of_lists, index)
-    raw_input()
+    input()
 
 # NOTES:
 # The feature size goes inversely with frequency; so if we want feature size

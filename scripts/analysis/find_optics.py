@@ -62,19 +62,19 @@ class Optics(object):
             if self.row != None and i not in self.row:
                 continue
             if len(closed_orbit["hits"]) == 0:
-                print "Error - no closed orbit"
+                print("Error - no closed orbit")
                 continue
             index += 1
             if index >= self.config.find_tune["root_batch"]:
                 ROOT.gROOT.SetBatch(True)
             subs = closed_orbit["substitutions"]
-            for item, key in self.config.find_tune["subs_overrides"].iteritems():
+            for item, key in self.config.find_tune["subs_overrides"].items():
                 subs[item] = key
 
-            print "Finding optics with", 
+            print("Finding optics with", end=' ') 
             for key in sorted(subs.keys()):
-                print utilities.sub_to_name(key), subs[key],
-            print
+                print(utilities.sub_to_name(key), subs[key], end=' ')
+            print()
             tune_info = {"substitutions":subs}
             for axis1, axis2, delta1, delta2 in [("x", "px", self.delta_x, 0.),
                                                  ("y", "py", self.delta_y, 0.)]:
@@ -96,8 +96,8 @@ class Optics(object):
 
             for key in sorted(tune_info.keys()):
                 if "signal" not in key and "dphi" not in key:
-                    print "   ", key, tune_info[key]
-            print >> fout, json.dumps(tune_info)
+                    print("   ", key, tune_info[key])
+            print(json.dumps(tune_info), file=fout)
             fout.flush()
         os.chdir(cwd)
 

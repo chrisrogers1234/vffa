@@ -54,7 +54,7 @@ class DecoupledTransferMatrix(object):
             raise ValueError("Transfer matrix determinant deviated from 1 by "+\
               str(self.det_m - 1)+" - DecoupledTransferMatrix.det_tolerance was "+\
               str(self.det_tolerance) )
-        self.dim = self.m.shape[0]/2
+        self.dim = int(self.m.shape[0]/2)
         self.m_evalue, self.m_evector = numpy.linalg.eig(self.m)
         self.t_evector = None
         self.t_evalue = None
@@ -202,44 +202,44 @@ class DecoupledTransferMatrix(object):
         return numpy.real(coupled_psv)
 
     def print_tests(self):
-        print "M"
-        print self.m
-        print "M evector"
-        print self.m_evector
-        print "M evalue"
-        print self.m_evalue
+        print("M")
+        print(self.m)
+        print("M evector")
+        print(self.m_evector)
+        print("M evalue")
+        print(self.m_evalue)
         for i in range(self.dim):
             j = 2*i
             cos_mu = (self.t[j, j]+self.t[j+1, j+1])/2.
-            print "Cos", i, cos_mu, math.cos(self.phase[i])
+            print("Cos", i, cos_mu, math.cos(self.phase[i]))
             j_matrix = numpy.array([
                 [self.t[j, j]-cos_mu, self.t[j, j+1]],
                 [self.t[j+1, j], self.t[j+1, j+1]-cos_mu]
             ])
             det_j = cmath.sqrt(numpy.linalg.det(j_matrix))
             j_matrix /= det_j
-            print "Sin", i, det_j, math.sin(self.phase[i])
-            print "Beta", i, j_matrix[0, 1], self.v_t[j, j]
-            print "Alpha", i, j_matrix[0, 0], -j_matrix[1, 1], -self.v_t[j, j+1]
-            print "Gamma", i, -j_matrix[1, 0], self.v_t[j+1, j+1]
-        print "T evector"
-        print self.t_evector
-        print "R"
-        print self.r
-        print "T"
-        print self.t
-        print
-        print "V_T", numpy.linalg.det(self.v_t)
-        print self.v_t
+            print("Sin", i, det_j, math.sin(self.phase[i]))
+            print("Beta", i, j_matrix[0, 1], self.v_t[j, j])
+            print("Alpha", i, j_matrix[0, 0], -j_matrix[1, 1], -self.v_t[j, j+1])
+            print("Gamma", i, -j_matrix[1, 0], self.v_t[j+1, j+1])
+        print("T evector")
+        print(self.t_evector)
+        print("R")
+        print(self.r)
+        print("T")
+        print(self.t)
+        print()
+        print("V_T", numpy.linalg.det(self.v_t))
+        print(self.v_t)
         v_t_transported = numpy.dot(self.t, numpy.dot(self.v_t, numpy.transpose(self.t)))
-        print "T^T V_T T", numpy.linalg.det(v_t_transported)
-        print v_t_transported
-        print "V_M"
-        v_m = self.get_v_m(range(2, 2+self.dim))
-        print v_m
-        print "M^T V_M M"
+        print("T^T V_T T", numpy.linalg.det(v_t_transported))
+        print(v_t_transported)
+        print("V_M")
+        v_m = self.get_v_m(list(range(2, 2+self.dim)))
+        print(v_m)
+        print("M^T V_M M")
         v_m_transported = numpy.dot(self.m, numpy.dot(v_m, numpy.transpose(self.m)))
-        print v_m_transported
+        print(v_m_transported)
 
     det_tolerance = 1e-6
 
@@ -276,27 +276,27 @@ def test_decoupled_transport(matrix):
     u_t = tm.decoupled(u_m)
     transported_0a = numpy.dot(tm.m, u_m)
     transported_1a = tm.coupled(numpy.dot(tm.t, tm.decoupled(u_m)))
-    print "Should be equal:"
-    print "    Conventional M", transported_0a
-    print "    R T R^-1 u_m  ", transported_1a
+    print("Should be equal:")
+    print("    Conventional M", transported_0a)
+    print("    R T R^-1 u_m  ", transported_1a)
 
     transported_0b = numpy.real(numpy.dot(tm.t, u_t))
     transported_1b = tm.decoupled(numpy.dot(tm.m, tm.coupled(u_t)))
-    print "Should be equal:"
-    print "    Conventional T", transported_0b
-    print "    R^-1 M R u_t  ", transported_1b
+    print("Should be equal:")
+    print("    Conventional T", transported_0b)
+    print("    R^-1 M R u_t  ", transported_1b)
     
 
 def test_get_closed_ellipse():
     numpy.random.seed(1)
-    print "============== 2D ============="
+    print("============== 2D =============")
     test_matrix = [ # block-diagonal, r should be identity
     [0.75**0.5, 0.5],
     [-0.5, 0.75**0.5],
     ]
     DecoupledTransferMatrix(test_matrix).print_tests()
     test_decoupled_transport(test_matrix)
-    print "\n\n============== Rotated 4D "+"="*100
+    print("\n\n============== Rotated 4D "+"="*100)
     test_matrix = [
         [0.75**0.5, 0.5,  0.0, 1.0],
         [-0.5, 0.75**0.5, -1.0, 0.0],
@@ -305,7 +305,7 @@ def test_get_closed_ellipse():
     ]
     DecoupledTransferMatrix(test_matrix).print_tests()
     test_decoupled_transport(test_matrix)
-    print "\n\n============== Rotated 6D "+"="*100
+    print("\n\n============== Rotated 6D "+"="*100)
     test_matrix = _random_rotated(6)
     DecoupledTransferMatrix(test_matrix).print_tests()
     test_decoupled_transport(test_matrix)

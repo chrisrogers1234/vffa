@@ -27,10 +27,10 @@ class PlotDumpFields(object):
 
     def plot_1d(self, cuts, ax1, ax2, canvas_1d = None, xminmax= None, linecolor=1):
         value1, value2 = [], []
-        n_points = len(self.field_map.values()[0])
+        n_points = len(list(self.field_map.values())[0])
         for i in range(n_points):
             is_cut = False
-            for cut_key, cut_value in cuts.iteritems():
+            for cut_key, cut_value in cuts.items():
                 if abs(self.field_map[cut_key][i] - cut_value) > 1e-3:
                     is_cut = True
             if is_cut:
@@ -46,9 +46,9 @@ class PlotDumpFields(object):
         y_min -= y_delta
         y_max += y_delta
         if y_max-y_min < 1e-20 or x_max-x_min < 1e-20:
-            print "x values:", value1
-            print "y values:", value2
-            print "x_min:", x_min, "x_max:", x_max, "y_min:", y_min, "y_max:", y_max
+            print("x values:", value1)
+            print("y values:", value2)
+            print("x_min:", x_min, "x_max:", x_max, "y_min:", y_min, "y_max:", y_max)
             raise ValueError("Bad axis range")
         if canvas_1d == None:
             canvas_1d = ROOT.TCanvas(self.file_name+": "+ax1+" vs "+ax2, ax1+" vs "+ax2)
@@ -119,7 +119,7 @@ class PlotDumpFields(object):
 
 
     def load_dump_fields(self):
-        print "Loading", self.file_name
+        print("Loading", self.file_name)
         fin = open(self.file_name)
         header_lines = len(self.keys)+2
         for i in range(header_lines):
@@ -135,12 +135,17 @@ class PlotDumpFields(object):
                 data = [float(word) for word in line.split()]
                 for i, key in enumerate(self.keys):
                     self.field_map[key].append(data[i]*units_[i])
+                    if key[0] == 'b':
+                        if self.field_map[key][-1] > 5.:
+                            self.field_map[key][-1] = 5.
+                        if self.field_map[key][-1] < -5.:
+                            self.field_map[key][-1] = -5.
             except (ValueError, IndexError):
-                print line[:-1]
+                print(line[:-1])
                 continue
-        if 'phi' in self.field_map.keys():
+        if 'phi' in list(self.field_map.keys()):
             self.calculate_cartesian_fields()
-        if 'x' in self.field_map.keys():
+        if 'x' in list(self.field_map.keys()):
             self.calculate_cylindrical_fields()
 
     def get_bin_list(self, key):
@@ -182,7 +187,7 @@ class PlotDumpFields(object):
             self.field_grids = {"bx":None, "by":None, "bz":None}
             grid_1 = "x"
             grid_2 = "y"
-        for field_key in self.field_grids.keys():
+        for field_key in list(self.field_grids.keys()):
             self.field_grids[field_key] = self.build_2d_field_grid(grid_1, grid_2, field_key)
 
     def build_2d_field_grid(self, var_1, var_2, var_3):
@@ -229,12 +234,12 @@ class PlotDumpFields(object):
                 crossings.append(i)
         if len(crossings) > 0:
             t0 = self.x_list[crossings[0]]
-        print crossings#[1], crossings[0]
+        print(crossings)#[1], crossings[0]
         #print "FIT CROSSINGS", self.x_list[crossings[1]], self.x_list[crossings[0]]
         if len(crossings) > 1:
             frequency = 1./(self.x_list[crossings[1]]-self.x_list[crossings[0]])
         frequency *= 2.*math.pi
-        print "Seeding sine fit with", t0, frequency, voltage
+        print("Seeding sine fit with", t0, frequency, voltage)
         fitter = ROOT.TF1("sin "+str(len(self.root_objects)), "[0]*sin([1]*(x-[2]))")
         fitter.SetParameter(0, voltage)
         fitter.SetParameter(1, frequency)
@@ -275,6 +280,8 @@ class PlotDumpFields(object):
           ROOT.TColor.CreateGradientColorTable(npoints, s, r, g, b, ncontours)
           ROOT.gStyle.SetNumberContours(ncontours)
 
+    global_max_z = 5.
+
 
 def main(a_dir = None):
     plotter = PlotDumpFields(a_dir+"/FieldMapXY.dat", False)
@@ -289,9 +296,9 @@ def main(a_dir = None):
 
 if __name__ == "__main__":
     if len(sys.argv) < 2  or not os.path.isdir(sys.argv[1]):
-        print "Usage: 'python plot_dump_fields path/to/target/directory'"
+        print("Usage: 'python plot_dump_fields path/to/target/directory'")
     else:
         target_directory = sys.argv[1]
         main(sys.argv[1])
-    raw_input("Ran okay - press <Enter> to end")
+    input("Ran okay - press <Enter> to end")
 

@@ -26,7 +26,7 @@ class TrackBump(object):
         lattice_name = self.config.tracking["lattice_file_out"].split(".")[0]
         for item in glob.glob(self.tmp_dir+"/"+lattice_name+"-trackOrbit*"):
             try:
-                print "Clearing", item
+                print("Clearing", item)
                 os.unlink(item)
             except OSError: # maybe the dir already exists
                 pass
@@ -99,7 +99,7 @@ class TrackBump(object):
                 if self.is_equal_list(item["target_bump"], bump_target, 1e-9):
                     source_bump = item["target_bump"]
                     break
-                print item["target_bump"], bump_target
+                print(item["target_bump"], bump_target)
             if source_bump == None:
                 raise RuntimeError("Failed to find bump for "+str(bump_target))
                 #tracking_index = item["target_hit"]
@@ -115,13 +115,13 @@ class TrackBump(object):
                     closed_orbit = row[1:]
                     break
             bump_list.append((item["bump_fields"], n_turns_list[i], closed_orbit))
-            print "Got bump list fields:", bump_list[0], "n turns", n_turns_list[i], "co", closed_orbit
+            print("Got bump list fields:", bump_list[0], "n turns", n_turns_list[i], "co", closed_orbit)
         if self.injection_orbit == None:
-            print "Failed to find injection orbit element",
-            print self.config.track_bump["injection_orbit"],
-            print "from bump list of length", len(bump_list)
+            print("Failed to find injection orbit element", end=' ')
+            print(self.config.track_bump["injection_orbit"], end=' ')
+            print("from bump list of length", len(bump_list))
         else:
-            print "Updated injection orbit", self.injection_orbit
+            print("Updated injection orbit", self.injection_orbit)
         return bump_list
 
     def load_bump_parameters(self):
@@ -145,7 +145,7 @@ class TrackBump(object):
         self.output[-1]["bumps"].append(state)
         fname = self.get_filename_root()+"."+suffix
         fout = open(fname, "w")
-        print >> fout, json.dumps(self.output, indent=2)
+        print(json.dumps(self.output, indent=2), file=fout)
 
     def do_substitutions(self, fields, phi_init, charge):
         overrides = self.config.track_bump["subs_overrides"]
@@ -209,16 +209,16 @@ class TrackBump(object):
         test_hit = utilities.reference(self.config, energy,
                                         injected_beam[0], injected_beam[1],
                                         injected_beam[2], injected_beam[3])
-        print "Seed kinetic energy:     ", test_hit["kinetic_energy"]
+        print("Seed kinetic energy:     ", test_hit["kinetic_energy"])
         # fix momentum
         hit_list_in = []
         log = open("track_bump.log", "w")
         for bump_fields, n_turns, closed_orbit in bump_list:
             # ramp the fields
-            print >> log, "Ramping fields", bump_fields
+            print("Ramping fields", bump_fields, file=log)
             if len(hit_list_in) > 0:
                 # track from the ramp point to the foil point
-                print >> log, "Tracking to foil"
+                print("Tracking to foil", file=log)
                 self.do_substitutions(bump_fields, ramp_phi, +1.0)
                 hit_list_of_lists = foil_tracking.track_many(hit_list_in)
                 hit_list_in = [hit_list[-1] for hit_list in hit_list_of_lists]
@@ -233,19 +233,19 @@ class TrackBump(object):
                     if hit_list[-1]["t"] > 100.:
                         hit_list_in.append(hit_list[-1])
                 self.output.append(hit_list_in)
-                print >> log, "  After turn", i+1, "fields",
+                print("  After turn", i+1, "fields", end=' ', file=log)
                 for field in bump_fields:
-                    print field,
-                print >> log, "found", len(hit_list_of_lists), "particles"
+                    print(field, end=' ')
+                print("found", len(hit_list_of_lists), "particles", file=log)
                 for item in hit_list_in:
-                    print >> log, "   ", \
+                    print("   ", \
                           format(item["station"], "6"), \
                           format(item["t"], "12.6g"), \
                           format(item["x"], "12.6g"), \
                           format(item["px"], "12.6g"), \
-                          format(item["kinetic_energy"], "12.6g")
+                          format(item["kinetic_energy"], "12.6g"), file=log)
             # now track from the foil to the ramp point
-            print >> log, "Tracking to ramp point"
+            print("Tracking to ramp point", file=log)
             hit_list_of_lists = ramp_tracking.track_many(hit_list_in)
             hit_list_in = [hit_list[-1] for hit_list in hit_list_of_lists]
         return hit_list
@@ -254,4 +254,4 @@ def main(config):
     track_bump = TrackBump(config)
     track_bump.track_bump()
     if __name__ == "__main__":
-        raw_input()
+        input()

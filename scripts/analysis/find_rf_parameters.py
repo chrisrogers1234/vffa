@@ -15,7 +15,7 @@ import xboa.common
 from xboa.hit import Hit
 sys.path.insert(1, "scripts")
 from opal_tracking import OpalTracking
-import find_closed_orbits
+from . import find_closed_orbits
 from plotting import plot_dump_fields
 from utils import utilities
 
@@ -34,14 +34,14 @@ class FindRFParameters(object):
         self.tmp_dir = os.path.join(self.config.run_control["output_dir"],
                                self.config.find_rf_parameters["run_dir"])
         self.e0 = self.config.find_rf_parameters["start_energy"]
-        print self.tmp_dir
+        print(self.tmp_dir)
 
     def find_rf_parameters(self):
-        print "Finding RF parameters"
+        print("Finding RF parameters")
         if self.config.find_rf_parameters["do_co_scan"]:
             self.find_closed_orbits()
         self.load_closed_orbits()
-        print self.energy_time_list
+        print(self.energy_time_list)
         self.fit_energy_time_relation()
         self.find_ref_phase()
         self.summary()
@@ -90,7 +90,7 @@ class FindRFParameters(object):
                 delta_times = [t1-hit_times[i] for i, t1 in enumerate(hit_times[1:])]
                 mean_time = numpy.mean(delta_times) #]
                 delta_times = [time for time in delta_times if abs(time-mean_time) < mean_time/2.]
-                print "One Cell Time", mean_time, "Sigma", numpy.std(delta_times)
+                print("One Cell Time", mean_time, "Sigma", numpy.std(delta_times))
                 mean_time = numpy.mean(delta_times)*self.config.find_rf_parameters["n_cells"]
                 et_list.append((energy, mean_time))
             self.energy_time_list.append(et_list)
@@ -104,7 +104,7 @@ class FindRFParameters(object):
     def fit_energy_time_relation(self):
         for i, et_list in enumerate(self.energy_time_list):
             et_list = tuple(et_list)
-            energy, time = zip(*et_list)
+            energy, time = list(zip(*et_list))
 
             name = "chi vs time-of-flight "+str(i)
             var = [self.mom_var(E, i) for E in energy]
@@ -198,13 +198,13 @@ class FindRFParameters(object):
             kinetic_energy = self.e0 
         subs = self.config.substitution_list[index]
         for sub_dict in subs_overrides_list:
-            for item, key in sub_dict.iteritems():
+            for item, key in sub_dict.items():
                 subs[item] = key
 
-        print "Tracking with",
+        print("Tracking with", end=' ')
         for key in sorted(subs.keys()):
-            print utilities.sub_to_name(key), subs[key],
-        print
+            print(utilities.sub_to_name(key), subs[key], end=' ')
+        print()
         self._temp_dir() # changes to tmp/find_rf_parameters/
         xboa.common.substitute(
             self.config.tracking["lattice_file"],
@@ -229,7 +229,7 @@ class FindRFParameters(object):
                                 self.config.find_rf_parameters["probe_files"],
                                 self.config.tracking["opal_path"],
                                 "log")
-        print "Tracking hit with kinetic energy:", test_hit["kinetic_energy"]
+        print("Tracking hit with kinetic energy:", test_hit["kinetic_energy"])
         hit_list = tracking.track_one(test_hit)
         return hit_list
 
@@ -244,10 +244,10 @@ class FindRFParameters(object):
                     self.config.find_rf_parameters["phasing_subs_overrides"],
                     self.setup_subs_for_rf(index, phase, None),
                 ]
-                print subs_list
+                print(subs_list)
                 hit = self.track_one(index, subs_list)[2]
                 phasing_list.append((phase, hit["energy"] - hit["mass"]))
-            phase, energy = zip(*tuple(phasing_list))
+            phase, energy = list(zip(*tuple(phasing_list)))
             name = "rf signal "+str(index)
             hist, graph = xboa.common.make_root_graph(name, list(phase), "#phi [rad]", list(energy), "E [MeV]")
             canvas = xboa.common.make_root_canvas(name)
@@ -276,15 +276,15 @@ class FindRFParameters(object):
                 et_tuple = ((hit["t"], hit["kinetic_energy"]) for hit in hit_list)
                 my_var = ["station", "t", "x", "px", "y", "z", "pz", "kinetic_energy"] 
                 for var in my_var:
-                    print var.rjust(8),
-                print
+                    print(var.rjust(8), end=' ')
+                print()
                 i = 0
                 while i < 10 and i < len(hit_list):
                     for var in my_var:
-                        print str(round(hit_list[i][var], 3)).rjust(8),
-                    print
+                        print(str(round(hit_list[i][var], 3)).rjust(8), end=' ')
+                    print()
                     i += 1
-                time, energy = zip(*et_tuple)
+                time, energy = list(zip(*et_tuple))
                 name = "reference acceleration t vs E "+str(index)
                 hist, graph = xboa.common.make_root_graph(name, list(time), "t [ns]", list(energy), "E [MeV]")
                 canvas = self.canvases["t vs e "+str(index)]
@@ -336,7 +336,7 @@ class FindRFParameters(object):
                 graph.Draw("L")
 
                 ex_tuple = ((hit["x"], hit["kinetic_energy"]) for hit in hit_list)
-                time, energy = zip(*ex_tuple)
+                time, energy = list(zip(*ex_tuple))
                 name = "reference acceleration x vs E "+str(index)
                 hist, graph = xboa.common.make_root_graph(name, list(time), "x [mm]", list(energy), "E [MeV]")
                 canvas = self.canvases["x vs e "+str(index)]
@@ -361,7 +361,7 @@ class FindRFParameters(object):
             graph.SetMarkerColor(ROOT.kRed)
             graph.Draw("P")
             canvas.Update()
-            for key, canvas in self.canvases.iteritems():
+            for key, canvas in self.canvases.items():
                 canvas.cd()
                 canvas.Update()
                 for fmt in "root", "png", "pdf":
@@ -372,4 +372,4 @@ class FindRFParameters(object):
 def main(config):
     find_rf = FindRFParameters(config)
     find_rf.find_rf_parameters()
-    raw_input()
+    input()

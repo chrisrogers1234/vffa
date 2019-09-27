@@ -41,8 +41,8 @@ def poll_process_queue():
             logfile = open(job_log, "w")
         temp_proc_queue.append(subprocess.Popen(subproc_args,
                                stdout=logfile, stderr=subprocess.STDOUT))
-        print "Running", subproc_args, "with log", job_log,
-        print "pid", temp_proc_queue[-1].pid, len(PROC_RUNNING)
+        print("Running", subproc_args, "with log", job_log, end=' ')
+        print("pid", temp_proc_queue[-1].pid, len(PROC_RUNNING))
     PROC_RUNNING = temp_proc_queue
 
 def poll_laptop():
@@ -51,8 +51,8 @@ def poll_laptop():
         if proc.poll() == None:
             temp_proc_queue.append(proc)
         else:
-            print "PID", proc.pid, "finished with return code", proc.returncode
-    print round(time.time()-TIME_0, 1), "...", "Running", len(PROC_RUNNING), "with", len(PROC_QUEUE), "queued"
+            print("PID", proc.pid, "finished with return code", proc.returncode)
+    print(round(time.time()-TIME_0, 1), "...", "Running", len(PROC_RUNNING), "with", len(PROC_QUEUE), "queued")
     return temp_proc_queue
 
 def poll_scarf():
@@ -86,7 +86,7 @@ def main():
         log_file = log_file[:-3]
         proc_tuple = (["python", "scripts/run_one.py", config], log_file)
         PROC_QUEUE.append(proc_tuple)
-    print len(PROC_QUEUE), "jobs"
+    print(len(PROC_QUEUE), "jobs")
     while len(PROC_QUEUE) > 0 or len(PROC_RUNNING) > 0:
         poll_process_queue()
         if len(PROC_QUEUE) == 0 and len(PROC_RUNNING) == 0:

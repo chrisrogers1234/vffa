@@ -1,5 +1,5 @@
 import os
-import config_baseline
+from . import config_baseline
 
 class Config(config_baseline.Config):
     def __init__(self):
@@ -11,5 +11,5 @@ class Config(config_baseline.Config):
             self.substitution_list.append(config_baseline.get_baseline_substitution())
             self.substitution_list[-1]["__d_end_length__"] = length
             self.substitution_list[-1]["__f_end_length__"] = length
-        print "End length scan", [item["__f_end_length__"] for item in self.substitution_list]
+        print("End length scan", [item["__f_end_length__"] for item in self.substitution_list])
         self.run_control["output_dir"] = os.path.join(os.getcwd(), "output/end_length_scan")

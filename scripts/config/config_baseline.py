@@ -77,7 +77,7 @@ class Config(object):
             "adapt_deltas":False,
             "output_file":"closed_orbits_cache",
             "subs_overrides":{"__n_turns__":0.21, "__do_magnet_field_maps__":"False"},
-            "final_subs_overrides":{"__n_turns__":0.21, "__do_magnet_field_maps__":"True"},
+            "final_subs_overrides":{"__n_turns__":1.21, "__do_magnet_field_maps__":"True"},
             "root_batch":0,
             "max_iterations":0, 
             "tolerance":0.1,
@@ -119,13 +119,13 @@ class Config(object):
         self.find_bump_parameters = {
             "n_h_bumps":4,
             "n_v_bumps":4,
-            "bump":[[0.0, 0.0, -50.0, 0.0] for i in range(1)],
+            "bump":[[0.0, 0.0, -10.0*i, 0.0] for i in range(5, -1, -1)],
             "output_file":"find_bump_parameters",
             "closed_orbit":[3932.3656651884976, -26.152597049937057, 28.78211467244023, -0.3868433565977967],
             "foil_closed_orbit":[3872.7, -22.884, 29.248, 0.31536],
             "magnet_min_field":-1.0,
             "magnet_max_field":+1.0,
-            "max_iterations":500,
+            "max_iterations":1000,
             "position_tolerance":0.1,
             "momentum_tolerance":100.,
             "subs_overrides":{
@@ -137,8 +137,8 @@ class Config(object):
                 "__do_magnet_field_maps__":True,
             },
             "fix_bumps":["__v_bump_3_field__"],
-            "seed_field":[0.02758, 0.03066, -0.1342, 0.01218,
-                          0.072160, -0.03327, 0.10, -0.064005],
+            "seed_field":[0.01719, 0.03406, -0.1522, -0.007426,
+                          0.07412, -0.02978, 0.10,   -0.0808643],
             "seed_errors":[0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01],
             "bump_probe_station":0,
             "ignore_stations":[2, 3, 4, 5, 6],
@@ -173,7 +173,7 @@ class Config(object):
             "find_bump_parameters":True,
             "track_bump":True,
             "clean_output_dir":False,
-            "output_dir":os.path.join(os.getcwd(), "output/bump_v3=0.10"),
+            "output_dir":os.path.join(os.getcwd(), "output/bump_v3=0.10_scan"),
             "root_verbose":6000,
         }
 
@@ -190,5 +190,7 @@ class Config(object):
             "pdg_pid":2212,
             "clear_files":"*.loss",
             "verbose":False,
+            "file_format":"hdf5",
+
         }
 

@@ -1,6 +1,7 @@
 import shutil
 import os
 import glob
+import sys
 import json
 import math
 import xboa.common
@@ -26,22 +27,22 @@ def clean_tune_data(data, verbose=False):
         mean = numpy.mean(data_tmp)
         std = numpy.std(data_tmp)
         if verbose:
-            print len(my_data), mean, std, abs(std - old_std)/std, abs(mean - old_mean)/std
+            print(len(my_data), mean, std, abs(std - old_std)/std, abs(mean - old_mean)/std)
         if verbose:
-            print keep_going
+            print(keep_going)
         old_std = std
         old_mean = mean
         my_data = [(abs(value - mean), value) for delta, value in my_data]
         my_data = sorted(my_data)
         if verbose:
-            print "   ", my_data[-3:]
+            print("   ", my_data[-3:])
         keep_going = len(my_data) > 2 and my_data[-1][0] > 5*std
         my_data = my_data[:-1]
     my_data = [item[1] for item in my_data]
     if verbose:
-        print "DATA IN",  sorted(data)
-        print "DATA OUT", my_data
-        print "MEAN", numpy.mean(my_data)
+        print("DATA IN",  sorted(data))
+        print("DATA OUT", my_data)
+        print("MEAN", numpy.mean(my_data))
     return my_data
 
 def get_axes(axis_key, group_dict, tune_axis):
@@ -86,7 +87,7 @@ def make_root_graph_errors(name, x_values, y_values, y_errors):
     for i in range(n_points):
         graph.SetPoint(i, sorted_values[i][0], sorted_values[i][1])
         graph.SetPointError(i, 0., 0.)#sorted_values[i][2])
-        print sorted_values[i]
+        print(sorted_values[i])
     graph.SetName(name)
     return graph
 
@@ -99,10 +100,10 @@ def do_one_1d_plot(axis_key, group_dict, plot_dir, tune_axis):
         item = group_dict[group_key]
         graph_x = make_root_graph_errors(group_key+" #nu_{x}", item['axes'][axis_key], item['x_tune'], item['x_tune_err'])
         graph_y = make_root_graph_errors(group_key+" #nu_{y}", item['axes'][axis_key], item['y_tune'], item['y_tune_err'])
-        print "For group", group_key, "found", len(item['axes'][axis_key]), "items"
-        print "   ", axis_key, item['axes'][axis_key]
-        print "    x tune", item['x_tune']
-        print "    y tune", item['y_tune']
+        print("For group", group_key, "found", len(item['axes'][axis_key]), "items")
+        print("   ", axis_key, item['axes'][axis_key])
+        print("    x tune", item['x_tune'])
+        print("    y tune", item['y_tune'])
         graph_x.SetMarkerStyle(24)
         graph_x.SetMarkerColor(x_color[0])
         graph_y.SetMarkerStyle(26)
@@ -147,7 +148,7 @@ def do_ellipse_plot(axis_key, group_dict, plot_dir, tune_axis):
         canvas.Print(plot_dir+"/"+canvas_name+"."+format)
 
 def get_groups(data, group_axis):
-    axis_candidates = utilities.get_substitutions_axis(data)
+    axis_candidates = utilities.get_substitutions_axis(data, "substitutions")
     if group_axis != None and group_axis not in axis_candidates:
         raise RuntimeError("Did not recognise group axis "+str(group_axis))
     if group_axis == None:
@@ -167,7 +168,7 @@ def get_groups(data, group_axis):
     for key in tmp_group_dict:
         new_key = utilities.sub_to_name(group_axis)+" "+format(key, "3.3g")
         group_dict[new_key] = {'item_list':tmp_group_dict[key]}
-        print new_key, ":", group_dict[new_key]
+        print(new_key, ":", group_dict[new_key])
     return group_dict
 
 def plot_data_1d(data, tune_axis, plot_dir, group_axis = None, cell_conversion = 1, skip_length_one = True):
@@ -182,11 +183,11 @@ def plot_data_1d(data, tune_axis, plot_dir, group_axis = None, cell_conversion =
       - cell_conversion: scale the tunes by the "cell_conversion" factor
       - skip_length_one: ignore a graph if there is only one element
     """
-    axis_candidates = utilities.get_substitutions_axis(data)
+    axis_candidates = utilities.get_substitutions_axis(data, "substitutions")
     if group_axis in axis_candidates:
         del axis_candidates[group_axis]
     group_dict = get_groups(data, group_axis)
-    group_key_list = group_dict.keys()
+    group_key_list = list(group_dict.keys())
     for group_key in group_key_list:
         my_axes = dict([(key, []) for key in axis_candidates])
         x_signal, y_signal = [], []
@@ -196,15 +197,15 @@ def plot_data_1d(data, tune_axis, plot_dir, group_axis = None, cell_conversion =
         for i in item_list:
             item = data[i]
             verbose = False
-            x_dphi = clean_tune_data(item['x_dphi'], verbose)
-            y_dphi = clean_tune_data(item['y_dphi'], verbose)
+            x_dphi = clean_tune_data(item['u_dphi'], verbose)
+            y_dphi = clean_tune_data(item['v_dphi'], verbose)
             if verbose:
-                print "X DPHI", sorted(x_dphi)
-                print "Y DPHI", sorted(y_dphi)
+                print("X DPHI", sorted(x_dphi))
+                print("Y DPHI", sorted(y_dphi))
             x_tune.append(numpy.mean(x_dphi))
             y_tune.append(numpy.mean(y_dphi))
-            x_signal.append(item['x_signal'])
-            y_signal.append(item['y_signal'])
+            x_signal.append(item['u_signal'])
+            y_signal.append(item['v_signal'])
 
             if len(x_dphi) > 1:
                 x_tune_err.append(numpy.std(x_dphi))
@@ -222,7 +223,7 @@ def plot_data_1d(data, tune_axis, plot_dir, group_axis = None, cell_conversion =
                 y_tune = [nu*cell_conversion - math.floor(nu*cell_conversion) for nu in y_tune]
         if len(x_tune) == 1 and skip_length_one:
             del group_dict[group_key]
-            print "Removed", group_key, "because length was 1"
+            print("Removed", group_key, "because length was 1")
             continue
 
         group_dict[group_key]['x_tune'] = x_tune
@@ -245,17 +246,17 @@ def plot_tune_network(self, canvas):
             y_values = [0, 1.]
 
 def plot_data_2d(data, tune_axis, plot_dir):
-    x_tune = [item['x_tune'] for item in data]
-    y_tune = [item['y_tune'] for item in data]
-    print "X Tunes", x_tune
-    print "Y Tunes", y_tune
+    x_tune = [item['u_tune'] for item in data]
+    y_tune = [item['v_tune'] for item in data]
+    print("X Tunes", x_tune)
+    print("Y Tunes", y_tune)
     x_name = "Varying "
-    axis_candidates = utilities.get_substitutions_axis(data)
+    axis_candidates = utilities.get_substitutions_axis(data, "substitutions")
     for key in axis_candidates:
         min_val = str(min(axis_candidates[key]))
         max_val = str(max(axis_candidates[key]))
         x_name += utilities.sub_to_name(key)+" from "+min_val+" to "+max_val
-    axis_candidates = utilities.get_substitutions_axis(data)
+    axis_candidates = utilities.get_substitutions_axis(data, "substitutions")
     canvas = xboa.common.make_root_canvas('tune x vs y')
     hist, graph = xboa.common.make_root_graph('tune x vs y', x_tune, "horizontal tune", y_tune, "vertical tune", xmin=0., xmax=1., ymin=0., ymax=1.)
     hist.SetTitle(x_name)
@@ -269,8 +270,8 @@ def plot_data_2d(data, tune_axis, plot_dir):
 
 units = {"energy":"MeV",}
 
-def main():
-    for file_name in glob.glob("output/baseline_energy_scan_2/find_tune"):
+def main(fglob):
+    for file_name in glob.glob(fglob):
         plot_dir = os.path.split(file_name)[0]+"/plot_tune/"
         if os.path.exists(plot_dir):
             shutil.rmtree(plot_dir)
@@ -283,5 +284,5 @@ def main():
         plot_data_2d(data, 'fractional cell tune', plot_dir) # cell tune or ring tune, plot x tune vs y tune
 
 if __name__ == "__main__":
-    main()
-    raw_input("Press <CR> to end")
+    main(sys.argv[1])
+    input("Press <CR> to end")

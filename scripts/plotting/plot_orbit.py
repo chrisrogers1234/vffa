@@ -2,6 +2,7 @@
 Plot a single closed orbit (once tracking has finished)
 """
 
+import argparse
 import os
 import sys
 import copy
@@ -10,13 +11,16 @@ import glob
 import numpy
 from utils import utilities
 import plot_dump_fields
+import PyOpal.parser
+import PyOpal.field
+
 
 MASS = 938.2720813
 
 try:
     import ROOT
 except ImportError:
-    print "You need to install PyROOT to run this example."
+    print("You need to install PyROOT to run this example.")
 
 class RootObjects:
     histograms = []
@@ -33,22 +37,72 @@ class Colors:
     def next(cls):
         a_colour = cls.colours[0]
         cls.colours = numpy.roll(cls.colours, 1)
-        return a_colour
+        return int(a_colour)
 
     @classmethod
     def current(cls):
-        return cls.colours[0]
+        return int(cls.colours[0])
 
     @classmethod
     def reset(cls):
         cls.colours = copy.deepcopy(cls.ref_colours)
 
+class CoordinateTransform:
+    def __init__(self, cell_angle, cell_length):
+        self.cell_angle = cell_angle #math.radians(12.)
+        self.cell_length = cell_length #3.0
+        self.r0 = cell_length/2./math.sin(cell_angle/2.)
+
+    def phi(self, x, y):
+        return math.atan2(-x, y)
+
+    def r(self, x, y):
+        return (x**2+y**2)**0.5
+
+    def cell_number(self, x, y):
+        return math.floor(self.phi(x, y)/self.cell_angle)
+
+    def cell_phi(self, x, y):
+        return self.cell_number(x, y)*self.cell_angle+self.cell_angle/2.
+
+    def cell_start(self, x, y):
+        phi_start = self.cell_number(x, y)*self.cell_angle
+        y0 = self.r0*math.cos(phi_start)
+        x0 = -self.r0*math.sin(phi_start)
+        return x0, y0
+
+    def coordinate_transform(self, x, y, bx, by, bz):
+        x0, y0 = self.cell_start(x, y)
+        cell_phi = self.cell_phi(x, y)
+        cell_number = self.cell_number(x, y)
+        cell_x = cell_number*self.cell_length
+
+        x_cell = -math.cos(cell_phi)*(x-x0)-math.sin(cell_phi)*(y-y0)+cell_x
+        y_cell = -math.sin(cell_phi)*(x-x0)+math.cos(cell_phi)*(y-y0)
+        bx_cell = +math.cos(cell_phi)*bx+math.sin(cell_phi)*by
+        by_cell = +math.sin(cell_phi)*bx-math.cos(cell_phi)*by
+        bz_cell = -bz
+        #print(x, y, "**", math.degrees(cell_phi), "**", x0, y0, "**", x_cell, y_cell)
+        return x_cell, y_cell, bx_cell, by_cell, bz_cell
+
+    @classmethod
+    def test_coordinate_transform(cls):
+        transform = CoordinateTransform(math.radians(12), 3.0)
+        x, y, bx, by, bz = transform.coordinate_transform(-1e-9, transform.r0, 1., 0., 1.)
+        print(x, y, bx, by, bz)
+        assert(abs(x) < 1e-6)
+        assert(abs(y) < 1e-6)
+        assert(abs(-bz-1.0) < 1e-6)
+        assert(abs(bx-math.cos(transform.cell_angle/2.)) < 1e-6)
+        assert(abs(by-math.sin(transform.cell_angle/2.)) < 1e-6)
+        x, y, bx, by, bz = transform.coordinate_transform(-1e-12, transform.r0*1e-6, 1., 0., 1.)
+
 def r_phi_track_file(data):
     data = copy.deepcopy(data)
-    data["r"] = range(len(data["x"]))
-    data["phi"] = range(len(data["x"]))
-    data["pr"] = range(len(data["x"]))
-    data["pphi"] = range(len(data["x"]))
+    data["r"] = list(range(len(data["x"])))
+    data["phi"] = list(range(len(data["x"])))
+    data["pr"] = list(range(len(data["x"])))
+    data["pphi"] = list(range(len(data["x"])))
     for i in range(len(data["r"])):
         data["r"][i] = (data["x"][i]**2+data["y"][i]**2.)**0.5
         phi = math.atan2(data["y"][i], data["x"][i])
@@ -74,13 +128,13 @@ def parse_file(file_name, heading, types):
             line = fin.readline()[:-1]
             continue
         if len(words) != len(heading):
-            print "Line\n  "+line+"\nmismatched to heading\n  "+str(heading)+"\nin parse_file "+file_name
+            print("Line\n  "+line+"\nmismatched to heading\n  "+str(heading)+"\nin parse_file "+file_name)
         else:
             words = [types[i](x) for i, x in enumerate(words)]
             for i, item in enumerate(heading):
                 data[item].append(words[i])
         line = fin.readline()[:-1]
-    print "Got data from file "+file_name
+    print("Got data from file "+file_name)
     return data
 
 def parse_track_file(filename):
@@ -153,7 +207,7 @@ def plot_r_phi_projection(step_list, canvas = None):
     else:
         canvas.cd()
     graph = ROOT.TGraph(len(step_list))
-    points = zip(step_list["phi"], step_list["r"])
+    points = list(zip(step_list["phi"], step_list["r"]))
     points = sorted(points)
     for i in range(len(step_list["r"])):
         graph.SetPoint(i, points[i][0], points[i][1])
@@ -179,7 +233,7 @@ def plot_x_z_projection(step_list_of_lists, phi0, phi1, z0, z1, canvas = None):
     for step_list in step_list_of_lists:
         graph_list.append(ROOT.TGraph())
         graph_list[-1].SetLineColor(Colors.next())
-        points = zip(step_list["phi"], step_list["z"])
+        points = list(zip(step_list["phi"], step_list["z"]))
         old_phi = max(step_list["phi"])+1.0
         index = 0
         for i in range(len(step_list["z"])):
@@ -204,13 +258,13 @@ def step_statistics(step_list):
         delta_y = step_list["y"][i+1]-step_list["y"][i]
         delta_z = step_list["z"][i+1]-step_list["z"][i]
         delta_r_list.append((delta_x**2+delta_y**2+delta_z**2)**0.5)
-    print len(step_list), "steps with mean size:", numpy.mean(delta_r_list),
-    print "and RMS:", numpy.std(delta_r_list)
+    print(len(step_list), "steps with mean size:", numpy.mean(delta_r_list), end=' ')
+    print("and RMS:", numpy.std(delta_r_list))
 
 def plot_phi_pipe(n_periods, phi0, phi1, y0, y1, color, canvas):
     line_style=2
     canvas.cd()
-    print "PLOT PHI PIPE", n_periods, y0, y1, phi0, phi1, color
+    print("PLOT PHI PIPE", n_periods, y0, y1, phi0, phi1, color)
     for i in range(n_periods):
         phi = phi0+(phi1-phi0)/float(n_periods-1)*i
         graph = ROOT.TGraph(2)
@@ -407,13 +461,6 @@ def plot_cylindrical(output_dir, opal_run_dir, step_list_of_lists):
         canvas_bz_offset.Print(output_dir+"closed_orbit_cylindrical_bz."+format)
     Colors.reset()
 
-    canvas = None
-    for step_list in step_list_of_lists:
-        canvas, graph = plot_x_z_projection(step_list, canvas)
-    for format in ["png"]:
-        canvas.Print(output_dir+"closed_orbit_elevation."+format)
-    Colors.reset()
-
     return
     canvas_br_offset = field_plot.plot_dump_fields("phi", "r", "br")
     for step_list in step_list_of_lists:
@@ -477,57 +524,59 @@ def plot_zoom(output_dir, opal_run_dir, step_list_of_lists):
 def plot_cartesian(output_dir, opal_run_dir, step_list):
     field_plot = plot_dump_fields.PlotDumpFields(opal_run_dir+"FieldMapXY.dat")
     field_plot.load_dump_fields()
-    #inner_radius, axis_radius, outer_radius, ncells = 13.5, 14.350, 15.5, 30
-    inner_radius, axis_radius, outer_radius, ncells = 3.5, 3.995, 4.5, 20
-    inner_radius_a, axis_radius_a, outer_radius_a, ncells_a = 3.4, 3.995, 4.5, 10
+    inner_radius, axis_radius, outer_radius, ncells = 12.5, 14.350, 16.0, 30
+    inner_radius_a, axis_radius_a, outer_radius_a, ncells_a = 11.5, 14.350, 16.0, 15
+    #inner_radius, axis_radius, outer_radius, ncells = 3.5, 3.995, 4.5, 20
+    #inner_radius_a, axis_radius_a, outer_radius_a, ncells_a = 3.4, 3.995, 4.5, 10
 
     Colors.reset()
     canvas = field_plot.plot_dump_fields("x", "y", "bz")
-    canvas, axes, graph = plot_x_y_projection(step_list, canvas)
     plot_beam_pipe(inner_radius, outer_radius, ncells, canvas)
     plot_beam_pipe(inner_radius_a, outer_radius_a, ncells_a, canvas)
     plot_axis(axis_radius, ncells, canvas)
     plot_probes(canvas, opal_run_dir+"*.loss", "x", "y")
+    canvas, axes, graph = plot_x_y_projection(step_list, canvas)
     for format in ["png"]:
         canvas.Print(output_dir+"closed_orbit_plan_bz."+format)
 
     Colors.reset()
     canvas = field_plot.plot_dump_fields("x", "y", "br")
-    canvas, axes, graph = plot_x_y_projection(step_list, canvas)
     plot_beam_pipe(inner_radius, outer_radius, ncells, canvas)
     plot_beam_pipe(inner_radius_a, outer_radius_a, ncells_a, canvas)
     plot_axis(axis_radius, ncells, canvas)
     plot_probes(canvas, opal_run_dir+"*.loss", "x", "y")
+    canvas, axes, graph = plot_x_y_projection(step_list, canvas)
     for format in ["png"]:
         canvas.Print(output_dir+"closed_orbit_plan_br."+format)
 
     Colors.reset()
     canvas = field_plot.plot_dump_fields("x", "y", "bphi")
-    canvas, axes, graph = plot_x_y_projection(step_list, canvas)
     plot_beam_pipe(inner_radius, outer_radius, ncells, canvas)
     plot_beam_pipe(inner_radius_a, outer_radius_a, ncells_a, canvas)
     plot_axis(axis_radius, ncells, canvas)
     plot_probes(canvas, opal_run_dir+"*.loss", "x", "y")
+    canvas, axes, graph = plot_x_y_projection(step_list, canvas)
     for format in ["png"]:
         canvas.Print(output_dir+"closed_orbit_plan_bphi."+format)
 
     Colors.reset()
     canvas = field_plot.plot_dump_fields("x", "y", "btot")
-    canvas, axes, graph = plot_x_y_projection(step_list, canvas)
     plot_beam_pipe(inner_radius, outer_radius, ncells, canvas)
     plot_beam_pipe(inner_radius_a, outer_radius_a, ncells_a, canvas)
     plot_axis(axis_radius, ncells, canvas)
     plot_probes(canvas, opal_run_dir+"*.loss", "x", "y")
+    canvas, axes, graph = plot_x_y_projection(step_list, canvas)
     for format in ["png"]:
         canvas.Print(output_dir+"closed_orbit_plan_btot."+format)
 
     Colors.reset()
     canvas = None
-    canvas, graph = plot_x_z_projection(step_list, 0, 360, -0.1, 0.1, canvas)
+    canvas, graph = plot_x_z_projection(step_list, 0, 360, -0.0, 0.8, canvas)
     #plot_probes(canvas, opal_run_dir+"*.loss", "phi", "z")
-    plot_phi_pipe(21, 0, 360, -2.0, 2.0, 1, canvas)
-    plot_phi_pipe(2, 108-36*0.07, 108+36*0.07, -0.02, -0.05, ROOT.kGray, canvas)
-    plot_phi_pipe(2, 0, 360, -0.02, -0.05, ROOT.kGray, canvas)
+    plot_phi_pipe(31, 0, 360, -2.0, 2.0, ROOT.kGray, canvas)
+    plot_phi_pipe(16, 0, 360, -2.0, 2.0, 1, canvas)
+    plot_phi_pipe(2, 108-36*0.07, 108+36*0.07, -0.02, -0.04, ROOT.kGray, canvas)
+    plot_phi_pipe(2, 0, 360, -0.02, -0.04, ROOT.kGray, canvas)
     for format in ["png"]:
         canvas.Print(output_dir+"closed_orbit_elevation."+format)
     Colors.reset()
@@ -567,7 +616,7 @@ def plot_test_field(output_dir, opal_run_dir):
                 fit.SetParameter(3, delta)
                 fit.SetLineColor(ROOT.kGreen)
                 fit.SetLineStyle(3)
-                print "Fitting", eqn
+                print("Fitting", eqn)
                 graph.Fit(fit)
                 fit.Draw("SAME")
                 RootObjects.other.append(fit)
@@ -578,35 +627,129 @@ def print_track(tgt_phi, step_list_of_lists):
         for i, phi in enumerate(step_list['phi']):
             if phi > tgt_phi:
                 break
-        print "step list item", i
+        print("step list item", i)
         for key in sorted(step_list):
-            print "    ", key, step_list[key][i]
+            print("    ", key, step_list[key][i])
         for j in 0, i:
-            print "p_tot at", j, ":",
+            print("p_tot at", j, ":", end=' ')
             p_tot = (step_list['px'][j]**2+step_list['py'][j]**2+step_list['pz'][j]**2)**0.5
-            print format(p_tot, "8.4g")
-        print
+            print(format(p_tot, "8.4g"))
+        print()
 
-def main(output_dir, run_dir, run_file_list):
+def load_lattice(lattice_file):
+    if lattice_file == None:
+        return
+    here = os.getcwd()
+    a_dir, a_file = os.path.split(lattice_file)
+    os.chdir(a_dir)
+    PyOpal.parser.initialise_from_opal_file(a_file)
+    os.chdir(here)
+
+def get_machida_field():
+    import plot_machida_field
+    canvas = plot_machida_field.main()
+    return canvas
+
+def plot_orbit_field(output_dir, step_list_of_lists, canvas):
+    transform = CoordinateTransform(math.radians(12), 3.0)
+    a_list = step_list_of_lists[0]
+    s_max = 6.0
+    n_steps = len(a_list['x'])
+    z0 = a_list["z"][0]
+    name_list = ["Bx", "By", "Bz", "y*10", "(z-"+str(z0)+")*100"]
+    g_list = [ROOT.TGraph(n_steps) for name in name_list]
+    var_list = ['x', 'y', 'z']
+    s_pos_0 = 0.
+    max_b = 20.
+    cell_old, x_cell, y_cell = 0., 0., 0.
+    for i in range(n_steps):
+        [x, y, z] = [a_list[var][i] for var in var_list]
+        oob, bx, by, bz, dummy, dummy, dummy = \
+                                PyOpal.field.get_field_value(x, y, z, 0.)
+        cell_number = transform.cell_number(x, y)
+        if abs(x_cell-3.0) < 0.02:
+            print("    cell boundary:", x_cell, y_cell)
+            
+        #if abs(cell_number-cell_old) > 1e-9:
+        #    print("Cell transform pre-step from", cell_old, "to", cell_number, "step", i)
+        #    print("   ", x_cell, y_cell)
+        x_cell, y_cell, bx_cell, by_cell, bz_cell = \
+                                transform.coordinate_transform(x, y, bx, by, bz)
+        #if abs(cell_number-cell_old) > 1e-9:
+        #    print("Cell transform post-step")
+        #    print("   ", x_cell, y_cell)
+        cell_old = cell_number
+        if abs(bx) > max_b:
+            bx = max_b*bx/abs(bx)
+        if abs(by) > max_b:
+            by = max_b*by/abs(by)
+        if abs(bz) > max_b:
+            bz = max_b*bz/abs(bz)
+        bm = (bx**2+by**2)**0.5
+        g_list[0].SetPoint(i, x_cell, bx_cell)
+        g_list[1].SetPoint(i, x_cell, by_cell)
+        g_list[2].SetPoint(i, x_cell, bz_cell)
+        g_list[3].SetPoint(i, x_cell, y_cell*10.)
+        g_list[4].SetPoint(i, x_cell, (z-z0)*100.)
+        if i == 0:
+            print(x, y, z, "**", bx, by, bz)
+    print
+
+    multigraph = ROOT.TMultiGraph()
+    multigraph.SetTitle(";s [m];B [T]")
+    Colors.reset()
+    for i, graph in enumerate(g_list):
+        graph.SetTitle(name_list[i])
+        graph.SetLineWidth(2)
+        graph.SetLineColor(Colors.next())
+    if canvas == None:
+        canvas = ROOT.TCanvas("Field", "Field")
+        canvas.Draw()
+        for i, graph in enumerate(g_list):
+            multigraph.Add(graph)
+        multigraph.Draw("L AXIS")
+    else:
+        canvas.cd()
+        for i, graph in enumerate(g_list):
+            graph.Draw("L SAME")
+    RootObjects.graphs.append(multigraph)
+    canvas.BuildLegend()
+    canvas.Print(output_dir+"/event_field.png")
+
+def parse_args(args):
+    parser = argparse.ArgumentParser()
+    parser.add_argument('file_name_list', type=str, nargs='+')
+    parser.add_argument('--lattice_file', dest='lattice_file')
+    args = parser.parse_args()
+    tgt_dir = os.path.split(args.file_name_list[0])[0]
+    output_dir = os.path.split(tgt_dir)[0]
+    run_dir = os.path.split(tgt_dir)[1]
+    run_file_list = [os.path.split(arg)[1] for arg in args.file_name_list]
+    lattice_file = args.lattice_file
+    return output_dir, run_dir, run_file_list, lattice_file
+
+def main(output_dir, run_dir, run_file_list, lattice_file):
+    load_lattice(lattice_file)
+    canvas = get_machida_field()
     output_dir += "/"
     opal_run_dir = output_dir+run_dir+"/"
-    print "OPAL RUN DIR", opal_run_dir
+    print("OPAL RUN DIR", opal_run_dir)
     step_list_of_lists = []
     for run_file in run_file_list:
         step_list_of_lists.append(parse_track_file(opal_run_dir+run_file))
     plot_cartesian(output_dir, opal_run_dir, step_list_of_lists)
-    #plot_cylindrical(output_dir, opal_run_dir, step_list_of_lists)
-    #plot_test_field(output_dir, opal_run_dir)
-    #print_track(0.1*360./15, step_list_of_lists)
+    plot_cylindrical(output_dir, opal_run_dir, step_list_of_lists)
+    try:
+        plot_orbit_field(output_dir, step_list_of_lists, canvas)
+    except ValueError:
+        sys.excepthook(*sys.exc_info())
     return
 
     step_statistics(step_list)
 
 if __name__ == "__main__":
     utilities.setup_gstyle()
-    tgt_dir = os.path.split(sys.argv[1])[0]
-    output_dir = os.path.split(tgt_dir)[0]
-    run_dir = os.path.split(tgt_dir)[1]
-    run_file_list = [os.path.split(arg)[1] for arg in sys.argv[1:]]
-    main(output_dir, run_dir, run_file_list)
+    args = parse_args(sys.argv)
+    CoordinateTransform.test_coordinate_transform()
+    main(*args)
 

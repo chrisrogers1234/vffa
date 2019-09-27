@@ -12,11 +12,11 @@ def load_summary_data(filename, columns, units):
         for i, element in enumerate(data):
             data[i] = data[i]*xboa.common.units[units[i]]
         if len(data) != len(columns):
-            print "Warning, data misaligned to columns"
-            print "  ", columns
-            print "  ", line
-            print "  ", data
-        new_dict = dict(zip(columns, data))
+            print("Warning, data misaligned to columns")
+            print("  ", columns)
+            print("  ", line)
+            print("  ", data)
+        new_dict = dict(list(zip(columns, data)))
         zgoubi_data.append(new_dict)
     return zgoubi_data 
 
@@ -65,21 +65,21 @@ def make_summary_data(closed_orbits, cell_tunes, ring_tunes):
             all_data[int(round(kinetic_energy))] = summary_data_dict
     except KeyError:
         pass
-    data = all_data.values()
+    data = list(all_data.values())
     data = sorted(data, key = lambda x: x["kinetic_energy"])
-    print [dat["kinetic_energy"] for dat in data]
+    print([dat["kinetic_energy"] for dat in data])
     return data
 
 def write_summary_data(filename, columns, units, opal_data):
     fout = open(filename, "w")
-    header = zip(columns, units)
+    header = list(zip(columns, units))
     for col, unit in header:
-        print >> fout, col, "["+unit+"]",
-    print >> fout
+        print(col, "["+unit+"]", end=' ', file=fout)
+    print(file=fout)
     for a_dict in opal_data:
         for col in columns:
-            print >> fout, a_dict[col],
-        print >> fout
+            print(a_dict[col], end=' ', file=fout)
+        print(file=fout)
     
 
 def main():
@@ -91,12 +91,12 @@ def main():
     cell_tunes = []
     opal_data = make_summary_data(closed_orbits, cell_tunes, ring_tunes)
     for a_opal in opal_data:
-        print a_opal
+        print(a_opal)
         for a_zgoubi in zgoubi_data:
             if abs(a_zgoubi["kinetic_energy"] - a_opal["kinetic_energy"]) < 0.1:
-                print "zgoubi", [str(round(a_zgoubi[col], 3)).rjust(8) for col in columns]
-                print "opal  ", [str(round(a_opal[col], 3)).rjust(8) for col in columns]
-                print
+                print("zgoubi", [str(round(a_zgoubi[col], 3)).rjust(8) for col in columns])
+                print("opal  ", [str(round(a_opal[col], 3)).rjust(8) for col in columns])
+                print()
     write_summary_data("opal_summary_data.dat", columns, units, opal_data)
 
 if __name__ == "__main__":

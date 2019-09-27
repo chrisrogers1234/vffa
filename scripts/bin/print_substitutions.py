@@ -6,13 +6,13 @@ import utilities
 
 def print_substitutions(file_name):
     fin = open(file_name)
-    print file_name
+    print(file_name)
     for line in fin.readlines():
         subs = json.loads(line)["substitutions"]
-        print "   ",
+        print("   ", end=' ')
         for key in sorted(subs.keys()):
-            print utilities.sub_to_name(key), subs[key],
-        print
+            print(utilities.sub_to_name(key), subs[key], end=' ')
+        print()
 
 
 def main():

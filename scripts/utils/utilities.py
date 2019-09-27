@@ -72,6 +72,7 @@ def setup_tracking(config, probes, ref_energy):
     beam = config.tracking["beam_file_out"]
     tracking = OpalTracking(lattice, beam, ref_hit, probes, opal_exe, log)
     tracking.verbose = config.tracking["verbose"]
+    tracking.set_file_format(config.tracking["file_format"])
     return tracking
 
 def tune_lines(canvas, min_order=0, max_order=8):
@@ -101,7 +102,7 @@ def get_substitutions_axis(data, subs_key):
     axis_candidates = {}
     for item in data:
         subs = item[subs_key]
-        for key in subs.keys():
+        for key in list(subs.keys()):
             if subs[key] != subs_ref[key]:
                 #print key, subs[key], subs_ref[key]
                 try:
@@ -110,11 +111,11 @@ def get_substitutions_axis(data, subs_key):
                 except (TypeError, ValueError):
                     continue
     if axis_candidates == {}:
-        print "All of", len(data), "items look the same - nothing to plot"
-        print "First:"
-        print " ", data[0][subs_key]
-        print "Last:"
-        print " ", data[-1][subs_key]
+        print("All of", len(data), "items look the same - nothing to plot")
+        print("First:")
+        print(" ", data[0][subs_key])
+        print("Last:")
+        print(" ", data[-1][subs_key])
     for item in data:
         for key in axis_candidates:
             #print key, axis_candidates.keys()
@@ -144,7 +145,7 @@ def get_groups(data, group_axis, subs_key):
     for key in tmp_group_dict:
         new_key = sub_to_name(group_axis)+" "+format(key, "3.3g")
         group_dict[new_key] = {'item_list':tmp_group_dict[key]}
-        print new_key, ":", group_dict[new_key]
+        print(new_key, ":", group_dict[new_key])
     return group_dict
 
 def setup_gstyle():

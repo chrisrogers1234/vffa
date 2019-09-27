@@ -64,8 +64,8 @@ def find_closed_orbit(sub_index, subs, seed, config):
     max_iterations = config.find_closed_orbits["max_iterations"]
     probe = config.find_closed_orbits["probe_files"]
     for key in sorted(subs.keys()):
-        print utilities.sub_to_name(key), subs[key],
-    print
+        print(utilities.sub_to_name(key), subs[key], end=' ')
+    print()
     out_dir = OUT_DIR
     run_dir = RUN_DIR
     tmp_dir = "./"
@@ -74,7 +74,7 @@ def find_closed_orbit(sub_index, subs, seed, config):
     except OSError: # maybe the dir already exists
         pass
     os.chdir(run_dir)
-    print "Running in", os.getcwd()
+    print("Running in", os.getcwd())
     common.substitute(CONFIG.tracking["lattice_file"], tmp_dir+'SectorFFAGMagnet.tmp', subs)
     energy = subs["__energy__"]
     ref_hit = reference(energy)
@@ -85,8 +85,8 @@ def find_closed_orbit(sub_index, subs, seed, config):
     seed_hit["px"] = seed[1]
     # fix momentum
     seed_hit["pz"] = (ref_hit["p"]**2-seed_hit["px"]**2)**0.5
-    print "Reference kinetic energy:", ref_hit["kinetic_energy"]
-    print "Seed kinetic energy:     ", seed_hit["kinetic_energy"]
+    print("Reference kinetic energy:", ref_hit["kinetic_energy"])
+    print("Seed kinetic energy:     ", seed_hit["kinetic_energy"])
     finder = EllipseClosedOrbitFinder(tracking, seed_hit)
     generator = finder.find_closed_orbit_generator(["x", "px"], 1)
     x_std_old = 1e9
@@ -95,24 +95,24 @@ def find_closed_orbit(sub_index, subs, seed, config):
     iteration = None
     while will_loop:
         try:
-            iteration = generator.next()
+            iteration = next(generator)
         except StopIteration:
             will_loop = False
-            print sys.exc_info()[1]
+            print(sys.exc_info()[1])
         i += 1
     #for i, iteration in enumerate(generator):
         #for point in iteration.points:
         heading = ['station', 't', 'x', 'px', 'y', 'py', 'z', 'pz', 'r', 'pt', 'kinetic_energy']
         for key in heading:
-            print str(key).rjust(10),
-        print
+            print(str(key).rjust(10), end=' ')
+        print()
         for hit in tracking.last[0]:
             for key in heading:
-                print str(round(hit[key], 1)).rjust(10),
-            print
+                print(str(round(hit[key], 1)).rjust(10), end=' ')
+            print()
         if iteration == None:
             continue
-        print iteration.centre
+        print(iteration.centre)
         #if iteration.centre != None: #i == 0 and 
         if i == 0:
             plot_iteration(sub_index, i, iteration, energy)
@@ -120,7 +120,7 @@ def find_closed_orbit(sub_index, subs, seed, config):
             break
         x_mean = numpy.mean([point[0] for point in iteration.points])
         x_std = numpy.std([point[0] for point in iteration.points])
-        print "Seed:", iteration.points[0][0], "Mean:", x_mean, "Std:", x_std
+        print("Seed:", iteration.points[0][0], "Mean:", x_mean, "Std:", x_std)
         if type(iteration.centre) != type(None) and x_std >= x_std_old: # require convergence
             break
         x_std_old = x_std
@@ -132,35 +132,35 @@ def find_closed_orbit(sub_index, subs, seed, config):
 def get_seed(config, results, subs):
     if len(results) == 0:
         config_seed = config.find_closed_orbits["seed"].pop(0)
-        print "Using config seed", config_seed
+        print("Using config seed", config_seed)
         return config_seed, len(config.find_closed_orbits["seed"]) > 0
     axis_candidates = utilities.get_substitutions_axis(results)
     if len(axis_candidates) == 0:
         co_hit = results[0]["hits"][0]
         seed = [co_hit["x"], co_hit["px"]]
-        print "Using last co as seed", seed
+        print("Using last co as seed", seed)
         return seed, False
-    print "Doing interpolation for seed for variables", axis_candidates.keys()
+    print("Doing interpolation for seed for variables", list(axis_candidates.keys()))
     # [dx, dpx]
     delta_keys_new = {}
     delta_var_new = []
     seed_var = {"x":results[-1]["hits"][0]["x"], "px":results[-1]["hits"][0]["px"]}
-    print "  base", seed_var
-    for key in axis_candidates.keys():
+    print("  base", seed_var)
+    for key in list(axis_candidates.keys()):
         key2 = subs[key]
         key1 = axis_candidates[key][-1]
         key0 = axis_candidates[key][-2]
-        print "    key", key, "values", key0, key1, key2
-        for var in seed_var.keys():
+        print("    key", key, "values", key0, key1, key2)
+        for var in list(seed_var.keys()):
             var1 = results[-1]["hits"][0][var]
             var0 = results[-2]["hits"][0][var]
             if abs(key1-key0) < 1e-9: # div0
                 seed_var[var] = var1
                 continue
             delta = (var1-var0)/(key1-key0)*(key2-key1)
-            print "      var", var, "values", var1, var0, "delta", delta
+            print("      var", var, "values", var1, var0, "delta", delta)
             seed_var[var] += delta
-    print "  seed", seed_var
+    print("  seed", seed_var)
     seed = [seed_var["x"], seed_var["px"]]
     return seed, False
 
@@ -178,7 +178,7 @@ def main(config):
     for i, sub in enumerate(subs_list):
         will_loop = True
         is_batch = i >= config.find_closed_orbits["root_batch"] 
-        for item, key in config.find_closed_orbits["subs_overrides"].iteritems():
+        for item, key in config.find_closed_orbits["subs_overrides"].items():
             sub[item] = key
         ROOT.gROOT.SetBatch(is_batch)
         hit_list = []
@@ -189,20 +189,20 @@ def main(config):
                 co_hit = results[0]["hits"][0]
                 next_seed = [co_hit["x"], co_hit["px"]]
                 will_loop = False
-            print "LOOPING DEBUG", next_seed, will_loop, sub['__energy__']
+            print("LOOPING DEBUG", next_seed, will_loop, sub['__energy__'])
             try:
                 hit_list = find_closed_orbit(i, sub, next_seed, config)
-            except IndexError, ValueError:
+            except IndexError as ValueError:
                 sys.excepthook(*sys.exc_info())
             except RuntimeError:
                 sys.excepthook(*sys.exc_info())
                 hit_list = []
-                print "Breaking loop due to tracking error"
+                print("Breaking loop due to tracking error")
                 will_loop = False
             will_loop = len(hit_list) < 20 and will_loop
         output = {"substitutions":sub, "hits":[hit.dict_from_hit() for hit in hit_list]}
         results.append(output)
-        print >> fout, json.dumps(output)
+        print(json.dumps(output), file=fout)
         fout.flush()
         if config.find_closed_orbits["do_plot_orbit"] and i == 0:
             plot_orbit.main(config.run_control["output_dir"],

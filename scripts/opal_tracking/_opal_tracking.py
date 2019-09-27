@@ -25,6 +25,7 @@ import os
 import glob
 import math
 import sys
+import h5py
 
 from xboa import common
 from xboa.hit import Hit
@@ -99,6 +100,7 @@ class OpalTracking(TrackingBase):
         self.n_cores = n_cores
         self.mpi = mpi
         self.clear_path = None
+        self._read_probes = self._read_ascii_probes
 
     def get_names(self):
         """
@@ -185,41 +187,41 @@ class OpalTracking(TrackingBase):
 
     def _tracking(self, list_of_hits):
         if self.verbose:
-            print "Tracking using logfile ", self.log_filename
+            print("Tracking using logfile ", self.log_filename)
         open(self.lattice_filename).close() # check that lattice exists
         m, GeV = common.units["m"], common.units["GeV"]
         p_mass = common.pdg_pid_to_mass[2212]
         fout = open(self.beam_filename, "w")
-        print >> fout, len(list_of_hits)
+        print(len(list_of_hits), file=fout)
         for i, hit in enumerate(list_of_hits):
             if self.verbose:
-                print '           ',
+                print('           ', end=' ')
                 for key in self.print_keys:
-                    print key.ljust(8),
+                    print(key.ljust(8), end=' ')
                 if i < 1 or i == len(list_of_hits)-1:
-                    print '\n    hit ...',
+                    print('\n    hit ...', end=' ')
                     for key in self.print_keys:
-                        print str(round(hit[key], 3)).ljust(8),
-                    print '\n    ref ...',
+                        print(str(round(hit[key], 3)).ljust(8), end=' ')
+                    print('\n    ref ...', end=' ')
                     for key in self.print_keys:
-                        print str(round(self.ref[key], 3)).ljust(8),
-                    print
+                        print(str(round(self.ref[key], 3)).ljust(8), end=' ')
+                    print()
                 if i == 1 and len(list_of_hits) > 2:
-                    print "<", len(list_of_hits)-2, " more hits>"
+                    print("<", len(list_of_hits)-2, " more hits>")
             x = (hit["x"]-self.ref["x"])/m
             y = (hit["y"]-self.ref["y"])/m
             z = (hit["z"]-self.ref["z"])/m
             px = (hit["px"]-self.ref["px"])/p_mass
             py = (hit["py"]-self.ref["py"])/p_mass
             pz = (hit["pz"]-self.ref["pz"])/p_mass
-            print >> fout, x, px, z, pz, y, py
+            print(x, px, z, pz, y, py, file=fout)
         fout.close()
         self.cleanup()
         old_time = time.time()
         proc = self.open_subprocess()
         proc.wait()
         if self.verbose:
-            print "Ran for", time.time() - old_time, "s"
+            print("Ran for", time.time() - old_time, "s")
         # returncode 1 -> particle fell out of the accelerator
         if proc.returncode != 0 and proc.returncode != 1:
             try:
@@ -235,9 +237,32 @@ class OpalTracking(TrackingBase):
         dict_of_hit_dicts = {} # temp mapping of station to hit_dict
         for hit_dict in list_of_hit_dicts:
             dict_of_hit_dicts[station] = hit_dict # overwrites if a duplicate
-        return dict_of_hit_dicts.values() # list of hit dicts
+        return list(dict_of_hit_dicts.values()) # list of hit dicts
 
-    def _read_probes(self, pass_through_analysis):
+    def coordinate_transform(self, hit_dict):
+        x = hit_dict["x"]
+        y = hit_dict["z"]
+        px = hit_dict["px"]
+        py = hit_dict["pz"]
+        phi = math.atan2(y, x)
+        hit_dict["x"] = + x*math.cos(phi) + y*math.sin(phi)
+        hit_dict["z"] = - x*math.sin(phi) + y*math.cos(phi)
+        hit_dict["px"] = + px*math.cos(phi) + py*math.sin(phi)
+        # go through file line by line reading hit data
+        hit_dict["pz"] = - px*math.sin(phi) + py*math.cos(phi)
+        hit = Hit.new_from_dict(hit_dict, "energy")
+        return hit
+
+    def set_file_format(self, file_format):
+        if file_format == "ascii":
+            self._read_probes = self._read_ascii_probes
+        elif file_format == "hdf5":
+            self._read_probes = self._read_h5_probes
+        else:
+            raise ValueError("Did not recognise Probe file format '"+str(file_format)+\
+                             "'. Options are 'ascii' or 'hdf5'")
+
+    def _read_ascii_probes(self, pass_through_analysis):
         # loop over files in the glob, read events and sort by event number
         file_list = self.get_names()
         if len(file_list) == 0:
@@ -253,7 +278,7 @@ class OpalTracking(TrackingBase):
                 if line == "":
                     break
                 try:
-                    event, hit = self.read_one_line(line, i)
+                    event, hit = self.read_one_ascii_line(line, i)
                     pass_through_analysis.process_hit(event, hit)
                 except ValueError:
                     pass
@@ -262,8 +287,8 @@ class OpalTracking(TrackingBase):
                     #pass_through_analysis.clear()
         self.last = pass_through_analysis.finalise()
         return self.last
-   
-    def read_one_line(self, line, station): 
+
+    def read_one_ascii_line(self, line, station): 
         words = line.split()
         hit_dict = {}
         for key in "pid", "mass", "charge":
@@ -272,21 +297,58 @@ class OpalTracking(TrackingBase):
             hit_dict[key] = float(words[i+1])*1000.
         for i, key in enumerate(["px", "pz", "py"]):
             hit_dict[key] = float(words[i+4])*self.ref["mass"]
-        event = int(words[7])
         hit_dict["event_number"] = int(words[7])
         hit_dict["station"] = station
-        x = hit_dict["x"]
-        y = hit_dict["z"]
-        px = hit_dict["px"]
-        py = hit_dict["pz"]
-        phi = math.atan2(y, x)
         hit_dict["t"] = float(words[9])
-        hit_dict["x"] = + x*math.cos(phi) + y*math.sin(phi)
-        hit_dict["z"] = - x*math.sin(phi) + y*math.cos(phi)
-        hit_dict["px"] = + px*math.cos(phi) + py*math.sin(phi)
-        # go through file line by line reading hit data
-        hit_dict["pz"] = - px*math.sin(phi) + py*math.cos(phi)
-        hit = Hit.new_from_dict(hit_dict, "energy")
-        return event, hit
+        hit = self.coordinate_transform(hit_dict)
+        return hit_dict["event_number"], hit
+
+    def _read_h5_probes(self, pass_through_analysis):
+        # loop over files in the glob, read events and sort by event number
+        file_list = self.get_names()
+        if self.verbose:
+            print("Found following files", file_list)
+        if len(file_list) == 0:
+            name_list = str(self.output_name_list)
+            raise IOError("Failed to load any probes from "+name_list)
+        file_list = [h5py.File(file_name, 'r') for file_name in file_list]
+        step_number = 0
+        hit = ""
+        while len(file_list) > 0 and hit != None:
+            for i, fin in enumerate(file_list):
+                try:
+                    event, hit = self.read_h5_step(fin, step_number, i)
+                    pass_through_analysis.process_hit(event, hit)
+                except ValueError:
+                    if self.verbose:
+                        sys.excepthook(*sys.exc_info())
+                    hit = None
+                    continue
+            step_number += 1
+        self.last = pass_through_analysis.finalise()
+        return self.last
+
+    def read_h5_step(self, h5_file, step_number, station):
+        key = "Step#"+str(step_number)
+        if key not in h5_file:
+            raise ValueError("Missing step "+key)
+        h5_step = h5_file[key]
+        hit_dict = {}
+        for key in "pid", "mass", "charge":
+            hit_dict[key] = self.ref[key]
+        for h5_key, xboa_key in self.h5_key_to_xboa_key.items():
+            hit_dict[xboa_key] = h5_step[h5_key][0]
+            if xboa_key in self.units:
+                hit_dict[xboa_key] *= self.units[xboa_key]
+        for key in ["px", "py", "pz"]:
+            hit_dict[key] *= self.ref["mass"]
+        hit_dict["station"] = station
+        hit = self.coordinate_transform(hit_dict)
+        return hit_dict["event_number"], hit
+        
+
+    h5_key_to_xboa_key = {"y":"x", "z":"y", "x":"z", "time":"t",
+                          "py":"px", "pz":"py", "px":"pz", "id":"event_number"}
+    units = {"x":1000., "y":1000., "z":1000.}
 
     print_keys = ['x', 'y', 'z', 'px', 'py', 'pz', 'kinetic_energy']

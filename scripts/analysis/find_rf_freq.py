@@ -71,12 +71,12 @@ class FrequencyFinder(object):
             freq_list.append(frequency)
             energy += voltage*math.sin(phase)
             #print energy, frequency, time
-        print "Found frequencies for energy ", energy_0, "to", energy_1, "MeV"
-        print "RF running with", voltage, "MV/turn and", \
-              math.degrees(phase), "degrees"
-        print "Start frequency", freq_list[0], "end", freq_list[-1], "GHz"
-        print "For", len(time_list)-1, "turns and total cycle time", \
-              time_list[-1], "ns"
+        print("Found frequencies for energy ", energy_0, "to", energy_1, "MeV")
+        print("RF running with", voltage, "MV/turn and", \
+              math.degrees(phase), "degrees")
+        print("Start frequency", freq_list[0], "end", freq_list[-1], "GHz")
+        print("For", len(time_list)-1, "turns and total cycle time", \
+              time_list[-1], "ns")
         self.time_list = time_list
         self.freq_list = freq_list
         return time_list, freq_list
@@ -108,13 +108,13 @@ class FrequencyFinder(object):
             else:
                 energy = (-self.energy_list[i-1]+2.*self.energy_list[i])
             energy_test_2 = energy_test-1e-2
-            print i, energy_test_2, self._get_a_freq(energy_test_2)
-            print i, energy_test, self._get_a_freq(energy_test)
+            print(i, energy_test_2, self._get_a_freq(energy_test_2))
+            print(i, energy_test, self._get_a_freq(energy_test))
             energy_test_2 = energy_test+1e-2
-            print i, energy_test_2, self._get_a_freq(energy_test_2)
-            print i, energy_test, 1./self.closed_orbits_t[energy_test]
-            print i, energy, self._get_a_freq(energy)
-            print
+            print(i, energy_test_2, self._get_a_freq(energy_test_2))
+            print(i, energy_test, 1./self.closed_orbits_t[energy_test])
+            print(i, energy, self._get_a_freq(energy))
+            print()
 
 
     def _load_closed_orbits(self, filename):
@@ -129,7 +129,7 @@ class FrequencyFinder(object):
         """Load the position info from the closed orbit data"""
         closed_orbits_energy = [orbit[0] for orbit in closed_orbits]
         closed_orbits_x = [orbit[1:][0][0] for orbit in closed_orbits]
-        closed_orbits_x_dict = dict(zip(closed_orbits_energy, closed_orbits_x))
+        closed_orbits_x_dict = dict(list(zip(closed_orbits_energy, closed_orbits_x)))
         self.closed_orbits_x = closed_orbits_x_dict
 
     def _get_t(self, closed_orbits):
@@ -148,7 +148,7 @@ def main():
                   11., 150., 4.e-3, math.radians(30),
              )
     finder.plot_frequency()
-    raw_input()
+    input()
 
 if __name__ == "__main__":
     main()

@@ -29,37 +29,37 @@ class DAFinder(object):
 
     def get_all_da(self, co_index_list, seed_x, seed_y):
         if co_index_list == None:
-            co_index_list = range(len(self.co_list))
+            co_index_list = list(range(len(self.co_list)))
         for i in co_index_list:
             try:
                 co_element = self.co_list[i]
-                print "Finding da for element", i
+                print("Finding da for element", i)
             except KeyError:
-                print "Failed to find index", i, "in co_list of length", len(co_list)
+                print("Failed to find index", i, "in co_list of length", len(co_list))
                 continue
             if seed_x != None and seed_x > 0.:
                 co_element['x_da'] = self.get_da(co_element, 'x', seed_x)
             if seed_y != None and seed_y > 0.:
                 co_element['y_da'] = self.get_da(co_element, 'y', seed_y)
-            print >> self.fout_get(), json.dumps(co_element)
+            print(json.dumps(co_element), file=self.fout_get())
             self.fout_get().flush()
 
     def da_all_scan(self, co_index_list, x_list, y_list):
         if co_index_list == None:
-            co_index_list = range(len(self.co_list))
+            co_index_list = list(range(len(self.co_list)))
         for i in co_index_list:
             try:
                 co_element = self.co_list[i]
-                print "Scanning da for element", i
+                print("Scanning da for element", i)
             except KeyError:
-                print "Failed to find index", i, "in co_list of length", len(co_list)
+                print("Failed to find index", i, "in co_list of length", len(co_list))
                 continue
             co_element['da_scan'] = self.da_scan(co_element, x_list, y_list)
 
     def load_closed_orbits(self):
         fin = open(self.closed_orbit_file_name)
         co_list = [json.loads(line) for line in fin.readlines()]
-        print "Loaded", len(co_list), "closed orbits"
+        print("Loaded", len(co_list), "closed orbits")
         return co_list
 
     def setup(self):
@@ -69,7 +69,7 @@ class DAFinder(object):
         except OSError: # maybe the dir already exists
             pass
         os.chdir(self.run_dir)
-        print "Running in", os.getcwd()
+        print("Running in", os.getcwd())
         self.opal_exe = os.path.expandvars("${OPAL_EXE_PATH}/opal")
 
     def reference(self, hit_dict):
@@ -83,12 +83,12 @@ class DAFinder(object):
 
     def setup_tracking(self, co_element):
         subs = co_element["substitutions"]
-        for item, key in self.config.find_da["subs_overrides"].iteritems():
+        for item, key in self.config.find_da["subs_overrides"].items():
             subs[item] = key
-        print "Set up tracking for da with", 
+        print("Set up tracking for da with", end=' ') 
         for key in sorted(subs.keys()):
-            print utilities.sub_to_name(key), subs[key],
-        print
+            print(utilities.sub_to_name(key), subs[key], end=' ')
+        print()
         self.ref_hit = self.reference(co_element["hits"][0])
         lattice_src = self.config.tracking["lattice_file"]
         common.substitute(
@@ -141,7 +141,7 @@ class DAFinder(object):
             track_list = []
             try:
                 while len(event_list) < 1:
-                    track, event = gen.next()
+                    track, event = next(gen)
                     track_list.append(track)
                     event_list.append(event)
             except StopIteration:
@@ -150,9 +150,9 @@ class DAFinder(object):
                 break
             many_tracks = self.tracking.track_many(event_list)
             for i, hits in enumerate(many_tracks):
-                print "Tracked", len(hits), "total hits with track", track_list[i], "first event x px y py", hits[0]["x"], hits[0]["px"], hits[0]["y"], hits[0]["py"]
+                print("Tracked", len(hits), "total hits with track", track_list[i], "first event x px y py", hits[0]["x"], hits[0]["px"], hits[0]["y"], hits[0]["py"])
                 self.data.append([track_list[i], [a_hit.dict_from_hit() for a_hit in hits]])
-        print >> self.fout_scan(), json.dumps(self.data)
+        print(json.dumps(self.data), file=self.fout_scan())
         self.fout_scan().flush()
 
     def get_da(self, co_element, axis, seed_x):
@@ -170,10 +170,10 @@ class DAFinder(object):
                 hits = self.tracking.track_one(a_hit)
             except RuntimeError:
                 sys.excepthook(*sys.exc_info())
-                print "Never mind, keep on going..."
+                print("Never mind, keep on going...")
             self.data.append([co_delta[axis], [a_hit.dict_from_hit() for a_hit in hits]])
             self.data = sorted(self.data)
-            print "Axis", axis, "Seed", seed_x, "Number of cells hit", len(hits), "in", time.time() - my_time, "[s]"
+            print("Axis", axis, "Seed", seed_x, "Number of cells hit", len(hits), "in", time.time() - my_time, "[s]")
             sys.stdout.flush()
             seed_x = self.new_seed()
             if is_ref:
@@ -186,20 +186,20 @@ class DAFinder(object):
         if self.fout_scan_tmp == None:
             file_name = self.scan_file_name+".tmp"
             self.fout_scan_tmp = open(file_name, "w")
-            print "Opened file", file_name
+            print("Opened file", file_name)
         return self.fout_scan_tmp
 
     def fout_get(self):
         if self.fout_get_tmp == None:
             file_name = self.da_file_name+".tmp"
             self.fout_get_tmp = open(file_name, "w")
-            print "Opened file", file_name
+            print("Opened file", file_name)
         return self.fout_get_tmp
 
 def main(config):
     finder = DAFinder(config)
     finder.da_all_scan(config.find_da["row_list"], config.find_da["scan_x_list"], config.find_da["scan_y_list"])
     finder.get_all_da(config.find_da["row_list"], config.find_da["x_seed"], config.find_da["y_seed"], )
-    print "Done find da"
+    print("Done find da")
     sys.stdout.flush()
     return

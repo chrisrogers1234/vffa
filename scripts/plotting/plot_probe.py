@@ -35,7 +35,7 @@ class PlotProbes(object):
                 self.plot_phase_space(station_hit_list, x_axis, y_axis)
 
     def plot_phase_space(self, hit_list, x_axis, y_axis):
-        print "\nclosed orbit",
+        print("\nclosed orbit", end=' ')
         sys.stdout.flush()
         station = hit_list[0]['station']
         x_list = [hit[x_axis] for hit in hit_list]
@@ -53,7 +53,7 @@ class PlotProbes(object):
         canvas = xboa.common.make_root_canvas(name)
         hist, graph = xboa.common.make_root_graph(name, x_list, x_axis, y_list, y_axis)
         time = format(hit_list[0]['t'], "4.4g")
-        print station, time
+        print(station, time)
         hist.SetTitle("time "+time+" ns")
         hist.Draw()
         graph.SetMarkerStyle(4)
@@ -73,7 +73,7 @@ def main():
     file_name_list = [a_dir+"RINGPROBE06.loss", a_dir+"RINGPROBE07.loss"]+\
                      glob.glob(a_dir+"CELLPROBE*.loss")
     #file_name_list = [a_dir+"CELLPROBE06.loss"]
-    print file_name_list
+    print(file_name_list)
     plotter = PlotProbes(file_name_list, plot_dir)
     plotter.load_data()
     plotter.plot_phase_spaces()
@@ -88,4 +88,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-    raw_input("Done")
+    input("Done")

@@ -1,5 +1,5 @@
 import os
-import config_baseline
+from . import config_baseline
 
 class Config(config_baseline.Config):
     def __init__(self):
@@ -11,5 +11,5 @@ class Config(config_baseline.Config):
             m_value = 1.58 - delta/2 + delta*i/float(nsteps-1)
             self.substitution_list.append(config_baseline.get_baseline_substitution())
             self.substitution_list[-1]["__m_index__"] = m_value
-        print "M scan", [item["__m_index__"] for item in self.substitution_list]
+        print("M scan", [item["__m_index__"] for item in self.substitution_list])
         self.run_control["output_dir"] = os.path.join(os.getcwd(), "output/m_scan")

@@ -61,24 +61,24 @@ def plot_one(da_element, do_time = False):
     ekin = da_element['ekin']
     da_spaces = ['ref', 'da_1', 'da_2', 'da_3']
     if do_time:
-        eigenspaces = range(3)
-        physical_spaces = range(4)
+        eigenspaces = list(range(3))
+        physical_spaces = list(range(4))
     else:
-        eigenspaces = range(2)
-        physical_spaces = range(2)
+        eigenspaces = list(range(2))
+        physical_spaces = list(range(2))
     for key in da_spaces:
         if key not in da_element:
             continue
         da_eigenspace = {'ref':'ref', 'da_1':0, 'da_2':1, 'da_3':2}[key]
         for plot_eigenspace in eigenspaces:
-            print "Doing key", key, "plot", plot_eigenspace
+            print("Doing key", key, "plot", plot_eigenspace)
             point_x_list = []
             point_px_list = []
             for seed_x, points_list in da_element[key]:
-                print "   ...", key, "seed", seed_x, "with", len(points_list), "turns"
+                print("   ...", key, "seed", seed_x, "with", len(points_list), "turns")
                 point_x_list += [point[2*plot_eigenspace] for point in points_list]
                 point_px_list += [point[2*plot_eigenspace+1] for point in points_list]
-                print point_x_list[-10:]
+                print(point_x_list[-10:])
             name = "eigenspace_p_"+str(round(ptot, 1))+"-da_"+str(da_eigenspace)+"-plot_"+str(plot_eigenspace)
             canvas = common.make_root_canvas(name)
             canvas.Draw()
@@ -89,7 +89,7 @@ def plot_one(da_element, do_time = False):
             title = "DA for eigenspace: "+str(da_eigenspace)+\
                     " P: "+str(round(ptot, 1))+" MeV/c and E_{k}: "+\
                     str(round(ekin, 1))+" MeV requiring "+str(MIN_N_CELLS/CELL_STEP)+" turns"
-            print title
+            print(title)
             hist.SetTitle(title)
             hist.Draw()
             graph.Draw("SAMEP")
@@ -123,7 +123,7 @@ def plot_one(da_element, do_time = False):
             title = "DA for eigenspace: "+str(da_eigenspace)+\
                     " P: "+str(round(ptot, 1))+" MeV/c and E_{k}: "+\
                     str(round(ekin, 1))+" MeV requiring "+str(MIN_N_CELLS/CELL_STEP)+" turns"
-            print title
+            print(title)
             hist.SetTitle(title)
             hist.Draw()
             graph.Draw("SAMEP")
@@ -187,7 +187,7 @@ def plot_acceptance(da_list, eigenspace_key):
 
 def main():
     da_list = da_finder.load_closed_orbits("baseline/closed_orbits_1_MeV_with_da_tmp")
-    print len(da_list), da_list[0].keys()
+    print(len(da_list), list(da_list[0].keys()))
     da_list = [cleanup(da_element) for da_element in da_list]
     for da_element in []: #da_list:
         try:
@@ -196,12 +196,12 @@ def main():
             pass
     plot_acceptance(da_list, "da_1")
     plot_acceptance(da_list, "da_2")
-    if "da_3" in da_list[0].keys():
+    if "da_3" in list(da_list[0].keys()):
         plot_acceptance(da_list, "da_3")
 
 
 if __name__ == "__main__":
     main()
-    print "Finished - press <CR> to close"
-    raw_input()
+    print("Finished - press <CR> to close")
+    input()
 

@@ -4,6 +4,7 @@ import json
 import sys
 import math
 import numpy
+import argparse
 
 import ROOT
 import xboa.common
@@ -13,17 +14,15 @@ from utils.decoupled_transfer_matrix import DecoupledTransferMatrix
 
 
 class ClosedOrbitsPlotter(object):
-    def __init__(self, file_list):
+    def __init__(self):
         self.data = []
         self.tm_lambda = None
-        self.output_dir = os.path.split(file_list[0])[0]
         self.phase_advance_axis = 0
+        self.log_x = False
         self.subs_key = "substitutions"
-        for file_name in file_list:
-            self.load_file(file_name)
 
     def load_file(self, file_name):
-        print "Loading", file_name
+        print("Loading", file_name)
         fin = open(file_name)
         for line in fin.readlines():
             self.data.append(json.loads(line))
@@ -38,7 +37,7 @@ class ClosedOrbitsPlotter(object):
 
     def do_plots_by_sub(self):
         subs_axes = utilities.get_substitutions_axis(self.data, self.subs_key)
-        print subs_axes
+        print(subs_axes)
         for axis in subs_axes:
             axis_name = utilities.sub_to_name(axis).lower().replace(" ", "_")
             for name in "x", "x'", "y", "y'":
@@ -57,6 +56,15 @@ class ClosedOrbitsPlotter(object):
                 canvas, mgraph = self.plot_item(name, self.get_tm, axis, canvas, mgraph)
             mgraph.Draw("AP")
             canvas.Print(self.output_dir+"/"+axis_name+"_vs_phase_advance.png")
+            
+            for self.phase_advance_axis in 0, 1:
+                canvas, mgraph = None, None
+                self.tm_lambda = self.tm_phase_advance
+                name = "phase advance "+str(self.phase_advance_axis)
+                canvas, mgraph = self.plot_item(name, self.get_tm, axis, canvas, mgraph)
+                mgraph.Draw("AP")
+                name = name.replace(" ", "_")
+                canvas.Print(self.output_dir+"/"+axis_name+"_vs_"+name+".png")
 
             self.tm_lambda = self.tm_det
             name = "Determinant"
@@ -68,6 +76,7 @@ class ClosedOrbitsPlotter(object):
         name = x_name+" vs "+y_name+" vs "+z_name
         x_data, y_data, z_data = [], [], []
         for item in self.data:
+            x_i, y_i, z_i = 0., 0., 0.
             try:
                 x_i = x_lambda(item)
                 y_i = y_lambda(item)
@@ -77,10 +86,10 @@ class ClosedOrbitsPlotter(object):
             x_data.append(x_i)
             y_data.append(y_i)
             z_data.append(z_i)
-        print "Plotting ", name
-        print "   ", x_data
-        print "   ", y_data
-        print "   ", z_data
+        print("Plotting ", name)
+        print("   ", x_name, x_data)
+        print("   ", y_name, y_data)
+        print("   ", z_name, z_data)
 
         n_points = len(self.data)
         if canvas == None:
@@ -125,9 +134,12 @@ class ClosedOrbitsPlotter(object):
                 #sys.excepthook(*sys.exc_info())
                 y_data.append(0.)
         name = utilities.sub_to_name(axis)+" vs "+y_name
+        print("   ", y_name, y_data)
         hist, graph = xboa.common.make_root_graph(name, x_data, x_name, y_data, y_name)
         if canvas == None:
             canvas = xboa.common.make_root_canvas(name)
+            if self.log_x:
+                canvas.SetLogx(True)
             canvas.Draw()
             mgraph = ROOT.TMultiGraph()
             mgraph.SetTitle(";"+x_name+";"+y_name)
@@ -171,16 +183,29 @@ class ClosedOrbitsPlotter(object):
         delta_mag = sum([x*x for x in delta])**0.5
         return delta_mag
 
+    def parse_args(self, args):
+        parser = argparse.ArgumentParser()
+        parser.add_argument('file_names', metavar='N', type=str, nargs='+')
+        parser.add_argument('--log_x', dest='log_x', action='store_true')
+        parser.set_defaults(log_x=False)
+        args = parser.parse_args()
+        self.output_dir = os.path.split(args.file_names[0])[0]
+        for file_name in args.file_names:
+            self.load_file(file_name)
+        self.log_x = args.log_x
+
+
     root_objects = []
 
 def main():
     utilities.setup_gstyle()
     if len(sys.argv[1:]) == 0:
-        print "Usage - python plot_closed_orbits [file_name_1] [file_name_2] ..."
-    co_plotter = ClosedOrbitsPlotter(sys.argv[1:])
+        print("Usage - python plot_closed_orbits [file_name_1] [file_name_2] ...")
+    co_plotter = ClosedOrbitsPlotter()
+    co_plotter.parse_args(sys.argv)
     co_plotter.do_plots_by_sub()
     co_plotter.do_plots_all_in()
 
 if __name__ == "__main__":
     main()
-    raw_input("Done")
+    input("Done")

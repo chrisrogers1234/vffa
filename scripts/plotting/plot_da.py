@@ -24,7 +24,7 @@ def load_data(file_name):
             data.append(json.loads(line))
         except:
             continue
-    print "Loaded", len(data), "lines"
+    print("Loaded", len(data), "lines")
     return data
 
 def polar(point):
@@ -47,7 +47,7 @@ def calculate_da(row_data, da_key, n_points):
     mass = common.pdg_pid_to_mass[2212]
     hit_list = []
     for i, tmp_list in enumerate(row_data[da_key]):
-        print len(tmp_list), tmp_list[0]
+        print(len(tmp_list), tmp_list[0])
         # hit_list[0] is the x/y offset in mm; hit_list[1] is the corresponding
         # set of probe hits
         if len(tmp_list[1]) < n_points:
@@ -56,11 +56,11 @@ def calculate_da(row_data, da_key, n_points):
     hit_list = [Hit.new_from_dict(hit_dict) for hit_dict in hit_list[1]]
     points = numpy.array([[hit[axis1], hit[axis2]] for hit in hit_list])
     x_list = [hit[axis1] for hit in hit_list]
-    print min(x_list), max(x_list)
+    print(min(x_list), max(x_list))
     y_list = [hit[axis2] for hit in hit_list]
-    print min(y_list), max(y_list)
+    print(min(y_list), max(y_list))
     pz = hit_list[0]['pz']
-    print math.pi*(max(x_list)-min(x_list))*(max(y_list)-min(y_list))/4.*mass/pz
+    print(math.pi*(max(x_list)-min(x_list))*(max(y_list)-min(y_list))/4.*mass/pz)
     if len(points):
         geometric_acceptance = get_area(points)/math.pi
         # beta gamma * geometric emittance
@@ -94,8 +94,8 @@ def plot_da(data, max_n_points, plot_dir, acceptance):
         for key in variables:
             variables[key] = item['substitutions'][key]
         for da_key in 'y_da', 'x_da': 
-            if da_key not in item.keys():
-                print "Did not find", da_key, "in keys", item.keys(), "... skipping"
+            if da_key not in list(item.keys()):
+                print("Did not find", da_key, "in keys", list(item.keys()), "... skipping")
                 continue
             for axis1, axis2 in ('x', "x'"), ('y', "y'"):
                 canvas = plot_one_da(item, da_key, axis1, axis2, max_n_points, variables, acceptance)
@@ -116,11 +116,11 @@ def make_global_plot(data, min_n_points, plot_dir):
     da = {'y_da':[], 'x_da':[]}
     for item in data:
         for da_key in da:
-            if da_key not in item.keys():
-                print "Did not find", da_key, "in keys", item.keys(), "... skipping"
+            if da_key not in list(item.keys()):
+                print("Did not find", da_key, "in keys", list(item.keys()), "... skipping")
                 continue
             da[da_key].append(calculate_da(item, da_key, min_n_points)*1e3)
-            print da_key, da[da_key][-1]
+            print(da_key, da[da_key][-1])
         for ax_key in my_axes_x:
             my_axes_x[ax_key].append(item['substitutions'][ax_key])
     for ax_key in my_axes_x:
@@ -180,7 +180,7 @@ def plot_one_phi(row_data, da_key, axis1, axis2, max_n_points, variables):
     tune_data = []
     area_data = []
     da_row = get_da_row(hit_data, max_n_points)
-    print "Plot on phi"
+    print("Plot on phi")
     cholesky_canvas = common.make_root_canvas(name+"_cholesky")
     cholesky_canvas.SetCanvasSize(1000, 1000)
     delta = (da_row+1)*0.4+1.
@@ -197,7 +197,7 @@ def plot_one_phi(row_data, da_key, axis1, axis2, max_n_points, variables):
             finder.get_tune()
             an_area = get_area(area_src)
         except Exception:
-            print "Failed to unpack data for phi da plot"
+            print("Failed to unpack data for phi da plot")
             continue
         cholesky_canvas, hist, graph = finder.plot_cholesky_space(cholesky_canvas, 1.+i*0.2)
         if i < da_row:
@@ -207,8 +207,8 @@ def plot_one_phi(row_data, da_key, axis1, axis2, max_n_points, variables):
         ROOT_OBJECTS += [hist, graph]
         tune_data += copy.deepcopy(finder.dphi)
         area_data += [an_area for i in finder.dphi]
-        print "    Area", an_area,
-        print " tune", numpy.mean(tune_data), "+/-", numpy.std(tune_data)
+        print("    Area", an_area, end=' ')
+        print(" tune", numpy.mean(tune_data), "+/-", numpy.std(tune_data))
     canvas = common.make_root_canvas(name)
     canvas.Draw()
     hist, graph = common.make_root_graph(name, area_data, "Amplitude [mm]", tune_data, "Fractional tune")
@@ -227,10 +227,10 @@ def plot_acceptance(acceptance, x_data, y_data, axis2):
     x_mean, y_mean = numpy.mean(x_data), numpy.mean(y_data)
     x_values = [(x-x_mean)*scale for x in x_data]
     y_values = [(y-y_mean)*scale for y in y_data]
-    print "Acceptance bounding box (relative to mean) x:", min(x_values), max(x_values), "x':", min(y_values), max(y_values)
-    values = zip(x_values, y_values)
+    print("Acceptance bounding box (relative to mean) x:", min(x_values), max(x_values), "x':", min(y_values), max(y_values))
+    values = list(zip(x_values, y_values))
     values = sorted(values, key = lambda x: math.atan2(x[0], x[1]))
-    x_values, y_values = zip(*values)
+    x_values, y_values = list(zip(*values))
     x_values = [x+x_mean for x in x_values]
     y_values = [y+y_mean for y in y_values]
     x_values.append(x_values[0])
@@ -287,17 +287,17 @@ def test():
       [1., -1.], [1., 1.], [-1., 1.], [-1., -1.]
     ])
     area = get_area(points)
-    print "Square Test - get area should be 4:", area
+    print("Square Test - get area should be 4:", area)
 
     points = numpy.array([
       [2., 0.], [0., 2.], [0., -2.], [-2., 0.], [1., -1.], [1., 1.], [-1., 1.], [-1., -1.]
     ])
     area = get_area(points)
-    print "Star Test - get area should be 8:", area
+    print("Star Test - get area should be 8:", area)
 
     points += [10., 7.]
     area = get_area(points)
-    print "Translated Star Test - get area should be 8:", area
+    print("Translated Star Test - get area should be 8:", area)
 
 def main():
     base_dir = "output/"
@@ -315,6 +315,6 @@ def main():
 if __name__ == "__main__":
     #test()
     main()
-    print "Finished - press <CR> to close"
-    raw_input()
+    print("Finished - press <CR> to close")
+    input()
 

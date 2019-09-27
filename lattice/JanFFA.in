@@ -3,8 +3,8 @@ Option, ECHO=TRUE;
 // Input file for single bunch tracking through ERIT FFAG ring              //
 //////////////////////////////////////////////////////////////////////////////
 Title,string="Small ring using OPAL code";
-Option, ASCIIDUMP=TRUE;
-Option, ENABLEHDF5=FALSE;
+Option, ASCIIDUMP=FALSE;
+Option, ENABLEHDF5=TRUE;
 OPTION, PSDUMPFREQ=100000;
 Option, VERSION=10900;
 Option, SPTDUMPFREQ=1;
@@ -405,8 +405,8 @@ IF (DO_MAGNET_FIELD_MAPS) {
                 Z_START=0, Z_STEPS=1, DZ=1e-3;
 
 //    DUMPEMFIELDS, COORDINATE_SYSTEM=CYLINDRICAL, FILE_NAME="FieldMapJB.dat",
-//        R_START=13.5, R_STEPS=101, DR=0.01,
-//        PHI_START=0.*DEGREE, PHI_STEPS=25*24, DPHI=0.04*DEGREE,
+//        R_START=13.5, R_STEPS=151, DR=0.01,
+//        PHI_START=0.*DEGREE, PHI_STEPS=25*24+1, DPHI=0.04*DEGREE,
 //        Z_START=0, Z_STEPS=51, DZ=0.01,
 //        T_START=0, T_STEPS=1, DT=1.;
 }
@@ -442,7 +442,7 @@ beam1: BEAM, PARTICLE=PROTON, pc=P0/1000., NPART=1, BCURRENT=1, CHARGE=1.0, BFRE
 VALUE, VALUE={E0, P0, P_MASS};
 
 TRACK, LINE=l1, BEAM=beam1, MAXSTEPS=MAX_STEPS, STEPSPERTURN=STEPS_PER_TURN;
-RUN, METHOD="CYCLOTRON-T", BEAM=beam1, FIELDSOLVER=Fs1, DISTRIBUTION=Dist1;
+RUN, METHOD="CYCLOTRON-T", BEAM=beam1, FIELDSOLVER=Fs1, DISTRIBUTION=Dist1, KEEPALIVE=True;
 ENDTRACK;
 STOP;
 

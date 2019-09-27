@@ -62,9 +62,9 @@ class TrackBeam(object):
         #    self.ellipse[i+1, i] *= p
         self.ellipse[4, 4] = sigma_z
         self.ellipse[5, 5] = sigma_pz
-        print "Centre", self.centre
-        print "Ellipse"
-        print self.ellipse
+        print("Centre", self.centre)
+        print("Ellipse")
+        print(self.ellipse)
 
     def setup_workspace(self):
         self.run_dir = self.config.run_control["output_dir"]+"/"+self.config.track_beam["run_dir"]
@@ -85,8 +85,8 @@ class TrackBeam(object):
                 hit[key] = item[i]
             self.hits_in.append(hit)
         for hit in self.hits_in[0:10]:
-            print "   ", [hit[key] for key in keys]
-        print "Made", len(self.hits_in), "hits"
+            print("   ", [hit[key] for key in keys])
+        print("Made", len(self.hits_in), "hits")
         
 
     def run_tracking(self, index):
@@ -97,7 +97,7 @@ class TrackBeam(object):
         lattice_file = self.run_dir+'SectorFFAGMagnet.tmp'
 
         subs = self.config.substitution_list[index]
-        for key, value in self.config.track_beam["subs_overrides"].iteritems():
+        for key, value in self.config.track_beam["subs_overrides"].items():
             subs[key] = value
         xboa.common.substitute(input_file, lattice_file, subs)
         log_name = self.run_dir+"/log"
@@ -109,12 +109,12 @@ class TrackBeam(object):
         phase_space_plots = PhaseSpacePlots(self.config)
         tunes_analysis.set_match(self.centre[0:4], self.ellipse[0:4, 0:4])
         if self.config.track_beam["do_track"]:
-            print "Running tracking with\n   ",
-            for key, value in subs.iteritems():
-                print utilities.sub_to_name(key)+":", value,
-            print
+            print("Running tracking with\n   ", end=' ')
+            for key, value in subs.items():
+                print(utilities.sub_to_name(key)+":", value, end=' ')
+            print()
             self.tracking.track_many(self.hits_in, None)
-        print os.getcwd(), probe_files
+        print(os.getcwd(), probe_files)
         self.tracking._read_probes(tunes_analysis)
         #self.tracking._read_probes(phase_space_plots)
 

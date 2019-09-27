@@ -64,8 +64,8 @@ class FindFixedFrequency(object):
         self.toy.cavity_phase = [0., 0.25, 0.5, 0.75] # fixed actual phase of cavity
         self.toy.azimuthal_angle = [0.]+[0., 0.25, 0.5, 0.75]+[1.] # position of cavity
         self.toy.setup_lookup(self.co_file, n_cells=15)
-        print "Built ring with frequency", self.toy.omega/2./math.pi, \
-              "scallop factor", self.toy.scallop_factor
+        print("Built ring with frequency", self.toy.omega/2./math.pi, \
+              "scallop factor", self.toy.scallop_factor)
 
         self.toy.plot_dir = self.plot_dir
         self.toy.output_dir = self.tmp_dir
@@ -79,7 +79,7 @@ class FindFixedFrequency(object):
     def do_substitutions(self, phi_init):
         overrides = self.config.find_fixed_frequency["subs_overrides"]
         self.subs = copy.deepcopy(self.config.substitution_list[0])
-        for key, value in overrides.iteritems():
+        for key, value in overrides.items():
             self.subs[key] = value
         self.subs["__rf_phase__"] = phi_init
         self.subs["__rf_freq_0__"] = self.toy.omega/math.pi/2.
@@ -115,14 +115,14 @@ class FindFixedFrequency(object):
             os.rename(lattice_name+"-trackOrbit.dat",
                       lattice_name+"-trackOrbit-"+str(i+1)+".dat")
             max_e = max([hit['kinetic_energy'] for hit in hit_list])
-            print len(hit_list), "hits with peak energy", max_e, "start and end t, E:"
-            print [(hit['t'], hit['kinetic_energy']) for hit in hit_list[0:2]+ldots+hit_list[-3:-1]]
+            print(len(hit_list), "hits with peak energy", max_e, "start and end t, E:")
+            print([(hit['t'], hit['kinetic_energy']) for hit in hit_list[0:2]+ldots+hit_list[-3:-1]])
             color = clr_list[0]
             clr_list = numpy.roll(clr_list, 1)
             self.plot_acceleration(hit_list, phi+0.5, color)
 
     def plot_acceleration(self, hit_list, phi, color):
-        print "Plot acceleration", hit_list[0]['t'], phi, self.toy.omega
+        print("Plot acceleration", hit_list[0]['t'], phi, self.toy.omega)
         out_list = [[hit['p'], hit['t']+2.*math.pi*phi/self.toy.omega] for hit in hit_list]
         self.acceleration_canvas = self.toy.plot_acceleration(out_list,
                                                               color,
@@ -138,9 +138,9 @@ class FindFixedFrequency(object):
         e_list = [hit['kinetic_energy'] for hit in hit_list[1:]]
         dt_list = [hit['t']-hit_list[i]['t']-self.toy.tof(hit['p']) for i, hit in enumerate(hit_list[1:])]
         for i, hit in enumerate(hit_list[1:10]):
-            print hit['t'], hit_list[i]['t'], self.toy.tof(hit['p'])
-        print dt_list[0:10]
-        print e_list[0:10]
+            print(hit['t'], hit_list[i]['t'], self.toy.tof(hit['p']))
+        print(dt_list[0:10])
+        print(e_list[0:10])
         dt_max = 0.1/self.toy.omega
         hist, graph = xboa.common.make_root_graph("e vs dt",
                                                   dt_list, 'dt [ns]',
@@ -180,7 +180,7 @@ class FindFixedFrequency(object):
 
     def output(self, hit_list):
         output = {"substitutions":self.subs, "hits":[hit.dict_from_hit() for hit in hit_list]}
-        print >> self.fout, json.dumps(output)
+        print(json.dumps(output), file=self.fout)
         self.fout.flush()
 
 

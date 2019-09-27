@@ -52,14 +52,14 @@ class Tune(object):
             tm[i] = row[1:5]
         tm = DecoupledTransferMatrix(tm)
         coupled_psv = tm.coupled(decoupled_psv)
-        print "Decoupled:", decoupled_psv
-        print "Coupled:  ", coupled_psv
+        print("Decoupled:", decoupled_psv)
+        print("Coupled:  ", coupled_psv)
         ref_hit = Hit.new_from_dict(co_element["seed_hit"])
         test_hit = copy.deepcopy(ref_hit)
         for i, var in enumerate(self.var_list):
-            print "Adding", coupled_psv[i], "to", var, "before", test_hit[var],
+            print("Adding", coupled_psv[i], "to", var, "before", test_hit[var], end=' ')
             test_hit[var] += coupled_psv[i]
-            print "after", test_hit[var]
+            print("after", test_hit[var])
         test_hit.mass_shell_condition("pz")
         os.chdir(self.run_dir)
         subs = utilities.do_lattice(self.config, co_element["substitutions"], overrides)
@@ -68,14 +68,14 @@ class Tune(object):
                                                  subs["__energy__"])
         self.tracking.verbose = True
         track = self.tracking.track_one(test_hit)
-        print "Found", len(track), "hits"
+        print("Found", len(track), "hits")
         os.chdir(self.here)
         decoupled_track = []
         for hit in track:
-            print "    ",
+            print("    ", end=' ')
             for var in self.var_list:
-                print format(hit[var], "14.8g"),
-            print
+                print(format(hit[var], "14.8g"), end=' ')
+            print()
             coupled_psv_out = [hit[var]-ref_hit[var] for var in self.var_list]
             decoupled_psv_out = tm.decoupled(coupled_psv_out)
             decoupled_track.append(decoupled_psv_out)
@@ -100,13 +100,13 @@ class Tune(object):
         fout = open(self.output_filename+".tmp", "w")
         for i, closed_orbit in enumerate(self.closed_orbits_cached):
             subs = closed_orbit["substitutions"]
-            for item, key in self.config.find_tune["subs_overrides"].iteritems():
+            for item, key in self.config.find_tune["subs_overrides"].items():
                 subs[item] = key
 
-            print "Finding tune with", 
+            print("Finding tune with", end=' ') 
             for key in sorted(subs.keys()):
-                print utilities.sub_to_name(key), subs[key],
-            print
+                print(utilities.sub_to_name(key), subs[key], end=' ')
+            print()
             tune_info = {"substitutions":subs}
             ref_psv_list = self.track_decoupled(closed_orbit, [0., 0., 0., 0.])[1:]
             for axis, not_axis in [("u", "v"), ("v", "u")]:
@@ -122,10 +122,10 @@ class Tune(object):
                     tune = finder.get_tune(subs["__n_turns__"]/10.) # tolerance
                 except:
                     tune = 0.
-                print '  Found', len(finder.dphi), 'dphi elements with tune', tune, "+/-", finder.tune_error
+                print('  Found', len(finder.dphi), 'dphi elements with tune', tune, "+/-", finder.tune_error)
                 tune_info[axis+"_tune"] = tune
                 tune_info[axis+"_tune_rms"] = finder.tune_error
-                tune_info[axis+"_signal"] = zip(finder.u, finder.up)
+                tune_info[axis+"_signal"] = list(zip(finder.u, finder.up))
                 tune_info[axis+"_dphi"] = finder.dphi
                 tune_info[axis+"_n_cells"] = len(finder.dphi)
                 canvas, hist, graph = finder.plot_phase_space()
@@ -148,15 +148,15 @@ class Tune(object):
                     u_chol = finder.point_circles[i][0]
                     up_chol = finder.point_circles[i][1]
                     phi = math.atan2(up_chol, u_chol)
-                    print str(i).ljust(4),  str(round(t, 4)).rjust(8), "...", \
+                    print(str(i).ljust(4),  str(round(t, 4)).rjust(8), "...", \
                           str(round(u, 4)).rjust(8), str(round(up, 4)).rjust(8), "...", \
                           str(round(u_chol, 4)).rjust(8), str(round(up_chol, 4)).rjust(8), "...", \
-                          str(round(phi, 4)).rjust(8), str(round(dphi, 4)).rjust(8)
+                          str(round(phi, 4)).rjust(8), str(round(dphi, 4)).rjust(8))
 
             for key in sorted(tune_info.keys()):
                 if "signal" not in key and "dphi" not in key:
-                    print "   ", key, tune_info[key]
-            print >> fout, json.dumps(tune_info)
+                    print("   ", key, tune_info[key])
+            print(json.dumps(tune_info), file=fout)
             fout.flush()
         fout.close()
         os.rename(self.output_filename+".tmp", self.output_filename)

@@ -17,12 +17,12 @@ from utils import utilities
 
 def get_config():
     if len(sys.argv) < 2:
-        print "Usage: python /path/to/run_one.py /path/to/config.py"
+        print("Usage: python /path/to/run_one.py /path/to/config.py")
         sys.exit(1)
     config_file = sys.argv[1].replace(".py", "")
     config_file = config_file.split("scripts/")[1]
     config_file = config_file.replace("/", ".")
-    print "Using configuration module", config_file
+    print("Using configuration module", config_file)
     config_mod = importlib.import_module(config_file)
     config = config_mod.Config()
     return config

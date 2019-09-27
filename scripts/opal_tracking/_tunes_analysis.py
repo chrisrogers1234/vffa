@@ -104,8 +104,8 @@ class TunesAnalysis(object):
         self.cholesky_inv = numpy.linalg.inv(cholesky)
         self.cholesky_x = numpy.linalg.inv(cholesky[0:2, 0:2])
         self.cholesky_y = numpy.linalg.inv(cholesky[2:4, 2:4])
-        print "Setup cholesky inverse to"
-        print self.cholesky_inv
+        print("Setup cholesky inverse to")
+        print(self.cholesky_inv)
 
     def graph_range(self, axis):
         x_min = axis.GetXmin()
@@ -161,10 +161,10 @@ class TunesAnalysis(object):
     def necktie_graph(self):
         output_dir = self.config.run_control["output_dir"]
         x_tunes, y_tunes = [], []
-        for event in self.real_points.keys():
+        for event in list(self.real_points.keys()):
             if len(self.x_tunes[event]) > 0 and len(self.y_tunes[event]) > 0:
                 #if event in self.plot_events:
-                print "mean x:", numpy.mean(self.x_tunes[event]), "std x:", numpy.std(self.x_tunes[event]), "mean y:", numpy.mean(self.y_tunes[event]), "std y:", numpy.std(self.y_tunes[event])
+                print("mean x:", numpy.mean(self.x_tunes[event]), "std x:", numpy.std(self.x_tunes[event]), "mean y:", numpy.mean(self.y_tunes[event]), "std y:", numpy.std(self.y_tunes[event]))
                 x_tunes.append(numpy.mean(self.x_tunes[event]))
                 y_tunes.append(numpy.mean(self.y_tunes[event]))
         canvas = xboa.common.make_root_canvas("necktie")
@@ -183,16 +183,16 @@ class TunesAnalysis(object):
         for event in sorted(self.real_points.keys()):
             if event not in self.plot_events:
                continue
-            print event
+            print(event)
             for i, a_point in enumerate(self.real_points[event]):
                 for x in a_point:
-                    print str(round(x, 2)).rjust(8),
+                    print(str(round(x, 2)).rjust(8), end=' ')
                 for x in self.cholesky_points[event][i]:
-                    print str(round(x, 2)).rjust(8),
+                    print(str(round(x, 2)).rjust(8), end=' ')
                 if i > 2:
-                    print self.x_tunes[event][i-2], self.y_tunes[event][i-2]
+                    print(self.x_tunes[event][i-2], self.y_tunes[event][i-2])
                 else:
-                    print
+                    print()
         self.draw_plots()
         self.necktie_graph()
         return

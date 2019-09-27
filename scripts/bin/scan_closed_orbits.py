@@ -2,8 +2,8 @@
 class ScanClosedOrbits(object):
     def __init__(self, sub_index, subs, seed, max_iterations):
         for key in sorted(subs.keys()):
-            print utilities.sub_to_name(key), subs[key],
-        print
+            print(utilities.sub_to_name(key), subs[key], end=' ')
+        print()
         out_dir = OUT_DIR
         run_dir = RUN_DIR
         tmp_dir = "./"
@@ -12,7 +12,7 @@ class ScanClosedOrbits(object):
         except OSError: # maybe the dir already exists
             pass
         os.chdir(run_dir)
-        print "Running in", os.getcwd()
+        print("Running in", os.getcwd())
         common.substitute(CONFIG.tracking["lattice_file"], tmp_dir+'SectorFFAGMagnet.tmp', subs)
         energy = subs["__energy__"]
         ref_hit = reference(energy)

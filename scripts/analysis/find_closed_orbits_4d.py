@@ -74,18 +74,18 @@ class ClosedOrbitFinder4D(object):
         # \vec{x} = \vec{m} + \matrix{M} \vec{x}
         # Solve (\matrix{1} - \matrix{M}) \vec{x} = \vec{m}
         m = tm.get_coefficients_as_matrix()
-        print "TM:"
+        print("TM:")
         for i, row in enumerate(m):
             m[i] = row[0:5]
-        print self.str_matrix(m)
+        print(self.str_matrix(m))
         try:
             dm = self.get_decoupled(tm)
-            print "Determinant:  ", numpy.linalg.det(dm.m)
-            print "Phase advance:", [dm.get_phase_advance(i)/math.pi/2. for i in range(2)]
+            print("Determinant:  ", numpy.linalg.det(dm.m))
+            print("Phase advance:", [dm.get_phase_advance(i)/math.pi/2. for i in range(2)])
         except Exception:
             sys.excepthook(*sys.exc_info())
             dm = DecoupledTransferMatrix(numpy.identity(4))
-            print "Failed to calculate phase advance"
+            print("Failed to calculate phase advance")
         dim = len(m)
         m_vec = numpy.array([m[i][0] for i in range(dim)])
         matrix = numpy.array([[-m[i][j] for j in range(1, dim+1)] for i in range(dim)])
@@ -152,9 +152,9 @@ class ClosedOrbitFinder4D(object):
 
     def fit_matrix(self, tm_list_in, tm_list_out):
         coefficients = []
-        print "fit_matrix TM LIST"
-        print "    ", tm_list_in[0]
-        print "    ", tm_list_out[0]
+        print("fit_matrix TM LIST")
+        print("    ", tm_list_in[0])
+        print("    ", tm_list_out[0])
         for i in range(50):
             index = PolynomialMap.index_by_power(i, 4)
             do_continue = False
@@ -183,7 +183,7 @@ class ClosedOrbitFinder4D(object):
         for j, values in enumerate(self.get_values_2(dim)):
             values = [seeds[i]+values[i]*deltas[i] for i in range(dim)]
             a_track = self.track_one(values, 0., False)
-            print "\r", "-/|\\"[j%4], j,
+            print("\r", "-/|\\"[j%4], j, end=' ')
             sys.stdout.flush()
             if len(a_track) < ds_cell+1:
                 raise RuntimeError("Output had "+str(len(a_track))+\
@@ -200,20 +200,20 @@ class ClosedOrbitFinder4D(object):
 
     def check_stuck(self, errors, new_co, tm_list_in, tm_list_out, seeds):
         tolerance = self.config_co["tolerance"]
-        indices = range(len(new_co))
+        indices = list(range(len(new_co)))
         ref_in = tm_list_in[0]
         ref_out = tm_list_in[1]
         if len(errors) > 1:
             delta_error = errors[-2] - errors[-1]
-            print "Checking stuck; error", errors[-1], "delta", delta_error, "tolerance", tolerance
+            print("Checking stuck; error", errors[-1], "delta", delta_error, "tolerance", tolerance)
             if delta_error < tolerance and errors[-1] > tolerance:
                 printout = [seeds[i]+new_co[i] for i in indices]
-                print "Detected stuck finder a; giving it a kick from\n   ", printout,
+                print("Detected stuck finder a; giving it a kick from\n   ", printout, end=' ')
                 new_co = [(ref_in[i]+ref_out[i])/2. for i in indices]
                 printout = [seeds[i]+new_co[i] for i in indices]
-                print "to\n   ", printout
+                print("to\n   ", printout)
                 errors[-1] = errors[0]
-                print "and resetting last error to", errors[-1]
+                print("and resetting last error to", errors[-1])
         return new_co
 
     def get_error(self, delta):
@@ -223,18 +223,21 @@ class ClosedOrbitFinder4D(object):
         return error
 
     def print_ref_track(self, ref_track, seeds, tm):
-        print "Reference track for seed", seeds
+        print("Reference track for seed", seeds)
         for i, hit in enumerate(ref_track):
             ref_list = [hit[var] for var in self.var_list]
-            print "Ref track:", self.str_matrix(ref_list),
+            fmt = "10.6g"
             if not tm:
-                print
+                fmt = "14.10g"
+            print("Ref track:", self.str_matrix(ref_list, fmt), end=' ')
+            if not tm:
+                print()
                 continue
-            print "decoupled",
+            print("decoupled", end=' ')
             coupled = [hit[var]-seeds[j] for j, var in enumerate(self.var_list)]
             #print coupled
             decoupled = tm.decoupled(coupled)
-            print self.str_matrix(decoupled)
+            print(self.str_matrix(decoupled))
 
     def tm_co_fitter(self, seeds):
         output = {}
@@ -260,9 +263,9 @@ class ClosedOrbitFinder4D(object):
         errors = []
         new_seeds = seeds
         while len(errors) == 0 or (errors[-1] > tolerance and len(errors) < max_iter):
-            print "----------------\nLooping with seed", self.str_matrix(new_seeds),
-            print "delta", self.str_matrix(deltas, "4.2g"),
-            print "error", self.get_error(new_deltas), "tolerance", tolerance
+            print("----------------\nLooping with seed", self.str_matrix(new_seeds), end=' ')
+            print("delta", self.str_matrix(deltas, "4.2g"), end=' ')
+            print("error", self.get_error(new_deltas), "tolerance", tolerance)
             try:
                 tm_list_in, tm_list_out, ref_track = self.get_tm(new_seeds, deltas)
             except RuntimeError:
@@ -280,7 +283,7 @@ class ClosedOrbitFinder4D(object):
             errors.append(self.get_error(new_deltas))
             #new_co = self.check_stuck(errors, new_co, tm_list_in, tm_list_out, seeds)
             new_seeds = [seeds[i]+x for i, x in enumerate(new_co)]
-        print "Finished iteration with deltas", deltas, "rms", sum([d*d for d in deltas])**0.5
+        print("Finished iteration with deltas", deltas, "rms", sum([d*d for d in deltas])**0.5)
         if tm:
             tm = tm.get_coefficients_as_matrix()
         output = {
@@ -332,8 +335,8 @@ class ClosedOrbitFinder4D(object):
         for config_seed in self.config_co["seed"]:
             self.output_list = []
             for i, self.subs in enumerate(self.config.substitution_list):
-                print "\n\nNew closed orbit loop", i+1, "/", len(self.config.substitution_list), "with lattice values"
-                print self.print_list[i]
+                print("\n\nNew closed orbit loop", i+1, "/", len(self.config.substitution_list), "with lattice values")
+                print(self.print_list[i])
                 self.energy = self.subs["__energy__"]
                 self.get_tracking(False)
                 seed = self.get_new_seed(config_seed)
@@ -348,18 +351,17 @@ class ClosedOrbitFinder4D(object):
                     self.print_ref_track(a_track, output["seed"], None)
                 except Exception:
                     sys.excepthook(*sys.exc_info())
-                    break
                 self.save_track_orbit()
                 self.save_output(self.output_list, False)
             output_uber_list += self.output_list
         self.save_output(output_uber_list, self.config_co["overwrite"])
 
     def save_output(self, output_list, overwrite):
-        print "Overwriting closed orbits"
+        print("Overwriting closed orbits")
         tmp = self.run_dir+"/"+self.config_co["output_file"]+"_tmp"
         fout = open(tmp, "w")
         for output in output_list:
-            print >> fout, json.dumps(output)
+            print(json.dumps(output), file=fout)
         fout.close()
         if overwrite:
             output = self.config.run_control["output_dir"]+"/"+self.config_co["output_file"]
@@ -374,5 +376,5 @@ def main(config):
 if __name__ == "__main__":
     main()
     if len(sys.argv) == 1:
-        raw_input()
+        input()
 
