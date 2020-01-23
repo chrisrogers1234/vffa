@@ -34,15 +34,51 @@ from xboa.tracking import TrackingBase
 
 class StoreDataInMemory(object):
     def __init__(self, config):
+        self.ignore = config.tracking["ignore_events"]
+        self.verbose = config.tracking["verbose"]
         self.hit_dict_of_lists = {}
+        try:
+            self.coordinate_transform = \
+                  self.coord_dict[config.tracking["analysis_coordinate_system"]]
+        except ValueError:
+            self.coordinate_transform = "azimuthal"
 
     def process_hit(self, event, hit):
+        if event in self.ignore:
+            return
         if not event in self.hit_dict_of_lists:
             self.hit_dict_of_lists[event] = []
         self.hit_dict_of_lists[event].append(hit)
 
     def clear(self):
         self.hit_dict_of_lists = {}
+
+    def azimuthal_coordinate_transform(self, hit_list_of_lists):
+        tmp_hit_list_of_lists = []
+        for hit_list in hit_list_of_lists:
+            tmp_hit_list = []
+            for i, hit in enumerate(hit_list):
+                x = hit["x"]
+                y = hit["z"]
+                px = hit["px"]
+                py = hit["pz"]
+                phi = math.atan2(y, x)
+                hit["x"] = + x*math.cos(phi) + y*math.sin(phi)
+                hit["z"] = - x*math.sin(phi) + y*math.cos(phi)
+                hit["px"] = + px*math.cos(phi) + py*math.sin(phi)
+                # go through file line by line reading hit data
+                hit["pz"] = + px*math.sin(phi) - py*math.cos(phi)
+                hit.mass_shell_condition("energy")
+                #print("AZIMUTHAL", phi, x, y, hit["x"], hit["y"])
+                tmp_hit_list.append(hit)
+            tmp_hit_list_of_lists.append(tmp_hit_list)
+        return tmp_hit_list_of_lists
+
+    def reference_coordinate_transform(self, hit_list_of_lists):
+        return hit
+
+    def no_coordinate_transform(self, hit_list_of_lists):
+        return hit
 
     def finalise(self):
         # convert from a dict of list of hits to a list of list of hits
@@ -53,9 +89,16 @@ class StoreDataInMemory(object):
         # sort by time within each event
         for i, hit_list in enumerate(hit_list_of_lists):
             hit_list_of_lists[i] = sorted(hit_list, key = lambda hit: hit['t'])
+        hit_list_of_lists = self.coordinate_transform(self, hit_list_of_lists)
         self.last = hit_list_of_lists
         self.hit_dict_of_lists = {}
         return hit_list_of_lists
+
+    coord_dict = {
+        "none":no_coordinate_transform,
+        "azimuthal":azimuthal_coordinate_transform,
+        "reference":reference_coordinate_transform,
+    }
 
 class OpalTracking(TrackingBase):
     """
@@ -99,6 +142,7 @@ class OpalTracking(TrackingBase):
         self.save_dir = save_dir
         self.n_cores = n_cores
         self.mpi = mpi
+        self.flags = []
         self.clear_path = None
         self._read_probes = self._read_ascii_probes
 
@@ -142,7 +186,7 @@ class OpalTracking(TrackingBase):
         """
         return self.track_many([hit])[0]
         
-    def track_many(self, list_of_hits, pass_through_analysis = StoreDataInMemory(None)):
+    def track_many(self, list_of_hits, pass_through_analysis = None):
         """
         Track many hits through Opal
 
@@ -152,15 +196,18 @@ class OpalTracking(TrackingBase):
         """
         if self.do_tracking:
             self._tracking(list_of_hits)
-        if pass_through_analysis == None:
-            return None
-        else:
-            hit_list_of_lists = self._read_probes(pass_through_analysis)
-            self.save()
-            return hit_list_of_lists
+        if self.verbose > 30:
+            print("Read probes")
+        hit_list_of_lists = self._read_probes()
+        if self.verbose > 30:
+            print("save")
+        self.save()
+        if self.verbose > 30:
+            print("Return")
+        return hit_list_of_lists
 
     def open_subprocess(self):
-        command = [self.opal_path, self.lattice_filename]
+        command = [self.opal_path, self.lattice_filename]+self.flags
         will_do_bsub = False
         if self.mpi != None:
             try:
@@ -187,27 +234,32 @@ class OpalTracking(TrackingBase):
 
     def _tracking(self, list_of_hits):
         if self.verbose:
-            print("Tracking using logfile ", self.log_filename)
+            print("Tracking in dir", os.getcwd(),
+                  "\n   using logfile", self.log_filename)
         open(self.lattice_filename).close() # check that lattice exists
         m, GeV = common.units["m"], common.units["GeV"]
         p_mass = common.pdg_pid_to_mass[2212]
         fout = open(self.beam_filename, "w")
+        # OPAL goes into odd modes if there are < 2 entries in the beam file
+        while len(list_of_hits) > 0 and len(list_of_hits) < 3:
+            list_of_hits.append(list_of_hits[-1])
         print(len(list_of_hits), file=fout)
         for i, hit in enumerate(list_of_hits):
             if self.verbose:
-                print('           ', end=' ')
-                for key in self.print_keys:
-                    print(key.ljust(8), end=' ')
+                if i == 0:
+                    print('           ', end=' ')
+                    for key in self.print_keys:
+                        print(key.ljust(8), end=' ')
+                    print('\n    ref ...', end=' ')
+                    for key in self.print_keys:
+                        print(str(round(self.ref[key], 3)).ljust(8), end=' ')
                 if i < 1 or i == len(list_of_hits)-1:
                     print('\n    hit ...', end=' ')
                     for key in self.print_keys:
                         print(str(round(hit[key], 3)).ljust(8), end=' ')
-                    print('\n    ref ...', end=' ')
-                    for key in self.print_keys:
-                        print(str(round(self.ref[key], 3)).ljust(8), end=' ')
                     print()
                 if i == 1 and len(list_of_hits) > 2:
-                    print("<", len(list_of_hits)-2, " more hits>")
+                    print("<", len(list_of_hits)-2, " more hits >")
             x = (hit["x"]-self.ref["x"])/m
             y = (hit["y"]-self.ref["y"])/m
             z = (hit["z"]-self.ref["z"])/m
@@ -239,20 +291,6 @@ class OpalTracking(TrackingBase):
             dict_of_hit_dicts[station] = hit_dict # overwrites if a duplicate
         return list(dict_of_hit_dicts.values()) # list of hit dicts
 
-    def coordinate_transform(self, hit_dict):
-        x = hit_dict["x"]
-        y = hit_dict["z"]
-        px = hit_dict["px"]
-        py = hit_dict["pz"]
-        phi = math.atan2(y, x)
-        hit_dict["x"] = + x*math.cos(phi) + y*math.sin(phi)
-        hit_dict["z"] = - x*math.sin(phi) + y*math.cos(phi)
-        hit_dict["px"] = + px*math.cos(phi) + py*math.sin(phi)
-        # go through file line by line reading hit data
-        hit_dict["pz"] = - px*math.sin(phi) + py*math.cos(phi)
-        hit = Hit.new_from_dict(hit_dict, "energy")
-        return hit
-
     def set_file_format(self, file_format):
         if file_format == "ascii":
             self._read_probes = self._read_ascii_probes
@@ -262,7 +300,7 @@ class OpalTracking(TrackingBase):
             raise ValueError("Did not recognise Probe file format '"+str(file_format)+\
                              "'. Options are 'ascii' or 'hdf5'")
 
-    def _read_ascii_probes(self, pass_through_analysis):
+    def _read_ascii_probes(self):
         # loop over files in the glob, read events and sort by event number
         file_list = self.get_names()
         if len(file_list) == 0:
@@ -279,13 +317,13 @@ class OpalTracking(TrackingBase):
                     break
                 try:
                     event, hit = self.read_one_ascii_line(line, i)
-                    pass_through_analysis.process_hit(event, hit)
+                    self.pass_through_analysis.process_hit(event, hit)
                 except ValueError:
                     pass
                     # OPAL accumulates LOSS over many runs, but this may not be
                     # desired; so clear
                     #pass_through_analysis.clear()
-        self.last = pass_through_analysis.finalise()
+        self.last = self.pass_through_analysis.finalise()
         return self.last
 
     def read_one_ascii_line(self, line, station): 
@@ -300,10 +338,10 @@ class OpalTracking(TrackingBase):
         hit_dict["event_number"] = int(words[7])
         hit_dict["station"] = station
         hit_dict["t"] = float(words[9])
-        hit = self.coordinate_transform(hit_dict)
+        hit = Hit.new_from_dict(hit_dict, "energy")
         return hit_dict["event_number"], hit
 
-    def _read_h5_probes(self, pass_through_analysis):
+    def _read_h5_probes(self):
         # loop over files in the glob, read events and sort by event number
         file_list = self.get_names()
         if self.verbose:
@@ -312,43 +350,45 @@ class OpalTracking(TrackingBase):
             name_list = str(self.output_name_list)
             raise IOError("Failed to load any probes from "+name_list)
         file_list = [h5py.File(file_name, 'r') for file_name in file_list]
-        step_number = 0
         hit = ""
-        while len(file_list) > 0 and hit != None:
-            for i, fin in enumerate(file_list):
-                try:
-                    event, hit = self.read_h5_step(fin, step_number, i)
-                    pass_through_analysis.process_hit(event, hit)
-                except ValueError:
-                    if self.verbose:
-                        sys.excepthook(*sys.exc_info())
-                    hit = None
-                    continue
-            step_number += 1
-        self.last = pass_through_analysis.finalise()
+        for i, fin in enumerate(file_list):
+            hit_generator = self.generate_h5_step(fin, i)
+            for event, hit in hit_generator:
+                self.pass_through_analysis.process_hit(event, hit)
+        self.last = self.pass_through_analysis.finalise()
         return self.last
 
-    def read_h5_step(self, h5_file, step_number, station):
-        key = "Step#"+str(step_number)
-        if key not in h5_file:
-            raise ValueError("Missing step "+key)
-        h5_step = h5_file[key]
-        hit_dict = {}
-        for key in "pid", "mass", "charge":
-            hit_dict[key] = self.ref[key]
-        for h5_key, xboa_key in self.h5_key_to_xboa_key.items():
-            hit_dict[xboa_key] = h5_step[h5_key][0]
-            if xboa_key in self.units:
-                hit_dict[xboa_key] *= self.units[xboa_key]
-        for key in ["px", "py", "pz"]:
-            hit_dict[key] *= self.ref["mass"]
-        hit_dict["station"] = station
-        hit = self.coordinate_transform(hit_dict)
-        return hit_dict["event_number"], hit
-        
+    def generate_h5_step(self, h5_file, station):
+        for key in h5_file.keys():
+            if key[:5] != "Step#":
+                if self.verbose > 10:
+                    print("Skipping", key)
+                continue
+            n_steps = len(h5_file[key]["x"])
+            if self.verbose > 10:
+                print("Found", key, "in", n_steps, "events in", h5_file.filename)
+            h5_step = h5_file[key]
+            for i in range(n_steps):
+                hit_dict = {}
+                for key in "pid", "mass", "charge":
+                    hit_dict[key] = self.ref[key]
+                for h5_key, xboa_key in self.h5_key_to_xboa_key.items():
+                    hit_dict[xboa_key] = h5_step[h5_key][i]
+                    if xboa_key in self.units:
+                        hit_dict[xboa_key] *= self.units[xboa_key]
+                for key in ["px", "py", "pz"]:
+                    hit_dict[key] *= self.ref["mass"]
+                hit_dict["station"] = station
+                hit = Hit.new_from_dict(hit_dict, "energy")
+                if self.verbose > 10:
+                    print("  h5", format(hit["event_number"], "4d"), end=' ')
+                    for key in self.print_keys:
+                        print(str(round(hit[key], 3)).ljust(8), end=' ')
+                    print()
+                yield hit["event_number"], hit
 
     h5_key_to_xboa_key = {"y":"x", "z":"y", "x":"z", "time":"t",
                           "py":"px", "pz":"py", "px":"pz", "id":"event_number"}
     units = {"x":1000., "y":1000., "z":1000.}
 
-    print_keys = ['x', 'y', 'z', 'px', 'py', 'pz', 'kinetic_energy']
+    print_keys = ['x', 'y', 'z', 'px', 'py', 'pz', 'kinetic_energy', 't']

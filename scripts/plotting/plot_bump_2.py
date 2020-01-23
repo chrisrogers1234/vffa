@@ -25,15 +25,19 @@ def load_file_alt(file_name):
     fin = open(file_name)
     print("Loading", file_name, end=' ')
     sys.stdout.flush()
-    data_out = []
+    data_out = None
+    n_iterations = 0
     for line in fin.readlines():
-        print(line)
-        data_out.append(json.loads(line))
+        data_tmp = json.loads(line)
+        if data_out == None or data_tmp['score'] < data_out['score']:
+            data_out = data_tmp
+        n_iterations += 1
     if len(data_out) == 0:
         print(" empty file, abort")
         sys.exit(1)
-    print(" done")
-    return data_out
+    print("... loaded", n_iterations, "lines")
+    data_out['n_iterations'] = n_iterations
+    return [data_out]
 
 def plot_actions(data, plot_dir, foil_probe, tm):
     pass
@@ -50,27 +54,29 @@ def plot_score(data, plot_dir, foil_probe, foil_var):
     bump_position = []
     bump_score = []
     bump_n_iterations = []
-    for bump_run in data:
-        bump_position += [bump["tracking"][foil_probe][foil_var] for bump in bump_run["bumps"]]
-        bump_score += [bump["score"] for bump in bump_run["bumps"]]
-        bump_n_iterations += [bump["n_iterations"] for bump in bump_run["bumps"]]
+    for bump in data:
+        bump_position.append(bump["tracking"][foil_probe][foil_var])
+        bump_score.append(bump["score"])
+        bump_n_iterations.append(bump["n_iterations"])
     canvas = common.make_root_canvas("score")
+    mgraph = ROOT.TMultiGraph()
+    root_objects.append(mgraph)
     hist, graph = common.make_root_graph("score",
                                           bump_position*2, var[foil_var],
                                           bump_score+bump_n_iterations, "Score (red)   Iterations (blue)")
-    hist.Draw()
     hist, graph = common.make_root_graph("score",
-                                          bump_position, "Radial position [mm]",
+                                          bump_position, "Position [mm]",
                                           bump_score, "Score")
     graph.SetMarkerStyle(20)
     graph.SetMarkerColor(ROOT.kRed)
-    graph.Draw("lpsame")
+    mgraph.Add(graph)
     hist, graph = common.make_root_graph("score",
                                           bump_position, var[foil_var],
                                           bump_n_iterations, "n_iterations")
     graph.SetMarkerColor(ROOT.kBlue)
     graph.SetMarkerStyle(24)
-    graph.Draw("lpsame")
+    mgraph.Add(graph)
+    mgraph.Draw("alp")
     canvas.SetLogy()
     canvas.Update()
     for format in ["png"]:
@@ -181,18 +187,18 @@ var = {0:"station",
 def main(file_glob):
     foil_probe = 4
     foil_var = 3
+    data = []
     for file_name in glob.glob(file_glob):
+        print(file_name)
         plot_dir = os.path.split(file_name)[0]+"/plot_bump"
-        utilities.clear_dir(plot_dir)
-        try:
-            data = load_file(file_name)
-        except json.decoder.JSONDecodeError:
-            data = load_file_alt(file_name)
-        for probe in [0, 7]:
-            for axis in ['x', 'y']:
-                plot_closed_orbit(data, axis, plot_dir, probe)
-        plot_fields(data, plot_dir, foil_probe, foil_var)
-        plot_score(data, plot_dir, foil_probe, foil_var)
+        data += load_file_alt(file_name)
+
+        #for probe in [0, 7]:
+        #    for axis in ['x', 'y']:
+        #        plot_closed_orbit(data, axis, plot_dir, probe)
+        #plot_fields(data, plot_dir, foil_probe, foil_var)
+    utilities.clear_dir(plot_dir)
+    plot_score(data, plot_dir, foil_probe, foil_var)
     
 
 if __name__ == "__main__":

@@ -24,8 +24,13 @@ class ClosedOrbitsPlotter(object):
     def load_file(self, file_name):
         print("Loading", file_name)
         fin = open(file_name)
-        for line in fin.readlines():
-            self.data.append(json.loads(line))
+        my_data = []
+        my_data = [json.loads(line) for line in fin.readlines()]
+        flattened = []
+        for item in my_data:
+            flattened += item
+        self.data += flattened
+        print("Types", [type(dat) for dat in self.data])
 
     def do_plots_all_in(self):
         self.plot_item_2("x", lambda item: item["seed"][0],
@@ -71,6 +76,13 @@ class ClosedOrbitsPlotter(object):
             canvas, mgraph = self.plot_item(name, self.get_tm, axis, None, None)
             mgraph.Draw("AP")
             canvas.Print(self.output_dir+"/"+axis_name+"_vs_determinant.png")
+
+            name = "delta"
+            canvas, mgraph = self.plot_item(name, self.get_co, axis, None, None)
+            mgraph.Draw("AP")
+            #canvas.SetLogy()
+            canvas.Print(self.output_dir+"/"+axis_name+"_vs_delta.png")
+
 
     def plot_item_2(self, x_name, x_lambda, y_name, y_lambda, z_name, z_lambda, canvas):
         name = x_name+" vs "+y_name+" vs "+z_name
@@ -131,7 +143,7 @@ class ClosedOrbitsPlotter(object):
             try:
                 y_data.append(get_item_lambda(item))
             except Exception:
-                #sys.excepthook(*sys.exc_info())
+                sys.excepthook(*sys.exc_info())
                 y_data.append(0.)
         name = utilities.sub_to_name(axis)+" vs "+y_name
         print("   ", y_name, y_data)
@@ -177,6 +189,8 @@ class ClosedOrbitsPlotter(object):
     def get_co(self, item):
         var_list = ["x", "x'", "y", "y'"]
         units = {"x":1., "x'":1e3, "y":1., "y'":1e3}
+        print("Ref track length", len(item["ref_track"]), item["ref_track"][0])
+        print(item.keys())
         ref_0 = Hit.new_from_dict(item["ref_track"][0])
         ref_1 = Hit.new_from_dict(item["ref_track"][2])
         delta = [(ref_0[var]-ref_1[var])*units[var] for var in var_list]
@@ -204,7 +218,7 @@ def main():
     co_plotter = ClosedOrbitsPlotter()
     co_plotter.parse_args(sys.argv)
     co_plotter.do_plots_by_sub()
-    co_plotter.do_plots_all_in()
+    #co_plotter.do_plots_all_in()
 
 if __name__ == "__main__":
     main()

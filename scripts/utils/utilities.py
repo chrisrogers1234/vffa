@@ -10,6 +10,7 @@ import xboa.hit
 
 
 from opal_tracking import OpalTracking
+from opal_tracking import StoreDataInMemory
 
 def clear_dir(dir_name):
     try:
@@ -73,6 +74,8 @@ def setup_tracking(config, probes, ref_energy):
     tracking = OpalTracking(lattice, beam, ref_hit, probes, opal_exe, log)
     tracking.verbose = config.tracking["verbose"]
     tracking.set_file_format(config.tracking["file_format"])
+    tracking.flags = config.tracking["flags"]
+    tracking.pass_through_analysis = StoreDataInMemory(config)
     return tracking
 
 def tune_lines(canvas, min_order=0, max_order=8):

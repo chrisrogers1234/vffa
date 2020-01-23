@@ -137,6 +137,20 @@ class DecoupledTransferMatrix(object):
         v_m = numpy.dot(numpy.dot(self.r, v_m), numpy.transpose(self.r))
         return numpy.real(v_m)
 
+
+    def get_amplitude(self, axis, coupled_phase_space_vector):
+        """
+        Get the 2d amplitude in a given eigen plane
+        """
+        decoupled = self.decoupled(coupled_phase_space_vector)
+        decoupled = decoupled[2*axis:2*axis+1]
+        matrix = self.v_t[2*axis:2*axis+1, 2*axis:2*axis+1]
+        decoupled_t = numpy.transpose(decoupled)
+        amplitude = numpy.dot(numpy.dot(decoupled_t, matrix), decoupled)
+        print("AMPLITUDE", amplitude.shape)
+        return amplitude
+
+
     def get_phase_advance(self, axis):
         """
         Return the phase advance [rad] in the direction given by axis.

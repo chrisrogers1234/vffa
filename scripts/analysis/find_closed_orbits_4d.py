@@ -20,6 +20,10 @@ from PyOpal.polynomial_coefficient import PolynomialCoefficient
 from PyOpal.polynomial_map import PolynomialMap
 from utils.decoupled_transfer_matrix import DecoupledTransferMatrix
 
+#Jobs:
+#* rotating planes might work; now need to add option to tracking to do analysis in reference coordinate system
+#* fix RK4 - comparison is pretty good between RK4 and tracking, but not perfect. Check!
+
 class ClosedOrbitFinder4D(object):
     def __init__(self, config):
         self.config = config
@@ -27,6 +31,7 @@ class ClosedOrbitFinder4D(object):
         self.energy = self.config.substitution_list[0]["__energy__"]
         self.run_dir = os.path.join(self.config.run_control["output_dir"],
                                     self.config_co["run_dir"])
+        self.centroid = None
         self.var_list = ["x", "px", "y", "py"]
         self.subs_tracking = {}
         self.output_list = []
@@ -48,17 +53,77 @@ class ClosedOrbitFinder4D(object):
         hit.mass_shell_condition("pz") # adjust pz so E^2 = p^2 + m^2
         return hit
 
-    def track_one(self, seed, t, is_final):
+    @classmethod
+    def rotation_matrix(cls, r1, r2):
+        # rotation matrix that rotates r1 onto r2
+        # note this is not uniquely defined
+        v = numpy.cross(r1, r2)/numpy.linalg.norm(r1)/numpy.linalg.norm(r2)
+        st = numpy.linalg.norm(v)
+        v /= st
+        ct = math.cos(math.asin(st))
+        rotation_matrix = [
+            [v[0]*v[0]*(1-ct)+ct,      -v[2]*st+v[0]*v[1]*(1-ct), v[0]*v[2]*(1-ct)+v[1]*st],
+            [v[0]*v[1]*(1-ct)+v[2]*st,       ct+v[1]*v[1]*(1-ct), v[1]*v[2]*(1-ct)-v[0]*st],
+            [v[0]*v[2]*(1-ct)-v[1]*st,  v[0]*st+v[1]*v[2]*(1-ct), v[2]*v[2]*(1-ct)+ct],
+        ]
+        return numpy.array(rotation_matrix)
+
+
+    def rotate_from_centroid(self, hit_list):
+        tm_list = []
+        # 0 element in the hit_list defines the centroid
+        # take s-vector as being the momentum vector of hit_list[0]
+        # take all positions, etc perpendicular to the s-vector
+        centroid = hit_list[0]
+        ref_position = numpy.array([centroid['x'],
+                                    centroid['y'],
+                                    centroid['z']])
+        ref_momentum = numpy.array([centroid['px'],
+                                    centroid['py'],
+                                    centroid['pz']])
+        svec = ref_momentum/numpy.linalg.norm(ref_momentum)
+        #rot = self.rotation_matrix(numpy.array([0., 0., 1.]), svec)
+        rot = numpy.array([[1., 0., 0.], [0., 1., 0.], [0., 0., 1.]])
+        for hit in hit_list:
+            # project onto plane normal to the momentum vector
+            hit_position = numpy.array([hit['x'], hit['y'], hit['z']])
+            #distance_to_plane = numpy.dot(svec, hit_position-ref_position)
+            #hit['x'] += distance_to_plane*hit['px']
+            #hit['y'] += distance_to_plane*hit['py']
+            #hit['z'] += distance_to_plane*hit['pz']
+            # convert to coordinate system relative to centroid
+            hit_pos = numpy.array([
+                hit['x'],# - ref_position[0],
+                hit['y'],# - ref_position[1],
+                hit['z'],# - ref_position[2],
+            ])
+            hit_mom = numpy.array([
+                hit['px'],
+                hit['py'],
+                hit['pz'],
+            ])
+            # rotate to coordinate system parallel to centroid
+            hit_pos = numpy.dot(rot, hit_pos)
+            hit_mom = numpy.dot(rot, hit_mom)
+            vector = [hit_pos[0], hit_mom[0], hit_pos[1], hit_mom[1]]
+            tm_list.append(vector)
+        return tm_list, rot
+
+    def track_many(self, seed_list, t, is_final):
         overrides = self.config_co["subs_overrides"]
         if is_final:
             overrides = self.config_co["final_subs_overrides"]
-        hit = self.seed_to_hit(seed, t)
-        #print 'energy', hit['kinetic_energy'], 'p', hit['p'], 'pvec', hit['px'], hit['py'], hit['pz']
+        overrides["__n_particles__"] = len(seed_list)+1
+        hit_list = []
+        for seed in seed_list:
+            hit = self.seed_to_hit(seed, t)
+            hit_list.append(hit)
+        hit_list.insert(0, hit_list[0])
         os.chdir(self.run_dir)
         self.subs_tracking = utils.utilities.do_lattice(self.config, self.subs, overrides)
-        track = self.tracking.track_one(hit)
+        track_list = self.tracking.track_many(hit_list)
         os.chdir(self.here)
-        return track
+        return track_list
 
     def get_decoupled(self, tm):
         m = tm.get_coefficients_as_matrix()
@@ -106,41 +171,7 @@ class ClosedOrbitFinder4D(object):
                output_string += format(item, fmt)+" "
         return output_string
 
-    def get_index_1(self, dim):
-        yield [1]*dim
-        index = [0]*dim
-        index[0] = -1
-        while sum(index) < len(index)*2:
-            # update index
-            for i, ind in enumerate(index):
-                if ind == 2:
-                    index[i] = 0
-                else:
-                    index[i] += 1
-                    break
-            yield index
-
-    def get_index_2(self, dim):
-        index = [1]*dim
-        yield index
-        for i in range(4):
-            index = [1]*dim
-            index[i] = 0
-            yield index
-        for i in range(4):
-            index = [1]*dim
-            index[i] = 2
-            yield index
-
-    def get_values(self, dim): # makes a hypercube extending from 0 through 1
-        for i in [0, 1]:
-            if dim == 1:
-                yield[i]
-            else:
-                for value in self.get_values(dim-1):
-                    yield [i]+value
-
-    def get_values_2(self, dim): # makes a hyperdiamond at +- 1
+    def get_values(self, dim): # makes a hyperdiamond at +- 1
         value_list = [[0. for i in range(dim)]]
         for d in range(dim):
             for delta in [-1, 1]:
@@ -166,7 +197,6 @@ class ClosedOrbitFinder4D(object):
                 sum_index += [i]*n 
             if len(sum_index) < 2:
                 do_continue = True
-            #print i, "**", do_continue, do_break, "**", index, "**", sum_index
             if do_break:
                 break
             if do_continue:
@@ -176,45 +206,28 @@ class ClosedOrbitFinder4D(object):
         return tm
 
     def get_tm(self, seeds, deltas):
+        us_cell = self.config_co["us_cell"]
         ds_cell = self.config_co["ds_cell"]
         dim = len(seeds)
-        ref_track = None
         tm_list_in, tm_list_out = [], []
-        for j, values in enumerate(self.get_values_2(dim)):
-            values = [seeds[i]+values[i]*deltas[i] for i in range(dim)]
-            a_track = self.track_one(values, 0., False)
-            print("\r", "-/|\\"[j%4], j, end=' ')
-            sys.stdout.flush()
-            if len(a_track) < ds_cell+1:
-                raise RuntimeError("Output had "+str(len(a_track))+\
-                            " points which is less than ds_cell+1 "+str(ds_cell+1))
-            vhit_1 = [a_track[0][var]-seeds[i] for i, var in enumerate(self.var_list)]
-            vhit_2 = [a_track[ds_cell][var]-seeds[i] for i, var in enumerate(self.var_list)]
-            tm_list_in.append(vhit_1)
-            tm_list_out.append(vhit_2)
-            if j == 0:
-                ref_track = a_track
-        ref_track_in = [tm_list_in[0][i]+x for i, x in enumerate(seeds)]
-        ref_track_out = [tm_list_out[0][i]+x for i, x in enumerate(seeds)]
-        return tm_list_in, tm_list_out, ref_track
-
-    def check_stuck(self, errors, new_co, tm_list_in, tm_list_out, seeds):
-        tolerance = self.config_co["tolerance"]
-        indices = list(range(len(new_co)))
-        ref_in = tm_list_in[0]
-        ref_out = tm_list_in[1]
-        if len(errors) > 1:
-            delta_error = errors[-2] - errors[-1]
-            print("Checking stuck; error", errors[-1], "delta", delta_error, "tolerance", tolerance)
-            if delta_error < tolerance and errors[-1] > tolerance:
-                printout = [seeds[i]+new_co[i] for i in indices]
-                print("Detected stuck finder a; giving it a kick from\n   ", printout, end=' ')
-                new_co = [(ref_in[i]+ref_out[i])/2. for i in indices]
-                printout = [seeds[i]+new_co[i] for i in indices]
-                print("to\n   ", printout)
-                errors[-1] = errors[0]
-                print("and resetting last error to", errors[-1])
-        return new_co
+        value_list = []
+        for j, values in enumerate(self.get_values(dim)):
+            value_list.append([seeds[i]+values[i]*deltas[i] for i in range(dim)])
+        track_list = self.track_many(value_list, 0., False)[1:]
+        try:
+            tm_list_in, rot_in = self.rotate_from_centroid([a_track[us_cell] for a_track in track_list])
+            tm_list_out, rot_out = self.rotate_from_centroid([a_track[ds_cell] for a_track in track_list])
+            print(self.str_matrix(tm_list_in, "14.8g"))
+            print(self.str_matrix(tm_list_out, "14.8g"))
+        except IndexError:
+            err = "Output had "+str(len(track_list))+" tracks with"
+            err += str([len(track) for track in track_list])+" track points. "
+            err += "Require "+str( ds_cell+1 )+" track points."
+            print(err)
+            sys.exit()
+            raise RuntimeError(err) from None
+        track_list[0]
+        return tm_list_in, rot_in, tm_list_out, rot_out, track_list[0]
 
     def get_error(self, delta):
         scale = self.config_co["deltas"]
@@ -238,6 +251,10 @@ class ClosedOrbitFinder4D(object):
             #print coupled
             decoupled = tm.decoupled(coupled)
             print(self.str_matrix(decoupled))
+
+    def rotate_co(self, new_co, rot):
+        pos = [new_co[0], new_co[2], 0.]
+        return new_co
 
     def tm_co_fitter(self, seeds):
         output = {}
@@ -266,23 +283,29 @@ class ClosedOrbitFinder4D(object):
             print("----------------\nLooping with seed", self.str_matrix(new_seeds), end=' ')
             print("delta", self.str_matrix(deltas, "4.2g"), end=' ')
             print("error", self.get_error(new_deltas), "tolerance", tolerance)
+            self.centroid = self.seed_to_hit(new_seeds, 0.)
             try:
-                tm_list_in, tm_list_out, ref_track = self.get_tm(new_seeds, deltas)
-            except RuntimeError:
+                print("tracking in")
+                tm_list_in, rot_in, tm_list_out, rot_out, ref_track = self.get_tm(new_seeds, deltas)
+                print("tracking out")
+            except Exception:
                 # if tm calculation fails, we abort with the last successful result
                 # stored in seeds (e.g. tracking not convergent)
+                sys.excepthook(*sys.exc_info())
                 break
-            seeds = new_seeds 
+            seeds = new_seeds
             tm = self.fit_matrix(tm_list_in, tm_list_out)
             new_co, dm = self.get_co(tm)
+            print("New closed orbit", new_co)
+            #self.rotate_co(new_co, rot_in)
             self.print_ref_track(ref_track, seeds, dm)
             for i in range(dim):
                 new_deltas[i] = abs(tm_list_out[0][i] - tm_list_in[0][i])
                 if self.config_co["adapt_deltas"] and new_deltas[i] < deltas[i]:
                     deltas[i] = new_deltas[i]
             errors.append(self.get_error(new_deltas))
-            #new_co = self.check_stuck(errors, new_co, tm_list_in, tm_list_out, seeds)
-            new_seeds = [seeds[i]+x for i, x in enumerate(new_co)]
+            #new_seeds = [seeds[i]+x for i, x in enumerate(new_co)]
+            new_seeds = [x for i, x in enumerate(new_co)]
         print("Finished iteration with deltas", deltas, "rms", sum([d*d for d in deltas])**0.5)
         if tm:
             tm = tm.get_coefficients_as_matrix()
@@ -295,14 +318,14 @@ class ClosedOrbitFinder4D(object):
         return output
 
     def get_new_seed(self, config_seed):
-        if len(self.output_list) == 0:
+        if len(self.output_list) == 0 or len(self.output_list[-1]) == 0:
             return config_seed
-        elif len(self.output_list) == 1:
-            seed = Hit.new_from_dict(self.output_list[-1]["seed_hit"])
+        elif len(self.output_list[-1]) == 1:
+            seed = Hit.new_from_dict(self.output_list[-1][-1]["seed_hit"])
             return [seed[var] for var in self.var_list]
         else:
-            seed0 = Hit.new_from_dict(self.output_list[-2]["seed_hit"])
-            seed1 = Hit.new_from_dict(self.output_list[-1]["seed_hit"])
+            seed0 = Hit.new_from_dict(self.output_list[-1][-2]["seed_hit"])
+            seed1 = Hit.new_from_dict(self.output_list[-1][-1]["seed_hit"])
             s0 = [seed0[var] for var in self.var_list]
             s1 = [seed1[var] for var in self.var_list]
             s2 = [2*s1[i]-s0[i] for i in range(4)]
@@ -330,41 +353,43 @@ class ClosedOrbitFinder4D(object):
             self.print_list.append(print_str)
 
     def find_closed_orbits(self):
-        output_uber_list = []
+        self.output_list = []
         self.get_subs_string()
         for config_seed in self.config_co["seed"]:
-            self.output_list = []
+            self.output_list.append([])
             for i, self.subs in enumerate(self.config.substitution_list):
                 print("\n\nNew closed orbit loop", i+1, "/", len(self.config.substitution_list), "with lattice values")
                 print(self.print_list[i])
                 self.energy = self.subs["__energy__"]
                 self.get_tracking(False)
                 seed = self.get_new_seed(config_seed)
+                self.centroid = self.seed_to_hit(seed, 0.)
                 a_track = None
                 try:
                     output = self.tm_co_fitter(seed)
                     output["seed_in"] = seed
                     output["seed_hit"] = self.seed_to_hit(output["seed"], 0.).dict_from_hit()
-                    self.output_list.append(output)
-                    a_track = self.track_one(output["seed"], 0., True)
+                    self.output_list[-1].append(output)
+                    a_track = self.track_many([output["seed"]]*3, 0., True)[1]
                     output["ref_track"] = [hit.dict_from_hit() for hit in a_track]
                     self.print_ref_track(a_track, output["seed"], None)
                 except Exception:
                     sys.excepthook(*sys.exc_info())
                 self.save_track_orbit()
                 self.save_output(self.output_list, False)
-            output_uber_list += self.output_list
-        self.save_output(output_uber_list, self.config_co["overwrite"])
+        self.save_output(self.output_list, self.config_co["overwrite"])
 
     def save_output(self, output_list, overwrite):
         print("Overwriting closed orbits")
-        tmp = self.run_dir+"/"+self.config_co["output_file"]+"_tmp"
+        output_dir = self.config.run_control["output_dir"]
+        tmp = output_dir+"/"+self.config_co["output_file"]+"_tmp"
         fout = open(tmp, "w")
         for output in output_list:
             print(json.dumps(output), file=fout)
+        print("Saved to", tmp)
         fout.close()
         if overwrite:
-            output = self.config.run_control["output_dir"]+"/"+self.config_co["output_file"]
+            output = output_dir+"/"+self.config_co["output_file"]
             os.rename(tmp, output)
 
     run_index = 1

@@ -1,5 +1,6 @@
 import time
 import os
+import sys
 import subprocess
 import glob
 
@@ -10,23 +11,22 @@ N_PROCS = 5
 TARGET_SCRIPT = "run_sim.py"
 TIME_0 = time.time()
 
-def config_list():
-    #return sorted(glob.glob(*.py"))
-    prefix = "scripts/config/config_"
-    config_list = [
-        prefix+"base_1e11.py",
-        prefix+"base_1e12.py",
-        prefix+"base_1e13.py",
-    ]
-    return config_list
+def will_make_new_procs(temp_proc_queue):
+    global PROC_QUEUE, N_PROCS
+    return len(temp_proc_queue) < N_PROCS and len(PROC_QUEUE) > 0
 
 def poll_process_queue():
-    global UNIQUE_ID, PROC_RUNNING, PROC_QUEUE
+    global UNIQUE_ID, PROC_RUNNING, PROC_QUEUE, TIME
     if is_scarf():
         temp_proc_queue = poll_scarf()
     else:
         temp_proc_queue = poll_laptop()
-    while len(temp_proc_queue) < N_PROCS and len(PROC_QUEUE) > 0:
+    print("\r", round(time.time()-TIME_0, 1), "...",
+          "Running", len(PROC_RUNNING), 
+          "with", len(PROC_QUEUE), "queued", end=" ")
+    if will_make_new_procs(temp_proc_queue):
+        print()
+    while will_make_new_procs(temp_proc_queue):
         subproc_args, logname = PROC_QUEUE.pop(0)
         UNIQUE_ID += 1
         job_log = "logs/"+logname+".log"
@@ -41,8 +41,8 @@ def poll_process_queue():
             logfile = open(job_log, "w")
         temp_proc_queue.append(subprocess.Popen(subproc_args,
                                stdout=logfile, stderr=subprocess.STDOUT))
-        print("Running", subproc_args, "with log", job_log, end=' ')
-        print("pid", temp_proc_queue[-1].pid, len(PROC_RUNNING))
+        print("Running", subproc_args, "with log", job_log,
+              "pid", temp_proc_queue[-1].pid, len(PROC_RUNNING))
     PROC_RUNNING = temp_proc_queue
 
 def poll_laptop():
@@ -51,8 +51,8 @@ def poll_laptop():
         if proc.poll() == None:
             temp_proc_queue.append(proc)
         else:
-            print("PID", proc.pid, "finished with return code", proc.returncode)
-    print(round(time.time()-TIME_0, 1), "...", "Running", len(PROC_RUNNING), "with", len(PROC_QUEUE), "queued")
+            print("\nPID", proc.pid, "finished with return code", proc.returncode)
+    sys.stdout.flush()
     return temp_proc_queue
 
 def poll_scarf():
@@ -70,32 +70,32 @@ def poll_scarf():
     return script_lines
 
 def is_scarf():
-    uname = subprocess.check_output(['uname', '-a'])
+    uname = str(subprocess.check_output(['uname', '-a']))
     return uname.find('scarf.rl.ac.uk') > -1
 
-def main():
+def main(configs):
     if os.getenv("OPAL_EXE_PATH") == None:
         raise ValueError("No OPAL_EXE_PATH set")
     global N_PROCS, TARGET_SCRIPT, UNIQUE_ID
     if not os.path.exists("logs"):
-        os.makedir("logs")
+        os.makedirs("logs")
     if is_scarf():
         N_PROCS = 150
-    for config in config_list():
+    for config in configs:
         log_file = config.split("/")[-1]
         log_file = log_file[:-3]
-        proc_tuple = (["python", "scripts/run_one.py", config], log_file)
+        proc_tuple = (["python", "scripts/bin/run_one.py", config], log_file)
         PROC_QUEUE.append(proc_tuple)
     print(len(PROC_QUEUE), "jobs")
     while len(PROC_QUEUE) > 0 or len(PROC_RUNNING) > 0:
         poll_process_queue()
         if len(PROC_QUEUE) == 0 and len(PROC_RUNNING) == 0:
             break
-        time.sleep(60)
+        time.sleep(5)
 
 if __name__ == "__main__":
-    main()
-    
+    main(sys.argv[1:])
+    print("\nFinished")
 
 
 

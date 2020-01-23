@@ -6,11 +6,15 @@ import glob
 import ROOT
 
 class PlotDumpFields(object):
-    def __init__(self, file_name, is_em_field = False):
-        if is_em_field:
+    def __init__(self, file_name, field_type = False):
+        if field_type == True or field_type == "em_cylindrical":
             self.keys = ["r", "phi", "z", "t", "br", "bphi", "bz", "er", "ephi", "ez"]
-        else:
+        elif field_type == "em_cartesian":
+            self.keys = ["x", "y", "z", "t", "bx", "by", "bz", "ex", "ey", "ez"]
+        elif field_type == "magnetic_cartesian" or field_type == False:
             self.keys = ["x", "y", "z", "bx", "by", "bz"]
+        else:
+            raise ValueError("Did not recognise field type "+str(field_type))
         self.units = {"bx":0.1, "by":0.1, "bz":0.1, "br":0.1, "bphi":0.1, "bz":0.1}
         self.n_lines = 0
         self.file_name = file_name
@@ -98,7 +102,7 @@ class PlotDumpFields(object):
             self.field_map['br'][i] = br
             self.field_map['bphi'][i] = bphi
             self.field_map['btot'][i] = (bx**2+by**2+bz**2)**0.5
-        self.field_map['btot'][0] = -1.0
+        #self.field_map['btot'][0] = -1.0
 
     def calculate_cartesian_fields(self):
         n_points = len(self.field_map['br'])
@@ -135,18 +139,22 @@ class PlotDumpFields(object):
                 data = [float(word) for word in line.split()]
                 for i, key in enumerate(self.keys):
                     self.field_map[key].append(data[i]*units_[i])
-                    if key[0] == 'b':
-                        if self.field_map[key][-1] > 5.:
-                            self.field_map[key][-1] = 5.
-                        if self.field_map[key][-1] < -5.:
-                            self.field_map[key][-1] = -5.
             except (ValueError, IndexError):
-                print(line[:-1])
+                print("Error on line\n  ", line, "did not match keys\n  ", self.keys)
                 continue
         if 'phi' in list(self.field_map.keys()):
             self.calculate_cartesian_fields()
         if 'x' in list(self.field_map.keys()):
             self.calculate_cylindrical_fields()
+        for key in self.field_map:
+            print("KEY", key)
+            if key[0] != 'b':
+                continue
+            for i, field in enumerate(self.field_map[key]):
+                if field > self.global_max_z:
+                    self.field_map[key][i] = self.global_max_z
+                elif field < -self.global_max_z:
+                    self.field_map[key][i] = -self.global_max_z
 
     def get_bin_list(self, key):
         data = self.field_map[key]
@@ -269,6 +277,11 @@ class PlotDumpFields(object):
               red   = [r0, 0.2, 1.0, 0.9, r1]
               green = [g0, 1.0, 1.0, 0.93, g1]
               blue  = [b0, 0.2, 1.0, 0.6, b1]
+          elif min_z/max_z < 1e-3 and min_z >= 0.:
+              stops = [0.0000, 1e-2, 1.0]
+              red   = [1.0, 0.9, r1]
+              green = [1.0, 0.93, g1]
+              blue  = [1.0, 0.6, b1]
 
           s = numpy.array(stops)
           r = numpy.array(red)
@@ -280,7 +293,7 @@ class PlotDumpFields(object):
           ROOT.TColor.CreateGradientColorTable(npoints, s, r, g, b, ncontours)
           ROOT.gStyle.SetNumberContours(ncontours)
 
-    global_max_z = 5.
+    global_max_z = 0.5
 
 
 def main(a_dir = None):

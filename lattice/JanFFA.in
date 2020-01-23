@@ -7,7 +7,7 @@ Option, ASCIIDUMP=FALSE;
 Option, ENABLEHDF5=TRUE;
 OPTION, PSDUMPFREQ=100000;
 Option, VERSION=10900;
-Option, SPTDUMPFREQ=1;
+Option, SPTDUMPFREQ=__spt_dump_freq__;
 Option, STATDUMPFREQ=100000;
 
 ////////// CONSTANTS ////////////////////////////////////
@@ -28,10 +28,12 @@ REAL P0=((E0+P_MASS)^2-P_MASS^2)^0.5;
 REAL N_CELLS=__n_cells__;
 REAL RMIN=R0-1.0;
 REAL RMAX=R0+1.0;
+REAL LAT_PHI_INIT=__lattice_phi_start__;
 
 ////////// TRACKING ///////////////
 REAL STEP_SIZE=__step_size__; // m
 REAL N_TURNS=__n_turns__;
+REAL N_PARTICLES=__n_particles__;
 
 ////////// MAIN MAGNET PARAMETERS/////////
 REAL M_INDEX=__m_index__;
@@ -312,8 +314,11 @@ IF (DO_TEST_MAP) {
 ////////////////// PROBES
 REAL RING_PROBE_PHI_OFFSET=0.0;
 BUILD_PROBE(NAME, ANGLE): MACRO {
-    NAME: PROBE, xstart=RMIN*1000*cos(ANGLE),  xend=RMAX*1000*cos(ANGLE),
-                 ystart=RMIN*1000*sin(ANGLE),  yend=RMAX*1000*sin(ANGLE);
+    //NAME: PROBE, xstart=RMIN*1000*cos(ANGLE),  xend=RMAX*1000*cos(ANGLE),
+    //             ystart=RMIN*1000*sin(ANGLE),  yend=RMAX*1000*sin(ANGLE);
+    NAME: OUTPUTPLANE, centre_x=R0*cos(ANGLE+1e-6), centre_y=R0*sin(ANGLE+1e-6), centre_z=0.,
+                       normal_x=-sin(ANGLE), normal_y=cos(ANGLE), normal_z=0., width=2,
+                       REFERENCE_ALIGNMENT_PARTICLE=-1, ALGORITHM="EXTRAPOLATION";
 }
 
 REAL THIS_PROBE_PHI=PI/2;
@@ -411,7 +416,7 @@ IF (DO_MAGNET_FIELD_MAPS) {
 //        T_START=0, T_STEPS=1, DT=1.;
 }
 
-ringdef: RINGDEFINITION, HARMONIC_NUMBER=1, LAT_RINIT=R0, LAT_PHIINIT=0,
+ringdef: RINGDEFINITION, HARMONIC_NUMBER=1, LAT_RINIT=R0, LAT_PHIINIT=LAT_PHI_INIT,
          LAT_THETAINIT=180.0-360/4/N_CELLS, BEAM_PHIINIT=90, BEAM_PRINIT=0,
          BEAM_RINIT=0.0, SYMMETRY=1, RFFREQ=1, IS_CLOSED=false,
          MIN_R=0., MAX_R=40;
@@ -437,7 +442,7 @@ REAL STEP_SIZE_NS=STEP_SIZE/SPEED;
 REAL STEPS_PER_TURN=1000/STEP_SIZE_NS/B_FREQ; // (this is really steps per B_FREQ)
 REAL MAX_STEPS=2*PI*R0*N_TURNS/STEP_SIZE;
 
-beam1: BEAM, PARTICLE=PROTON, pc=P0/1000., NPART=1, BCURRENT=1, CHARGE=1.0, BFREQ=B_FREQ;
+beam1: BEAM, PARTICLE=PROTON, pc=P0/1000., NPART=N_PARTICLES, BCURRENT=1, CHARGE=1.0, BFREQ=B_FREQ;
 
 VALUE, VALUE={E0, P0, P_MASS};
 
