@@ -220,26 +220,28 @@ class FindBumpParameters(object):
         return 0., 0.
 
     def get_n_hits(self, hit_list, ignore_stations):
+        target_n_hits = self.config.find_bump_parameters["target_n_hits"]
         hit_list = [hit for hit in hit_list if hit["station"] not in ignore_stations]
         n_hits = len(hit_list)
+        penalty_factor = self.config.find_bump_parameters["penalty_factor"]
         denominator = n_hits
         if denominator == 0:
             denominator = 1
-        return n_hits, denominator
+        penalty = penalty_factor**(target_n_hits-n_hits)
+        if penalty < 1:
+            penalty = 1.
+        print("Found ", n_hits, "usable hits.",
+              "Target", target_n_hits, "hits.",
+              "Penalty", penalty, "will be applied to all scores")
+        return n_hits, denominator, penalty
 
     def get_score(self, hit_list):
         ignore_stations = self.config.find_bump_parameters["ignore_stations"]
         target_co = self.config.find_bump_parameters["closed_orbit"]
         bump_probe_station = self.config.find_bump_parameters["bump_probe_station"]
         amp_probe_station = self.config.find_bump_parameters["amp_probe_station"]
-        target_n_hits = self.config.find_bump_parameters["target_n_hits"]
-        penalty_factor = self.config.find_bump_parameters["penalty_factor"]
         x_score, px_score, y_score, py_score, au_score, av_score = 0., 0., 0., 0., 0., 0.
-        n_hits, denominator = self.get_n_hits(hit_list, ignore_stations)
-        penalty = penalty_factor**(target_n_hits-n_hits)
-        if penalty < 0:
-            penalty = 1
-        print("Found ", n_hits, "usable hits. Target", target_n_hits, "penalty", penalty)
+        n_hits, denominator, penalty = self.get_n_hits(hit_list, ignore_stations)
         for i, hit in enumerate(hit_list):
             print(format(hit["station"], "6"), end=' ')
             print(format(hit["x"], "12.9g"), format(hit["px"], "8.5g"), end=' ')
@@ -319,6 +321,7 @@ class FindBumpParameters(object):
                av_score/a_scale**2]+b_score
         self.score = sum(score_list)
 
+        print("Residuals are RMS*(penalty due to missing hits)")
         print("    x RMS residual ", format(x_score**0.5, "12.4g"))
         print("    px RMS residual", format(px_score**0.5, "12.4g"))
         print("    z RMS residual ", format(z_score**0.5, "12.4g"))

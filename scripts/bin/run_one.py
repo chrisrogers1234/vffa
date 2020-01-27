@@ -2,6 +2,8 @@ import os
 import shutil
 import sys
 import importlib
+import subprocess
+import datetime
 
 import ROOT
 
@@ -40,6 +42,14 @@ def output_dir(config, config_file_name):
     except OSError:
         pass
     shutil.copy2(config_file_name, output_dir)
+    git_string = "Time "+str(datetime.datetime.now())+"\n"
+    try:
+        git_string += subprocess.check_output(["git", "log", "-1"]).decode('unicode_escape')
+        git_string += subprocess.check_output(["git", "status"]).decode('unicode_escape')
+    except Exception:
+        git_string += "Error calling git"
+    fout = open(output_dir+"/status", "w")
+    print(git_string, file=fout)
 
 def master_substitutions(config):
     xboa.common.substitute(config.tracking["master_file"], config.tracking["lattice_file"], config.master_substitutions)

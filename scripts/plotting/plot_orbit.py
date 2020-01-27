@@ -575,7 +575,7 @@ def plot_cartesian(output_dir, opal_run_dir, step_list):
     #z_min, z_max = 0.05, 0.2
     inner_radius, axis_radius, outer_radius, ncells = 3.5, 3.995, 4.5, 20
     inner_radius_a, axis_radius_a, outer_radius_a, ncells_a = 3.4, 3.995, 4.5, 10
-    z_min, z_max = -0.02, 0.02
+    z_min, z_max = -0.0, 0.2
 
     Colors.reset()
     canvas = field_plot.plot_dump_fields("x", "y", "bz")
