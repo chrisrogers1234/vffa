@@ -296,6 +296,59 @@ class PlotDumpFields(object):
     global_max_z = 0.5
 
 
+class LogFileStripper(object):
+    def __init__(self, file_name, elements):
+        self.file_name = file_name
+        self.elements = elements
+        self.flog = None
+        self.elements_list = []
+
+    def strip_line(self, key):
+        line = self.flog.readline()
+        if key not in line:
+            raise RuntimeError("strip log file failed to find "+key+" in "+line)
+        line = line.split("(")[1]
+        line = line.split(")")[0]
+        values = [float(word) for word in line.split(",")]
+        return values
+
+    def strip_log_file(self):
+        self.flog = open(self.file_name)
+        self.elements_list = []
+        line = "abc"
+        while line != "":
+            line = self.flog.readline()
+            my_key = None
+            if " Added " in line and " Ring" in line:
+                print("Line!", line)
+                for key in self.elements:
+                    if key not in line:
+                        continue
+                    print("Found log key", key)
+                    my_element = {
+                        "start":self.strip_line("Start position"),
+                        "end":self.strip_line("End position"),
+                        "name":key
+                    }
+                    self.elements_list.append(my_element)
+
+    def plot_log_file(self, canvas, ax_1, ax_2):
+        print("Plotting log file")
+        self.strip_log_file()
+        graph = ROOT.TGraph(len(self.elements_list))
+        for i, element in enumerate(self.elements_list):
+            pos = [(element["start"][i]+element["end"][i])/2. for i in range(3)]
+            x = pos[ax_1]/1000.
+            y = pos[ax_2]/1000.
+            graph.SetPoint(i, x, y)
+        graph.SetMarkerStyle(7)
+        graph.SetMarkerColor(ROOT.kBlue)
+        canvas.cd()
+        graph.Draw("P")
+        self.root_objects.append(graph)
+
+    root_objects = []
+
 def main(a_dir = None):
     plotter = PlotDumpFields(a_dir+"/FieldMapXY.dat", False)
     canvas_xy = plotter.plot()

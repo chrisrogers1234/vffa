@@ -6,33 +6,33 @@ def get_baseline_substitution():
         # ring
         "__n_cells__":10,
         "__radius__":3.995285, #m
-        "__drift_1__":0.75,
-        "__drift_2__":0.75,
+        "__half_cell_length__":1.25,
         "__n_particles__":3,
         # beam
         "__energy__":3., # MeV
         "__beam_phi_init__":0., # fraction of cell length
         # tracking
-        "__step_size__":0.001, # m
+        "__step_size__":0.0001, # m
         "__n_turns__":0.2,
         # main magnets
+        "__n_sectors__":7,
+        "__occupancy__":0.8,
         "__bf__":-0.5, #-0.25/0.44, # T
         "__bd__":0.22, #0.25, #+0.20, # T
-        "__d_length__":0.2, # m
-        "__f_length__":0.2, # m
-        "__d_offset__":-0.1625, # m # 0.154
-        "__f_offset__":0.1625, # m
-        "__d_end_length__":0.125,  # m
-        "__f_end_length__":0.125, # m
-        "__m_index__":1.58, # m^-1 # 1.58
+        "__d_length__":0.5, # m
+        "__f_length__":0.5, # m
+        "__d_offset__":-0.162, # m # 0.154
+        "__f_offset__":0.162, # m
+        "__d_end_length__":0.15,  # m
+        "__f_end_length__":0.15, # m
+        "__m_index__":1.44, # m^-1 # 1.58
         "__max_x_power__":6,
         "__neg_extent__":2.0, # m
         "__pos_extent__":4.0, # m
-        "__magnet_separation__":0.1, # m
-        "__f_tilt_angle__":-8.0,
-        "__d_tilt_angle__":+4.0,
+        "__f_bend_angle__":+32.0,
+        "__d_bend_angle__":-16.0,
         # NOTE BB length 0.125 m -> width 1.0 m; length 2.0 m; double for safety
-        "__magnet_width__":6.0, # m
+        "__magnet_width__":4.0, # m
         "__bb_length__":20.0, # m
         # field maps
         "__do_magnet_field_maps__":True,
@@ -86,16 +86,17 @@ def get_baseline_substitution():
 class Config(object):
     def __init__(self):
         self.find_closed_orbits = { 
-            "seed":[[3946.1223258417176, -24.618972507786452, 136.66277886171747, -1.235505893912702]],
+                #order 10 [3971.0069543538857, -22.02559197601977, 74.96704487122588, -1.2762095154819235]],
+            "seed":[[3944.5849617875692, -26.049083417439988, 158.4519347916439, -1.5875088457067648]],
             "deltas":[0.1, 0.1, 0.1, 0.1],
             "adapt_deltas":False,
             "output_file":"closed_orbits_cache",
             "subs_overrides":{"__n_turns__":0.21, "__do_magnet_field_maps__":"False"},
-            "final_subs_overrides":{"__n_turns__":0.51, "__do_magnet_field_maps__":"True"},
+            "final_subs_overrides":{"__n_turns__":0.21, "__do_magnet_field_maps__":"True"},
             "us_cell":1,
             "ds_cell":2,
             "root_batch":0,
-            "max_iterations":0, 
+            "max_iterations":5, 
             "tolerance":0.1,
             "do_plot_orbit":False,
             "run_dir":"tmp/find_closed_orbits",
@@ -230,10 +231,10 @@ class Config(object):
             "find_closed_orbits_4d":True,
             "find_tune":False,
             "find_da":False,
-            "find_bump_parameters":True,
+            "find_bump_parameters":False,
             "track_bump":False,
             "clean_output_dir":False,
-            "output_dir":os.path.join(os.getcwd(), "output/baseline_0.1625-12"),
+            "output_dir":os.path.join(os.getcwd(), "output/sector_baseline-2"),
             "root_verbose":6000,
             "faint_text":'\033[38;5;253m',
             "default_text":'\033[0m'
@@ -243,9 +244,9 @@ class Config(object):
             "mpi_exe":None, #os.path.expandvars("${OPAL_ROOT_DIR}/external/install/bin/mpirun"),
             "beam_file_out":"disttest.dat",
             "n_cores":4,
-            "links_folder":["VerticalFFA",], # link relative to lattice/VerticalFFA.in
-            "lattice_file":os.path.join(os.getcwd(), "lattice/VerticalFFA.in"),
-            "lattice_file_out":"VerticalFFA.tmp",
+            "links_folder":["VerticalSectorFFA",], # link relative to lattice/VerticalFFA.in
+            "lattice_file":os.path.join(os.getcwd(), "lattice/VerticalSectorFFA.in"),
+            "lattice_file_out":"VerticalSectorFFA.tmp",
             "opal_path":os.path.expandvars("${OPAL_EXE_PATH}/opal"),
             "tracking_log":"log",
             "flags":[],

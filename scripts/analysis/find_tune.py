@@ -128,16 +128,16 @@ class Tune(object):
                 tune_info[axis+"_signal"] = list(zip(finder.u, finder.up))
                 tune_info[axis+"_dphi"] = finder.dphi
                 tune_info[axis+"_n_cells"] = len(finder.dphi)
-                canvas, hist, graph = finder.plot_phase_space()
+                canvas, hist, graph = finder.plot_phase_space_root()
                 name = os.path.join(self.output_dir, "tune_"+str(i)+"_finding-"+axis+"_"+axis+"_phase-space")
                 for format in ["png"]:
                     canvas.Print(name+"."+format)
-                canvas, hist, graph = finder.plot_cholesky_space()
+                canvas, hist, graph = finder.plot_cholesky_space_root()
                 name = os.path.join(self.output_dir, "tune_"+str(i)+"_"+axis+"_cholesky-space")
                 for format in ["png"]:
                     canvas.Print(name+"."+format)
                 self.set_finder(finder, not_axis, psv_list)
-                canvas, hist, graph = finder.plot_phase_space()
+                canvas, hist, graph = finder.plot_phase_space_root()
                 name = os.path.join(self.output_dir, "tune_"+str(i)+"_finding-"+axis+"_"+not_axis+"_phase-space")
                 for format in ["png"]:
                     canvas.Print(name+"."+format)
@@ -176,7 +176,9 @@ class Tune(object):
         """Load closed orbits from a json file"""
         filename = self.output_dir+"/"+self.config.find_closed_orbits["output_file"]
         fin = open(filename)
-        closed_orbits = [json.loads(line) for line in fin.readlines()]
+        closed_orbits = []
+        for line in fin.readlines():
+            closed_orbits += json.loads(line)
         self.closed_orbits_cached = closed_orbits
 
     def _reference(self, hit):

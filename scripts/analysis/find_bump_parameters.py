@@ -24,21 +24,21 @@ class FindBumpParameters(object):
         self.config = config
         self.tmp_dir = os.path.join(self.config.run_control["output_dir"],
                                self.config.find_bump_parameters["run_dir"])
-        self.x_err = self.config.find_bump_parameters["position_tolerance"]
-        self.p_err = self.config.find_bump_parameters["momentum_tolerance"]
+        self.x_err = 1.
+        self.p_err = 1.
         self.field_names = [name for name in self.field_names_gen()]
+        self.field_names = sorted(self.field_names,
+                        key = lambda key: [x for x in reversed(key.split('_'))])
         self.fixed = {}
         self.first_tracking = True
         self.subs = {}
         self.iteration = 0
-        self.target_bump = [0., 0., 0., 0.]
-        self.target_amp = [0., 0.]
         self.tracking_result = []
-        self.output = []
         self.score = None
         self.target_hit = None
         self.overrides = {}
         self.bump_fields = {}
+        self.optimisation_fields = []
         self.store_index = 1
         DecoupledTransferMatrix.det_tolerance = 1.
 
@@ -46,12 +46,14 @@ class FindBumpParameters(object):
         self.minuit = ROOT.TMinuit(len(self.field_names))
         min_b = self.config.find_bump_parameters["magnet_min_field"]
         max_b = self.config.find_bump_parameters["magnet_max_field"]
-        fixed = self.config.find_bump_parameters["fix_bumps"]
-        seed = self.config.find_bump_parameters["seed_field"]
         errors = self.config.find_bump_parameters["seed_errors"]
-        print(len(self.field_names), len(seed), len(errors))
+        fixed = self.optimisation["fix_bumps"]
+        for name, field in self.optimisation["seed_fields"].items():
+            self.bump_fields[name] = field
         for i, name in enumerate(self.field_names):
-            self.minuit.DefineParameter(i, name, seed[i], abs(errors[i]), min_b, max_b)
+            self.minuit.DefineParameter(i, name,
+                                        self.bump_fields[name], abs(errors[i]),
+                                        min_b, max_b)
             if name in fixed:
                 self.minuit.FixParameter(i)
                 print("Fixed bump", name)
@@ -76,11 +78,21 @@ class FindBumpParameters(object):
             yield "__v_bump_"+str(i+1)+"_field__"
 
     def store_data(self):
-        outname = self.get_filename_root()+"_"+str(self.store_index)+".out"
+        outname = self.get_filename_root()+"_"+f'{self.store_index:03}'+".out"
         tmpname = self.get_filename_root()+".tmp"
         print("Moving data from", tmpname, "to", outname)
         os.rename(tmpname, outname)
         self.store_index += 1
+
+    def bump_target_orbit(self, bump_station, bump):
+        if bump_station not in self.optimisation["target_orbit"]:
+            print("No bump - could not find station", bump_station)
+            return
+        old_target_orbit = self.optimisation["target_orbit"][bump_station]
+        new_target_orbit = [old_target_orbit[i]+bump[i] for i in range(4)]
+        self.optimisation["target_orbit"][bump_station] = new_target_orbit
+        print("Bumped target orbit at station", bump_station,
+              "from", old_target_orbit, "to", new_target_orbit)
 
     def find_bump_parameters(self):
         try:
@@ -92,25 +104,44 @@ class FindBumpParameters(object):
             pass
         for i, subs in enumerate(self.config.substitution_list):
             self.setup_amplitude(i)
-            self.output.append({"subs":subs, "bumps":[]})
-            for bump in self.config.find_bump_parameters["bump"]:
-                self.do_one_optimisation(bump, None, subs)
-            for amp in self.config.find_bump_parameters["amp"]:
-                self.do_one_optimisation(None, amp, subs)
+            self.subs = subs
+            self.seed_bump_fields()
+            for station, bump in self.config.find_bump_parameters["bump"]:
+                for optimisation in self.config.find_bump_parameters["staged_optimisation"]:
+                    self.optimisation = copy.deepcopy(optimisation)
+                    self.bump_target_orbit(station, bump)
+                    self.do_one_optimisation()
+            self.optimisation_fields.append(self.bump_fields)
+
+    def seed_bump_fields(self):
+        if len(self.optimisation_fields) == 0:
+            self.bump_fields = dict([(name, 0.) for name in self.field_names])
+            return
+        elif len(self.optimisation_fields) == 1:
+            self.bump_fields = copy.deepcopy(self.optimisation_fields[-1])
+            return
+        fields_0 = self.optimisation_fields[-2]
+        fields_1 = self.optimisation_fields[-1]
+        self.bump_fields = copy.deepcopy(self.optimisation_fields[-1])
+        for key in self.bump_fields: # assume we move linearly...
+            self.bump_fields[key] += fields_1[key] - fields_0[key]
 
     def run_minuit(self, algorithm):
+        print("setup minuit")
         self.setup_minuit()
+        print("run minuit")
         try:
-            self.minuit.Command("SIMPLEX "+str(self.max_iterations)+" 1.")
-        except StopIteration:
+            self.minuit.Command(algorithm+" "+str(self.max_iterations)+" 1.")
+        except Exception:
             sys.excepthook(*sys.exc_info())
             print("Minuit failed")
+        print("done minuit")
 
     def run_platypus(self, algorithm):
         min_b = self.config.find_bump_parameters["magnet_min_field"]
         max_b = self.config.find_bump_parameters["magnet_max_field"]
-        fixed = self.config.find_bump_parameters["fix_bumps"]
-        seed = copy.deepcopy(self.config.find_bump_parameters["seed_field"])
+        fixed = self.optimisation["fix_bumps"]
+        seed = copy.deepcopy(self.config.find_bump_parameters["seed_fields"])
         sigma = self.config.find_bump_parameters["seed_errors"][0]
         self.field_names = [name for name in self.field_names_gen()]
         max_iterations = self.config.find_bump_parameters["max_iterations"]
@@ -137,28 +168,19 @@ class FindBumpParameters(object):
             sys.excepthook(*sys.exc_info())
             print("Platypus failed")
 
-    def do_one_optimisation(self, bump, amp, subs):
-        print("Doing optimisation with bump", bump, "amp", amp)
-        if bump != None:
-            for i, bump_i in enumerate(bump):
-                foil_co = self.config.find_bump_parameters["foil_closed_orbit"]
-                co = self.config.find_bump_parameters["closed_orbit"]
-                self.target_bump[i] = bump_i+foil_co[i]-co[i]
-        else:
-            self.target_bump = None
-        self.target_amp = amp
-        self.subs = subs
+    def do_one_optimisation(self):
+        print("Doing optimisation")
         self.overrides = self.config.find_bump_parameters["subs_overrides"]
         self.max_iterations = self.config.find_bump_parameters["max_iterations"]
         self.iteration = 0
         algorithm = self.config.find_bump_parameters["algorithm"]
-        if algorithm == "simplex":
+        if str(algorithm).lower() in self.root_algorithms:
             self.run_minuit(algorithm)
         elif algorithm == "nsga2":
             self.run_platypus(algorithm)
         else:
             raise RuntimeError("Did not recognise algorithm "+str(algorithm))
-        print("Finished optimisation with bump", bump, "amp", amp)
+        print("Finished optimisation")
         self.overrides = self.config.find_bump_parameters["final_subs_overrides"]
         print("Doing final tracking")
         self.track_one(self.bump_fields)
@@ -173,9 +195,7 @@ class FindBumpParameters(object):
 
     def save_state(self, suffix, append):
         state = {
-            "target_bump":copy.deepcopy(self.target_bump),
-            "target_amp":copy.deepcopy(self.target_amp),
-            "bump_probe_station":self.config.find_bump_parameters["bump_probe_station"],
+            "target_orbit":self.optimisation["target_orbit"],
             "bump_fields":self.bump_fields,
             "tracking":copy.deepcopy(self.tracking_result),
             "n_iterations":self.iteration,
@@ -219,60 +239,48 @@ class FindBumpParameters(object):
         """
         return 0., 0.
 
-    def get_n_hits(self, hit_list, ignore_stations):
+    def get_n_hits(self, hit_list, stations):
         target_n_hits = self.config.find_bump_parameters["target_n_hits"]
-        hit_list = [hit for hit in hit_list if hit["station"] not in ignore_stations]
+        hit_list = [hit for hit in hit_list if hit["station"] in stations]
         n_hits = len(hit_list)
         penalty_factor = self.config.find_bump_parameters["penalty_factor"]
         denominator = n_hits
         if denominator == 0:
             denominator = 1
         penalty = penalty_factor**(target_n_hits-n_hits)
-        if penalty < 1:
-            penalty = 1.
         print("Found ", n_hits, "usable hits.",
-              "Target", target_n_hits, "hits.",
-              "Penalty", penalty, "will be applied to all scores")
+              "Target", target_n_hits, "hits.")
+        if penalty <= 1.0000001:
+            penalty = 1.
+        else:
+            print("Penalty", penalty, "will be applied to all scores")
         return n_hits, denominator, penalty
 
     def get_score(self, hit_list):
-        ignore_stations = self.config.find_bump_parameters["ignore_stations"]
-        target_co = self.config.find_bump_parameters["closed_orbit"]
-        bump_probe_station = self.config.find_bump_parameters["bump_probe_station"]
-        amp_probe_station = self.config.find_bump_parameters["amp_probe_station"]
+        target_co = self.optimisation["target_orbit"]
         x_score, px_score, y_score, py_score, au_score, av_score = 0., 0., 0., 0., 0., 0.
-        n_hits, denominator, penalty = self.get_n_hits(hit_list, ignore_stations)
+        n_hits, denominator, penalty = self.get_n_hits(hit_list, target_co.keys())
+        print("station  x            px        y       py     | t           |",
+              "        |  r_x      r_px      r_y       r_py")
         for i, hit in enumerate(hit_list):
-            print(format(hit["station"], "6"), end=' ')
-            print(format(hit["x"], "12.9g"), format(hit["px"], "8.5g"), end=' ')
-            print(format(hit["y"], "8.5g"), format(hit["py"], "8.5g"), end=' ')
-            print("|", format(hit["t"], "12.5g"), end=' ')
+            print(format(hit["station"], "6"),
+                  format(hit["x"], "12.9g"), format(hit["px"], "8.4g"),
+                  format(hit["y"], "8.4g"), format(hit["py"], "8.4g"),
+                  "|", format(hit["t"], "12.5g"), end='| ')
             au, av = 0., 0.
-            if hit["station"] == bump_probe_station and self.target_bump != None:
-                hit["x"] -= self.target_bump[0]
-                hit["px"] -= self.target_bump[1]
-                hit["y"] -= self.target_bump[2]
-                hit["py"] -= self.target_bump[3]
-                print("move  ", end=' ')
+            if hit["station"] in target_co.keys():
+                key = hit["station"]
+                r_x  = hit["x"] - target_co[key][0]
+                r_px = hit["px"] - target_co[key][1]
+                r_y  = hit["y"] - target_co[key][2]
+                r_py = hit["py"] - target_co[key][3]
+                print("orbit   |",
+                      format(r_x, "8.3g"),  format(r_px, "8.3g"),
+                      format(r_y, "8.3g"),  format(r_py, "8.3g"))
                 self.target_hit = i
-            elif hit["station"] in ignore_stations:
-                print("ignore", "|")
-                continue
-            elif hit["station"] == amp_probe_station and self.target_amp != None:
-                au, av = self.get_amplitude(hit)
-                hit["x"] = target_co[0]
-                hit["px"] = target_co[1]
-                hit["y"] = target_co[2]
-                hit["py"] = target_co[3]
-                print("amp  ", end=' ')
             else:
-                print("      ", end=' ')
-            r_x = (hit["x"] - target_co[0])
-            r_px = (hit["px"] - target_co[1])
-            r_y = (hit["y"] - target_co[2])
-            r_py = (hit["py"] - target_co[3])
-            print("|", format(r_x, "8.3g"),  format(r_px, "8.3g"), end=' ')
-            print(format(r_y, "8.3g"),  format(r_py, "8.3g"))
+                print("ignored |")
+                continue
             x_score += r_x**2./denominator
             px_score += r_px**2./denominator
             y_score += r_y**2./denominator
@@ -297,22 +305,28 @@ class FindBumpParameters(object):
         self.iteration += 1
         if self.iteration > self.max_iterations:
             raise StopIteration("Hit maximum iteration")
-        pos_scale = self.config.find_bump_parameters["position_tolerance"]
-        mom_scale = self.config.find_bump_parameters["momentum_tolerance"]
+        pos_scale = self.optimisation["position_tolerance"]
+        mom_scale = self.optimisation["momentum_tolerance"]
         a_scale = self.config.find_bump_parameters["amplitude_tolerance"]
         b_scale = self.config.find_bump_parameters["field_tolerance"]
         target_fields = self.config.find_bump_parameters["target_fields"]
 
-        print("Running iteration", self.iteration, "target", self.target_bump)
+        print("Running iteration", self.iteration)
         fields = self.get_fields_from_parameters(parameters)
         hit_list = self.track_one(fields)
         x_score, px_score, z_score, pz_score, au_score, av_score = self.get_score(hit_list)
         b_score = [(fields[key] - target_fields[key])**2/b_scale**2 for key in target_fields ]
         print("Bump fields:")
         print("   ", [fields[key] for key in sorted(fields)])
-        for key in sorted(fields.keys()):
+        for key in sorted(fields.keys(),
+                          key = lambda key: [x for x in reversed(key.split('_'))] ):
             value = fields[key]
-            print(key.replace("_", " "), value)
+            a_out = self.config.run_control["default_text"]
+            if key in self.optimisation["fix_bumps"]:
+                a_in=self.config.run_control["faint_text"]
+            else:
+                a_in=a_out
+            print(a_in, key.replace("_", " "), str(value), a_out)
         score_list = [x_score/pos_scale**2,
                px_score/mom_scale**2,
                z_score/pos_scale**2,
@@ -382,6 +396,8 @@ class FindBumpParameters(object):
         hit_list = self.cuts(hit_list)
         self.tracking_result = [[hit["station"], hit["x"], hit["px"], hit["y"], hit["py"]] for hit in hit_list]
         return hit_list
+
+    root_algorithms = ["simplex", "migrad"]
 
 def main(config):
     find_bump = FindBumpParameters(config)

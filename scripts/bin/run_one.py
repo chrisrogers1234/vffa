@@ -72,4 +72,10 @@ def main():
         analysis.track_bump.main(config)
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except:
+        raise
+    finally:
+        print('\033[0m')
+              

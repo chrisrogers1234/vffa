@@ -63,7 +63,7 @@ class TrackBump(object):
     def get_bump_list(self, bumps):
         """
         Get a list of bump magnet settings and set up injection orbits
-        - bumps: the loaded bump magnet settings
+        - bumps: the loaded output from find_bump_parameters
         Set up the bump settings defined in config.track_bump["bump_list"].
         First compare the loaded bump finder data with the desired bumps to
         find the appropriate bump finder data. Then select the injection orbit

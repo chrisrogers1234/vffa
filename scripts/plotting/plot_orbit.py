@@ -575,10 +575,13 @@ def plot_cartesian(output_dir, opal_run_dir, step_list):
     #z_min, z_max = 0.05, 0.2
     inner_radius, axis_radius, outer_radius, ncells = 3.5, 3.995, 4.5, 20
     inner_radius_a, axis_radius_a, outer_radius_a, ncells_a = 3.4, 3.995, 4.5, 10
-    z_min, z_max = -0.0, 0.2
+    z_min, z_max = -0.0, 0.3
 
     Colors.reset()
     canvas = field_plot.plot_dump_fields("x", "y", "bz")
+    log_plot = plot_dump_fields.LogFileStripper(opal_run_dir+"log",
+                                                ["MAGNETD", "MAGNETF"])
+    log_plot.plot_log_file(canvas, 0, 1)
     plot_beam_pipe(inner_radius, outer_radius, ncells, canvas)
     plot_beam_pipe(inner_radius_a, outer_radius_a, ncells_a, canvas)
     plot_axis(axis_radius, ncells, canvas)
@@ -586,15 +589,15 @@ def plot_cartesian(output_dir, opal_run_dir, step_list):
     canvas, axes, graph = plot_x_y_projection(step_list, canvas)
     for format in ["png"]:
         canvas.Print(output_dir+"closed_orbit_plan_bz."+format)
-
+    return
     Colors.reset()
     canvas = None
     canvas, graph = plot_x_z_projection(step_list, 0, 360, z_min, z_max, canvas)
     plot_probes(canvas, probe_data, "phi", "z")
-    plot_phi_pipe(31, 0, 360, -2.0, 2.0, ROOT.kGray, canvas)
-    plot_phi_pipe(16, 0, 360, -2.0, 2.0, 1, canvas)
-    plot_phi_pipe(2, 108-36*0.07, 108+36*0.07, -0.02, -0.04, ROOT.kGray, canvas)
-    plot_phi_pipe(2, 0, 360, -0.02, -0.04, ROOT.kGray, canvas)
+    plot_phi_pipe(ncells+1, 0, 360, -2.0, 2.0, ROOT.kGray, canvas)
+    plot_phi_pipe(ncells_a+1, 0, 360, -2.0, 2.0, 1, canvas)
+    plot_phi_pipe(2, 72-36*0.07, 72+36*0.07, 0.05, 0.08, ROOT.kGray, canvas)
+    plot_phi_pipe(2, 0, 360, 0.0878, -0.05, ROOT.kGray, canvas)
     for format in ["png"]:
         canvas.Print(output_dir+"closed_orbit_elevation."+format)
     Colors.reset()
