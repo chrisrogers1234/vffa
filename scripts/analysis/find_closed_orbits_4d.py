@@ -146,6 +146,7 @@ class ClosedOrbitFinder4D(object):
         try:
             dm = self.get_decoupled(tm)
             print("Determinant:  ", numpy.linalg.det(dm.m))
+            print("Symplecticity:\n", dm.symplecticity(dm.m))
             print("Phase advance:", [dm.get_phase_advance(i)/math.pi/2. for i in range(2)])
         except Exception:
             sys.excepthook(*sys.exc_info())
@@ -210,7 +211,7 @@ class ClosedOrbitFinder4D(object):
         ds_cell = self.config_co["ds_cell"]
         dim = len(seeds)
         tm_list_in, tm_list_out = [], []
-        value_list = []
+        value_list = [copy.deepcopy(seeds)]
         for j, values in enumerate(self.get_values(dim)):
             value_list.append([seeds[i]+values[i]*deltas[i] for i in range(dim)])
         track_list = self.track_many(value_list, 0., False)[1:]

@@ -293,7 +293,7 @@ class PlotDumpFields(object):
           ROOT.TColor.CreateGradientColorTable(npoints, s, r, g, b, ncontours)
           ROOT.gStyle.SetNumberContours(ncontours)
 
-    global_max_z = 0.5
+    global_max_z = 5
 
 
 class LogFileStripper(object):
@@ -316,21 +316,24 @@ class LogFileStripper(object):
         self.flog = open(self.file_name)
         self.elements_list = []
         line = "abc"
+        print("Seeking log keys", self.elements.keys())
         while line != "":
             line = self.flog.readline()
             my_key = None
             if " Added " in line and " Ring" in line:
-                print("Line!", line)
-                for key in self.elements:
+                for key in self.elements.keys():
                     if key not in line:
                         continue
-                    print("Found log key", key)
+                    print(key, end=' ... ')
+                    sys.stdout.flush()
                     my_element = {
                         "start":self.strip_line("Start position"),
                         "end":self.strip_line("End position"),
-                        "name":key
+                        "name":key,
+                        "color":self.elements[key],
                     }
                     self.elements_list.append(my_element)
+        print("Done")
 
     def plot_log_file(self, canvas, ax_1, ax_2):
         print("Plotting log file")
@@ -342,7 +345,7 @@ class LogFileStripper(object):
             y = pos[ax_2]/1000.
             graph.SetPoint(i, x, y)
         graph.SetMarkerStyle(7)
-        graph.SetMarkerColor(ROOT.kBlue)
+        graph.SetMarkerColor(element["color"])
         canvas.cd()
         graph.Draw("P")
         self.root_objects.append(graph)

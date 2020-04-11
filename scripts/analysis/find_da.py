@@ -124,6 +124,7 @@ class DAFinder(object):
 
     def time_cut(self, hits_list):
         dt = 0
+        ref_dt = 100.
         if len(hits_list) > 2:
             ref_dt = hits_list[2]['t'] - hits_list[1]['t']
         tmp_hits_list = [hits_list[0]]

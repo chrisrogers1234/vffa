@@ -255,6 +255,30 @@ class DecoupledTransferMatrix(object):
         v_m_transported = numpy.dot(self.m, numpy.dot(v_m, numpy.transpose(self.m)))
         print(v_m_transported)
 
+    @classmethod
+    def symplecticity(self, matrix):
+        """
+        Returns matrix giving the degree of symplecticity.
+        - matrix: 2N x 2N matrix
+        Returns J = M S^T M^T S, where S is the symplectic matrix. For a 
+        perfectly symplectic matrix this is 1.
+        """
+        if len(matrix.shape) != 2:
+            raise ValueError("Matrix should be a matrix")
+        elif matrix.shape[0] != matrix.shape[1]:
+            raise ValueError("Should be a square matrix")
+        elif (matrix.shape[0]/2)*2 != matrix.shape[0]:
+            raise ValueError("Should be a 2N x 2N matrix")
+        symp = numpy.zeros(matrix.shape)
+        for i in range(1, matrix.shape[0]):
+            symp[i, i-1] = -1.
+            symp[i-1, i] = +1.
+        matrix_T = numpy.transpose(matrix)
+        # use S^T = -S
+        J = numpy.dot(matrix, numpy.dot(-symp, numpy.dot(matrix_T, symp)))
+        return J
+
+
     det_tolerance = 1e-6
 
 def _random_rotated(dim):

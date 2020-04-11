@@ -56,7 +56,7 @@ class DAPlotter(object):
 
     def calculate_da(self, row_data, da_key, n_points):
         return 0.
-        axis1, axis2 = {"x_da":("x", "x'"), "y_da":("y", "y'")}[da_key]
+        axis1, axis2 = {"x_da":("x", "px"), "y_da":("y", "py")}[da_key]
         points = []
         mass = common.pdg_pid_to_mass[2212]
         hit_list = []
@@ -76,9 +76,10 @@ class DAPlotter(object):
         pz = hit_list[0]['pz']
         print(math.pi*(max(x_list)-min(x_list))*(max(y_list)-min(y_list))/4.*mass/pz)
         if len(points):
-            geometric_acceptance = get_area(points)/math.pi
-            # beta gamma * geometric emittance
-            normalised_acceptance = geometric_acceptance*pz/mass
+            acceptance = get_area(points)/math.pi/mass
+            if axis2[1] == "'": # x' or y', we need to normalise the emittance
+                # beta gamma * geometric emittance
+                acceptance *= pz
             return normalised_acceptance
         else:
             return 0.
@@ -112,7 +113,7 @@ class DAPlotter(object):
                 if da_key not in list(item.keys()):
                     print("Did not find", da_key, "in keys", list(item.keys()), "... skipping")
                     continue
-                for axis1, axis2 in ('x', "x'"), ('y', "y'"):
+                for axis1, axis2 in ('x', "px"), ('y', "py"):
                     canvas = self.plot_one_da(item, da_key, axis1, axis2, max_n_points, variables, acceptance)
                     plot_name = "da_"+str(index)+"_"+da_key+"_"+axis1+"_"+axis2
                     for format in ["eps", "png", "root"]:
@@ -128,7 +129,7 @@ class DAPlotter(object):
                         chol_canvas.Print(plot_dir+"/"+plot_name+"_cholesky."+format)
 
 
-                self.plot_decoupled_da(item, da_key, axis1, axis2, max_n_points, variables, acceptance)
+                self.plot_decoupled_da(item, da_key, index, axis1, axis2, max_n_points, variables, acceptance)
 
     def make_global_plot(self, min_n_points, plot_dir):
         axis_candidates = utilities.get_substitutions_axis(self.data, "substitutions")
@@ -333,7 +334,7 @@ class DAPlotter(object):
         for fmt in self.formats:
             canvas.Print(self.plot_dir+"/"+name+"."+fmt)
 
-    def plot_decoupled_da(self, row_data, da_key, axis1, axis2, max_n_points, variables, acceptance):
+    def plot_decoupled_da(self, row_data, da_key, index, axis1, axis2, max_n_points, variables, acceptance):
         hit_data = row_data[da_key]
         da_row = self.get_da_row(hit_data, max_n_points)
         tm = row_data["ref_track"][0]
@@ -360,8 +361,8 @@ class DAPlotter(object):
             #amp_data_u = [self.get_amplitude(tm, seed, [0, 1]) for seed in seed_list]
             ##amp_data_v = [self.get_amplitude(tm, seed, [2, 3]) for seed in seed_list]
             #amp_data_4d = [self.get_amplitude(tm, seed, [0, 1, 2, 3]) for seed in seed_list]
-        self.make_plot(u_data, da_row, da_key+": u vs pu", "u", "pu")
-        self.make_plot(v_data, da_row, da_key+": v vs pv", "v", "pv")
+        self.make_plot(u_data, da_row, da_key+" "+str(index)+": u vs pu", "u", "pu")
+        self.make_plot(v_data, da_row, da_key+" "+str(index)+": v vs pv", "v", "pv")
 
     def test(self):
         points = numpy.array([

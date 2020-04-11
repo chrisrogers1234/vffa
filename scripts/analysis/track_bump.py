@@ -38,114 +38,78 @@ class TrackBump(object):
         self.tracking_result = []
         self.bump_data = []
         self.output = []
-        self.injection_orbit = None
+        self.injection_orbit = self.config.track_bump["injection_orbit"]
+        self.file_index = 0
+        self.data_dict = {}
 
-    def track_bump(self):
-        os.chdir(self.tmp_dir)
-        for self.subs in self.config.substitution_list:
-            self.load_bump_parameters()
-            for bumps in self.bump_data:
-                bump_list = self.get_bump_list(bumps)
-                self.back_track(bump_list)
-                self.fore_track(bump_list)
-                #self.track_painting(bump_list)
-
-    def is_equal_list(self, list_1, list_2, tolerance):
-        if len(list_1) != len(list_2):
-            return False
-        for i, item_1 in enumerate(list_1):
-            item_2 = list_2[i]
-            if abs(item_1-item_2) > tolerance:
-                return False
-        return True
-
-
-    def get_bump_list(self, bumps):
-        """
-        Get a list of bump magnet settings and set up injection orbits
-        - bumps: the loaded output from find_bump_parameters
-        Set up the bump settings defined in config.track_bump["bump_list"].
-        First compare the loaded bump finder data with the desired bumps to
-        find the appropriate bump finder data. Then select the injection orbit
-        corresponding to the config.track_bump["bump_probe_station"], which is
-        the probe where we consider the foil to be placed.
-        
-        The return value is a list, each item in the list comprising a tuple
-        having
-            bump_list[0] dict of field name:field strength
-            bump_list[1] integer corresponding to the number of turns for which
-                         that field would be held (to simulate painting)
-            bump_list[2] closed orbit ?? position of the closed orbit for that
-                         field setting on the bump probe ??
-        We also set self.injection_orbit, corresponding to the closed orbit
-        for which the injected H- sit on top of a particular bump
-        """
-        bump_list = []
-        bump_input = self.config.track_bump["bump_list"]
-        if bump_input == None:
-            find_bump_list = self.config.find_bump_parameters["bump"]
-            foil_co = self.config.find_bump_parameters["foil_closed_orbit"]
-            co = self.config.find_bump_parameters["closed_orbit"]
-            bump_input = []
-            for bump in find_bump_list:
-                bump_input.append([])
-                for i, bump_i in enumerate(bump):
-                    bump_input[-1].append(bump_i+foil_co[i]-co[i])
-        if self.config.track_bump["n_turns_list"] == None:
-            n_turns_list = [1 for i in bump_input]
-        source_bump = None
-        for i, bump_target in enumerate(bump_input):
-            for item in bumps["bumps"]:
-                if self.is_equal_list(item["target_bump"], bump_target, 1e-9):
-                    source_bump = item["target_bump"]
-                    break
-                print(item["target_bump"], bump_target)
-            if source_bump == None:
-                raise RuntimeError("Failed to find bump for "+str(bump_target))
-                #tracking_index = item["target_hit"]
-            closed_orbit = [0., 0.]
-            for row in item["tracking"]:
-                if row[0] == self.config.track_bump["bump_probe_station"]:
-                    injection = self.config.track_bump["injection_orbit"]
-                    if bump_input[injection] == bump_target:
-                        self.injection_orbit = row[1:]
-                        break
-            for row in item["tracking"]:
-                if row[0] == self.config.track_bump["bump_probe_station"]:
-                    closed_orbit = row[1:]
-                    break
-            bump_list.append((item["bump_fields"], n_turns_list[i], closed_orbit))
-            print("Got bump list fields:", bump_list[0], "n turns", n_turns_list[i], "co", closed_orbit)
-        if self.injection_orbit == None:
-            print("Failed to find injection orbit element", end=' ')
-            print(self.config.track_bump["injection_orbit"], end=' ')
-            print("from bump list of length", len(bump_list))
-        else:
-            print("Updated injection orbit", self.injection_orbit)
-        return bump_list
+    def load_files(self):
+        fglob = os.path.join(self.config.run_control["output_dir"],
+                             self.config.track_bump["input_file"])
+        bump_data = []
+        print("Loading bump files")
+        for fname in glob.glob(fglob):
+            print("   ", fname)
+            with open(fname) as fin:
+                str_in = fin.readlines()[-1]
+            bump_data.append(json.loads(str_in))
+        return bump_data
 
     def load_bump_parameters(self):
-        fname = os.path.join(self.config.run_control["output_dir"],
-                             self.config.track_bump["input_file"])
-        str_in = open(fname).read()
-        self.bump_data = json.loads(str_in)
+        os.chdir(self.tmp_dir)
+        bump_data = self.load_files()
+        self.data_dict = {}
+        for item in bump_data:
+            if "optimisation_stage" in item:
+                id_ = item["optimisation_stage"]
+            else:
+                id_ = {"substitution_index":0, "bump_index":0, "optimisation_stage":0}
+            data_key = (id_["substitution_index"],
+                        id_["bump_index"])
+            if data_key not in self.data_dict:
+                self.data_dict[data_key] = {}
+            if id_["optimisation_stage"] == self.config.track_bump["foil_optimisation_stage"]:
+                self.data_dict[data_key]["proton_orbit"] = \
+                                                    self.get_proton_orbit(item)
+            if id_["optimisation_stage"] == self.config.track_bump["field_optimisation_stage"]:
+                self.data_dict[data_key]["field_list"] = \
+                                                    self.get_field_list(item)
 
-    def get_filename_root(self):
-        fname = self.config.run_control["output_dir"]+"/"
-        fname += self.config.track_bump["output_file"]
-        return fname
+    def track_bumps(self):
+        self.load_bump_parameters()
+        print("Back tracking using injection orbit:", self.injection_orbit)
+        for i, key in enumerate(sorted(self.data_dict.keys())):
+            bump = self.data_dict[key]
+            if "field_list" not in bump or "proton_orbit" not in bump:
+                print("Skipping key", key)
+                continue
+            self.subs = self.config.substitution_list[key[0]]
+            if i == 0:
+                self.back_track(bump["field_list"])
+            self.print_bump(key, bump)
+            self.fore_track(bump["field_list"], bump["proton_orbit"])
 
-    def save_state(self, suffix):
-        state = {
-            "target_bump":self.target_bump,
-            "bump_fields":self.get_fields_from_minuit(),
-            "tracking":self.tracking_result,
-            "n_iterations":self.iteration,
-        }
-        self.output[-1]["bumps"].append(state)
-        fname = self.get_filename_root()+"."+suffix
-        fout = open(fname, "w")
-        print(json.dumps(self.output, indent=2), file=fout)
+    def print_bump(self, key, bump):
+        print("Fore tracking bump with subs list:", key[0], "bump index", key[1])
+        for magnet in bump["field_list"]:
+            magnet_name = magnet.replace("_", " ")
+            print(magnet_name, format(bump["field_list"][magnet], "10.6g"))
+        print("Proton orbit:", bump["proton_orbit"])
+
+
+
+    def get_field_list(self, a_bump):
+        """
+        Get the list of fields for a given bumper setting
+        """
+        return a_bump["bump_fields"]
+
+    def get_proton_orbit(self, a_bump):
+        """
+        Get the target orbit at the foil for this bump setting
+        """
+        foil = str(self.config.track_bump["foil_station"])
+        proton_orbit = a_bump["target_orbit"][foil]
+        return proton_orbit
 
     def do_substitutions(self, fields, phi_init, charge):
         overrides = self.config.track_bump["subs_overrides"]
@@ -155,45 +119,42 @@ class TrackBump(object):
         overrides.update(fields)
         utilities.do_lattice(self.config, self.subs, overrides)
 
-    def fore_track(self, bump_list):
-        file_index = 0
-        for bump_fields, n_turns, closed_orbit in bump_list:
-            foil_phi = self.subs["__foil_probe_phi__"]
-            foil_probe = self.config.track_bump["foil_probe_files"]
-            energy = self.config.track_bump["energy"]
-            self.do_substitutions(bump_fields, foil_phi, +1.0)
-            tracking = utilities.setup_tracking(self.config, foil_probe, energy)
-            test_hit = utilities.reference(self.config, energy,
-                                           closed_orbit[0], closed_orbit[1],
-                                           closed_orbit[2], closed_orbit[3])
-            hit_list = tracking.track_one(test_hit)
-            lattice_name = self.config.tracking["lattice_file_out"].split(".")[0]
-            file_index += 1
-            os.rename(lattice_name+"-trackOrbit.dat",
-                      lattice_name+"-trackOrbit-fore-"+str(file_index)+".dat")
+    def fore_track(self, fields, proton_orbit):
+        self.file_index += 1
+        foil_phi = self.subs["__foil_probe_phi__"]
+        foil_probe = self.config.track_bump["foil_probe_files"]
+        energy = self.config.track_bump["energy"]
+        self.do_substitutions(fields, foil_phi, +1.0)
+        tracking = utilities.setup_tracking(self.config, foil_probe, energy)
+        test_hit = utilities.reference(self.config, energy,
+                                       proton_orbit[0], proton_orbit[1],
+                                       proton_orbit[2], proton_orbit[3])
+        tracking.track_many([test_hit])
+        lattice_name = self.config.tracking["lattice_file_out"].split(".")[0]
+        os.rename(lattice_name+"-trackOrbit.dat",
+                  lattice_name+"-trackOrbit-fore-"+str(self.file_index)+".dat")
 
-    def back_track(self, bump_list):
-        file_index = 0
-        for bump_fields, n_turns, closed_orbit in bump_list:
-            foil_phi = self.subs["__foil_probe_phi__"]
-            injected_beam = self.injection_orbit
-            foil_probe = self.config.track_bump["foil_probe_files"]
-            energy = self.config.track_bump["energy"]
-            self.do_substitutions(bump_fields, foil_phi, -1.0)
-            tracking = utilities.setup_tracking(self.config, foil_probe, energy)
-            test_hit = utilities.reference(self.config, energy,
-                                           injected_beam[0], injected_beam[1],
-                                           injected_beam[2], injected_beam[3])
-            test_hit["px"] *= -1
-            test_hit["py"] *= -1
-            test_hit["pz"] *= -1
-            hit_list = tracking.track_one(test_hit)
-            lattice_name = self.config.tracking["lattice_file_out"].split(".")[0]
-            file_index += 1
-            os.rename(lattice_name+"-trackOrbit.dat",
-                      lattice_name+"-trackOrbit-back-"+str(file_index)+".dat")
+    def back_track(self, fields):
+        self.file_index += 1
+        foil_phi = self.subs["__foil_probe_phi__"]
+        injected_beam = self.injection_orbit
+        foil_probe = self.config.track_bump["foil_probe_files"]
+        energy = self.config.track_bump["energy"]
+        self.do_substitutions(fields, foil_phi, -1.0)
+        tracking = utilities.setup_tracking(self.config, foil_probe, energy)
+        test_hit = utilities.reference(self.config, energy,
+                                       injected_beam[0], injected_beam[1],
+                                       injected_beam[2], injected_beam[3])
+        test_hit["px"] *= -1
+        test_hit["py"] *= -1
+        test_hit["pz"] *= -1
+        tracking.track_many([test_hit])
+        lattice_name = self.config.tracking["lattice_file_out"].split(".")[0]
+        self.file_index += 1
+        os.rename(lattice_name+"-trackOrbit.dat",
+                  lattice_name+"-trackOrbit-back-"+str(self.file_index)+".dat")
 
-    def track_painting(self, bump_list):
+def track_painting(self, bump_list):
         foil_probe = self.config.track_bump["foil_probe_files"]
         ramp_probe = self.config.track_bump["ramp_probe_files"]
         foil_phi = self.config.track_bump["foil_probe_phi"]
@@ -252,6 +213,6 @@ class TrackBump(object):
 
 def main(config):
     track_bump = TrackBump(config)
-    track_bump.track_bump()
+    track_bump.track_bumps()
     if __name__ == "__main__":
         input()

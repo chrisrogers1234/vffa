@@ -40,6 +40,7 @@ class FindBumpParameters(object):
         self.bump_fields = {}
         self.optimisation_fields = []
         self.store_index = 1
+        self.opt_i = None
         DecoupledTransferMatrix.det_tolerance = 1.
 
     def setup_minuit(self):
@@ -106,11 +107,18 @@ class FindBumpParameters(object):
             self.setup_amplitude(i)
             self.subs = subs
             self.seed_bump_fields()
+            bump_index = 0
             for station, bump in self.config.find_bump_parameters["bump"]:
-                for optimisation in self.config.find_bump_parameters["staged_optimisation"]:
+                for opt_i, optimisation in enumerate(self.config.find_bump_parameters["staged_optimisation"]):
+                    self.opt_i = {
+                        "substitution_index":i,
+                        "bump_index":bump_index,
+                        "optimisation_stage":opt_i
+                    }
                     self.optimisation = copy.deepcopy(optimisation)
                     self.bump_target_orbit(station, bump)
                     self.do_one_optimisation()
+                bump_index += 1
             self.optimisation_fields.append(self.bump_fields)
 
     def seed_bump_fields(self):
@@ -202,6 +210,7 @@ class FindBumpParameters(object):
             "target_hit":copy.deepcopy(self.target_hit),
             "score":self.score,
             "subs":self.overrides,
+            "optimisation_stage":self.opt_i,
         }
         fname = self.get_filename_root()+"."+suffix
         fout = open(fname, "a")
@@ -343,7 +352,7 @@ class FindBumpParameters(object):
         print("    au RMS residual", format(au_score**0.5, "12.4g"))
         print("    av RMS residual", format(av_score**0.5, "12.4g"))
         print("    b score        ", format(sum(b_score)**0.5*b_scale, "12.4g"))
-        print("score          ", format(self.score, "12.4g"))
+        print("score          ", format(self.score, "12.4g"), flush=True)
         print()
         self.save_state("tmp", True)
         return score_list
@@ -387,7 +396,7 @@ class FindBumpParameters(object):
         # fix momentum
         test_hit["pz"] = (tracking.ref["p"]**2-test_hit["px"]**2)**0.5
         print("Reference kinetic energy:", tracking.ref["kinetic_energy"])
-        print("Seed kinetic energy:     ", test_hit["kinetic_energy"])
+        print("Seed kinetic energy:     ", test_hit["kinetic_energy"], flush=True)
         hit_list = tracking.track_many([test_hit])[1]
         print("Station to probe mapping:\n   ", end=' ')
         for i, fname in enumerate(tracking.get_names()):

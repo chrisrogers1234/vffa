@@ -575,12 +575,15 @@ def plot_cartesian(output_dir, opal_run_dir, step_list):
     #z_min, z_max = 0.05, 0.2
     inner_radius, axis_radius, outer_radius, ncells = 3.5, 3.995, 4.5, 20
     inner_radius_a, axis_radius_a, outer_radius_a, ncells_a = 3.4, 3.995, 4.5, 10
-    z_min, z_max = -0.0, 0.3
+    z_min, z_max, phi_min, phi_max = -0.0, 0.3, 0, 120
 
     Colors.reset()
     canvas = field_plot.plot_dump_fields("x", "y", "bz")
     log_plot = plot_dump_fields.LogFileStripper(opal_run_dir+"log",
-                                                ["MAGNETD", "MAGNETF"])
+                                                {"MAGNETD":ROOT.kBlue,
+                                                 "MAGNETF":ROOT.kBlue,
+                                                 "H_BUMP_":ROOT.kMagenta,
+                                                 "V_BUMP_":ROOT.kMagenta})
     log_plot.plot_log_file(canvas, 0, 1)
     plot_beam_pipe(inner_radius, outer_radius, ncells, canvas)
     plot_beam_pipe(inner_radius_a, outer_radius_a, ncells_a, canvas)
@@ -589,10 +592,11 @@ def plot_cartesian(output_dir, opal_run_dir, step_list):
     canvas, axes, graph = plot_x_y_projection(step_list, canvas)
     for format in ["png"]:
         canvas.Print(output_dir+"closed_orbit_plan_bz."+format)
-    return
+
     Colors.reset()
     canvas = None
-    canvas, graph = plot_x_z_projection(step_list, 0, 360, z_min, z_max, canvas)
+    canvas, graph = plot_x_z_projection(step_list, phi_min, phi_max,
+                                        z_min, z_max, canvas)
     plot_probes(canvas, probe_data, "phi", "z")
     plot_phi_pipe(ncells+1, 0, 360, -2.0, 2.0, ROOT.kGray, canvas)
     plot_phi_pipe(ncells_a+1, 0, 360, -2.0, 2.0, 1, canvas)
@@ -601,6 +605,7 @@ def plot_cartesian(output_dir, opal_run_dir, step_list):
     for format in ["png"]:
         canvas.Print(output_dir+"closed_orbit_elevation."+format)
     Colors.reset()
+    return
 
     Colors.reset()
     canvas = field_plot.plot_dump_fields("x", "y", "br")
@@ -746,11 +751,11 @@ def plot_orbit_field(output_dir, step_list_of_lists, canvas):
         if abs(bz) > max_b:
             bz = max_b*bz/abs(bz)
         bm = (bx**2+by**2)**0.5
-        g_list[0].SetPoint(i, x_cell, -bx_cell)
-        g_list[1].SetPoint(i, x_cell, -by_cell)
-        g_list[2].SetPoint(i, x_cell, -bz_cell)
-        min_b_read = min([-bx_cell, -by_cell, -bz_cell, min_b_read])
-        max_b_read = max([-bx_cell, -by_cell, -bz_cell, max_b_read])
+        g_list[0].SetPoint(i, x_cell, bx_cell)
+        g_list[1].SetPoint(i, x_cell, by_cell)
+        g_list[2].SetPoint(i, x_cell, bz_cell)
+        min_b_read = min([bx_cell, by_cell, bz_cell, min_b_read])
+        max_b_read = max([bx_cell, by_cell, bz_cell, max_b_read])
         #g_list[3].SetPoint(i, x_cell, y_cell)
         #g_list[0].SetPoint(i, x_cell, (z-z0))
         print(format(x_cell, "16.8g"),

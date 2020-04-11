@@ -2,44 +2,42 @@ import math
 import os
 
 def get_baseline_substitution():
+    field_factor = 2.
     baseline = {
         # ring
         "__n_cells__":10,
-        "__radius__":3.995285, #m
+        "__radius__":4.04508497187, #m
         "__half_cell_length__":1.25,
         "__n_particles__":3,
         # beam
         "__energy__":3., # MeV
         "__beam_phi_init__":0., # fraction of cell length
         # tracking
-        "__step_size__":0.001, # m
+        "__step_size__":0.00001, # m
         "__n_turns__":0.2,
         # main magnets
-        "__n_sectors__":7,
-        "__occupancy__":0.8,
-        "__bf__":-0.5, #-0.25/0.44, # T
-        "__bd__":0.22, #0.25, #+0.20, # T
-        "__d_length__":0.5, # m
-        "__f_length__":0.5, # m
-        "__d_offset__":-0.162, # m # 0.154
-        "__f_offset__":0.162, # m
+        "__bf__":-0.5/field_factor, #-0.25/0.44, # T
+        "__bd__":0.085/field_factor, #0.25, #+0.20, # T
+        "__d_length__":0.24, # m
+        "__f_length__":0.40, # m
+        "__fd_gap__":0.08, # m # 0.08
+        "__drift_length__":1.30, # m # 0.08
+        "__f_tilt_angle__":0.0,  # m
+        "__m_index__":1.46, # m^-1 # 1.58
         "__d_end_length__":0.15,  # m
         "__f_end_length__":0.15, # m
-        "__m_index__":1.44, # m^-1 # 1.58
         "__max_x_power__":10,
         "__neg_extent__":2.0, # m
         "__pos_extent__":4.0, # m
-        "__f_bend_angle__":+32.0,
-        "__d_bend_angle__":-16.0,
         # NOTE BB length 0.125 m -> width 1.0 m; length 2.0 m; double for safety
-        "__magnet_width__":4.0, # m
+        "__magnet_width__":1.0, # m
         "__bb_length__":8.0, # m
         # field maps
         "__do_magnet_field_maps__":True,
-        "__cartesian_x_min__":-5., # m
-        "__cartesian_dx__":0.01, # m (1001 steps)
-        "__cartesian_y_min__":-5., # m
-        "__cartesian_dy__":0.01, # m (1001 steps)
+        "__cartesian_x_min__":-0., # m
+        "__cartesian_dx__":0.01/2, # m (1001 steps)
+        "__cartesian_y_min__":-0., # m
+        "__cartesian_dy__":0.01/2, # m (1001 steps)
         # bump magnets
         "__do_bump__":False,
         "__foil_probe_phi__":2.1,
@@ -88,8 +86,8 @@ class Config(object):
         self.find_closed_orbits = { 
                 #order 6 [3944.5849617875692, -26.049083417439988, 158.4519347916439, -1.5875088457067648]
                 #order 10 [3971.0069543538857, -22.02559197601977, 74.96704487122588, -1.2762095154819235]],
-            "seed":[[3971.0069543538857, -22.02559197601977, 74.96704487122588, -1.2762095154819235]],
-            "deltas":[1.0]*4,
+            "seed":[[3759.5795866717745, 0.0001854138938028882, 61.31907090385806, 5.118288676442262e-05]],
+            "deltas":[0.001]*4,
             "adapt_deltas":False,
             "output_file":"closed_orbits_cache",
             "subs_overrides":{"__n_turns__":0.21, "__do_magnet_field_maps__":"False"},
@@ -126,8 +124,8 @@ class Config(object):
             "row_list":None,
             "scan_x_list":[],
             "scan_y_list":[],
-            "x_seed":32.,
-            "y_seed":32.,
+            "x_seed":1.,
+            "y_seed":1.,
             "min_delta":0.9,
             "max_delta":1000.,
             "required_n_hits":100,
@@ -172,7 +170,7 @@ class Config(object):
                                 "__h_bump_2_field__":0.0,
                                 "__v_bump_2_field__":0.0,
                                 "__h_bump_3_field__":0.0,
-                                "__v_bump_3_field__":0.0,
+                                "__v_bump_3_field__":0.1,
                                 "__h_bump_4_field__":0.0,
                                 "__v_bump_4_field__":0.0,
                                 "__h_bump_5_field__":0.0,
@@ -213,15 +211,11 @@ class Config(object):
         }
         self.track_bump = {
             "input_file":"find_bump_parameters.tmp",
-            "foil_optimisation_stage":0, # from staged optimisation
-            "field_optimisation_stage":1, # from staged optimisation
-            "foil_station":0, # station assumed in find_bump_parameters
+            "injection_orbit":0, # reference to item from bump_list
             "subs_overrides":{
                 "__n_turns__":1.2,
-                "__do_magnet_field_maps__":True,
-                "__do_bump__":True,
+                "__no_field_maps__":"",
             },
-            "injection_orbit":[3897.68994, -17.78, 89.38, 3.927],
             "bump_list":None, # list of bumps which we will track (default to find_bump_parameters)
             "n_turns_list":None, # number of turns for forward tracking (default 1)
             "foil_probe_files":["FOILPROBE.h5"], # PROBE where the beam is injected
@@ -229,6 +223,7 @@ class Config(object):
             "ramp_probe_phi":5, # cell number where we start the beam following an injection
             "run_dir":"tmp/track_bump/",
             "energy":3.0,
+            "bump_probe_station":0,
         }
 
         self.substitution_list = [get_baseline_substitution()]
@@ -236,13 +231,13 @@ class Config(object):
         self.run_control = {
             "find_closed_orbits_4d":True,
             "find_tune":False,
-            "find_da":True,
+            "find_da":False,
             "find_bump_parameters":False,
             "track_bump":False,
             "clean_output_dir":False,
-            "output_dir":os.path.join(os.getcwd(), "output/sector_baseline/baseline"),
+            "output_dir":os.path.join(os.getcwd(), "output/triplet_baseline/baseline"),
             "root_verbose":6000,
-            "faint_text":'\033[38;5;243m', #253m
+            "faint_text":'\033[38;5;253m',
             "default_text":'\033[0m'
         }
 
@@ -251,7 +246,7 @@ class Config(object):
             "beam_file_out":"disttest.dat",
             "n_cores":4,
             "links_folder":["VerticalSectorFFA",], # link relative to lattice/VerticalFFA.in
-            "lattice_file":os.path.join(os.getcwd(), "lattice/VerticalSectorFFA.in"),
+            "lattice_file":os.path.join(os.getcwd(), "lattice/VerticalTripletFFA.in"),
             "lattice_file_out":"VerticalSectorFFA.tmp",
             "opal_path":os.path.expandvars("${OPAL_EXE_PATH}/opal"),
             "tracking_log":"log",

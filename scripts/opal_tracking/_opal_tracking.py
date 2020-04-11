@@ -36,6 +36,7 @@ class StoreDataInMemory(object):
     def __init__(self, config):
         self.ignore = config.tracking["ignore_events"]
         self.verbose = config.tracking["verbose"]
+        self.dt_tolerance = config.tracking["dt_tolerance"]
         self.hit_dict_of_lists = {}
         try:
             self.coordinate_transform = \
@@ -69,10 +70,34 @@ class StoreDataInMemory(object):
                 # go through file line by line reading hit data
                 hit["pz"] = + px*math.sin(phi) - py*math.cos(phi)
                 hit.mass_shell_condition("energy")
-                #print("AZIMUTHAL", phi, x, y, hit["x"], hit["y"])
                 tmp_hit_list.append(hit)
             tmp_hit_list_of_lists.append(tmp_hit_list)
         return tmp_hit_list_of_lists
+
+    def dt_cut(self, hit_list_of_lists):
+        if self.dt_tolerance == None:
+            return hit_list_of_lists
+        tmp_hit_list_of_lists = []
+        cut_count = 0
+        for i, hit_list in enumerate(hit_list_of_lists):
+            if len(hit_list) == 0:
+                tmp_hit_list_of_lists.append([])
+                continue
+            tmp_hit_list = [hit_list[0]]
+            for j, hit_1 in enumerate(hit_list[1:]):
+                hit_0 = tmp_hit_list[-1]
+                if (hit_1["t"] - hit_0["t"]) < self.dt_tolerance:
+                    if self.verbose > 30:
+                        print("Cut event", i, "hit", j+1, "with t", hit_1["t"], "compared to", hit_0["t"])
+                    cut_count += 1
+                    continue
+                tmp_hit_list.append(hit_1)
+            tmp_hit_list_of_lists.append(tmp_hit_list)
+        if self.verbose > 10:
+            print("Cut", cut_count, "events using dt_tolerance", self.dt_tolerance)
+        return tmp_hit_list_of_lists
+
+
 
     def reference_coordinate_transform(self, hit_list_of_lists):
         return hit
@@ -90,6 +115,7 @@ class StoreDataInMemory(object):
         for i, hit_list in enumerate(hit_list_of_lists):
             hit_list_of_lists[i] = sorted(hit_list, key = lambda hit: hit['t'])
         hit_list_of_lists = self.coordinate_transform(self, hit_list_of_lists)
+        hit_list_of_lists = self.dt_cut(hit_list_of_lists)
         self.last = hit_list_of_lists
         self.hit_dict_of_lists = {}
         return hit_list_of_lists

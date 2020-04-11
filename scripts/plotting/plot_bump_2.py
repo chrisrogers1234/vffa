@@ -254,9 +254,9 @@ def main(file_list):
     for probe in [0, 5]:
         for axis in ['x', 'y', 'x-y']:
             if probe == 0:
-                add_points = ([0, 3869.70412, -19.79, 137.8, 3.752],)
+                add_points = ([0, 3898.02318, -17.75, 88.39, 3.935],)
             else:
-                add_points = ([6, 3946.122, -24.619, 136.662, -1.236],)
+                add_points = ([6, 3967.6305564128993, -22.599823825512715, 86.41151974330933, -1.3788397649412332],)
             plot_closed_orbit(data, axis, plot_dir, probe, add_points)
     plot_fields(data, plot_dir, foil_probe, foil_var, foil_axis)
     plot_score(data, plot_dir, foil_probe, foil_var, foil_axis)

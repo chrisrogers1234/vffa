@@ -34,7 +34,6 @@ REAL N_CELLS=__n_cells__;
 REAL RMIN=R0-1.0;
 REAL RMAX=R0+1.0;
 REAL FFA_CELL_LENGTH=2*PI/N_CELLS;
-REAL HALF_CELL_LENGTH=__half_cell_length__;
 
 ////////// TRACKING ///////////////
 REAL STEP_SIZE=__step_size__; // m
@@ -43,25 +42,21 @@ REAL BEAM_PHI_INIT=__beam_phi_init__;
 REAL N_PARTICLES=__n_particles__;
 
 ////////// MAIN MAGNETS/////////
-REAL N_SECTORS=__n_sectors__;
-REAL OCCUPANCY=__occupancy__; // each coil centre length = OCCUPANCY*F_LENGTH/N_SECTORS
+REAL BF=__bf__;
+REAL BD=__bd__;
 REAL F_LENGTH=__f_length__; // total length of all coils including occupancy is F_LENGTH
 REAL D_LENGTH=__d_length__;
-REAL F_BEND_ANGLE=__f_bend_angle__; // 
-REAL D_BEND_ANGLE=__d_bend_angle__;
+REAL FD_GAP=__fd_gap__;
+REAL DRIFT_LENGTH=__drift_length__;
+REAL F_TILT_ANGLE=__f_tilt_angle__; // not implemented
 REAL M_INDEX=__m_index__;
 REAL F_END_LENGTH=__f_end_length__;
 REAL D_END_LENGTH=__d_end_length__;
-REAL BF=__bf__;
-REAL BD=__bd__;
 REAL MAX_HORIZONTAL_POWER=__max_x_power__;
 REAL NEG_EXTENT=__neg_extent__;
 REAL POS_EXTENT=__pos_extent__;
 REAL BB_LENGTH=__bb_length__;
 REAL MAG_WIDTH=__magnet_width__;
-
-REAL D_OFFSET=__d_offset__;
-REAL F_OFFSET=__f_offset__;
 
 ///////////// BUMP MAGNETS ////////////////////
 REAL BUMP_ORDER=0;
@@ -152,24 +147,9 @@ null: LOCAL_CARTESIAN_OFFSET,
                 end_position_x=0., end_position_y=0.,
                 end_normal_x=1.0, end_normal_y=0.;
 
-
-//////////////////////////// CELL DRIFT /////////////////////////////////
-
-quarter_cell_drift: LOCAL_CARTESIAN_OFFSET,
-                end_position_x=HALF_CELL_LENGTH/2.,
-                end_position_y=0,
-                end_normal_x=1,
-                end_normal_y=0;
-
-half_cell_rotate: LOCAL_CARTESIAN_OFFSET,
-                end_position_x=0.,
-                end_position_y=0,
-                end_normal_x=COS(2*PI/N_CELLS/2),
-                end_normal_y=-SIN(2*PI/N_CELLS/2);
-
 //////////// MAIN MAGNETS /////////////////////
-REAL F_CENTRE_LENGTH=F_LENGTH/N_SECTORS*OCCUPANCY;
-REAL D_CENTRE_LENGTH=D_LENGTH/N_SECTORS*OCCUPANCY;
+REAL F_CENTRE_LENGTH=F_LENGTH;
+REAL D_CENTRE_LENGTH=D_LENGTH;
 
 magnetF: VERTICALFFAMAGNET,
           B0=BF,
@@ -217,6 +197,7 @@ MAGNET_OFFSET(delta_x, delta_y, tilt, bb_length, x_out, y_out, tx_out, ty_out): 
     NORM_Y  (delta_x, delta_y, tilt, bb_length, ty_out);
 }
 
+// cartesian offset, including a bounding box
 BUILD_CENTRE_OFFSET(name, delta_x, delta_y, tilt, bb_length): MACRO {
     REAL x_out=0;
     REAL y_out=0;
@@ -325,96 +306,45 @@ BUILD_AZIMUTHAL_REVERSE_OFFSET(name, radius, phi, delta_r, delta_phi, bb_length)
 azimuthal_offset: LOCAL_CARTESIAN_OFFSET,
             end_position_x=0,
             end_position_y=0,
-            end_normal_x=cos(FFA_CELL_LENGTH/4),
-            end_normal_y=sin(FFA_CELL_LENGTH/4); 
+            end_normal_x=cos(FFA_CELL_LENGTH/2),
+            end_normal_y=sin(FFA_CELL_LENGTH/2); 
 
 segment_offset: LOCAL_CARTESIAN_OFFSET,
             end_position_x=0,
             end_position_y=0,
-            end_normal_x=cos(FFA_CELL_LENGTH/4),
-            end_normal_y=-sin(FFA_CELL_LENGTH/4);
+            end_normal_x=cos(FFA_CELL_LENGTH/2),
+            end_normal_y=-sin(FFA_CELL_LENGTH/2);
 
 azimuthal: Line = (azimuthal_offset);
 segment: Line = (segment_offset);
 
 ///////////////////////// PLACEMENTS FOR MAGNET VD //////////////////////
 
-REAL D_BB=BB_LENGTH;
-REAL D_RADIUS=D_LENGTH/(D_BEND_ANGLE*DEGREE);
-REAL D_PHI=D_BEND_ANGLE*DEGREE/N_SECTORS;
-
-VALUE, VALUE={D_RADIUS, D_PHI};
-
-BUILD_AZIMUTHAL_REVERSE_OFFSET(d_magnet_half_offset_back, D_RADIUS, DEGREE*D_BEND_ANGLE/2, 0, 0, 0);
-BUILD_AZIMUTHAL_OFFSET(d_coil_half_offset, D_RADIUS, D_PHI/2, 0, 0, D_BB);
-BUILD_AZIMUTHAL_REVERSE_OFFSET(d_coil_half_offset_back, D_RADIUS, D_PHI/2, 0, 0, D_BB);
-BUILD_AZIMUTHAL_OFFSET(d_coil_full_offset, D_RADIUS, D_PHI, 0, 0, 0);
-
-d_off_line: LOCAL_CARTESIAN_OFFSET,
-        end_position_x=0,
-        end_position_y=D_OFFSET,
-        end_normal_x=1,
-        end_normal_y=0;
-
-d_back_to_line: LOCAL_CARTESIAN_OFFSET,
-        end_position_x=0,
-        end_position_y=-D_OFFSET,
-        end_normal_x=1,
-        end_normal_y=0;
-
-///////////////////////////// D_LINE ///////////////////////////////
-
-// d_offset is transverse offset off centre line; followed by azimuthal offset
-// to magnet start; followed by individual coil offsets and placement, followed
-// by azimuthal offset back to magnet centre and then offset back to centre line
-d_line: Line = (d_off_line, d_magnet_half_offset_back
-                , d_coil_half_offset, magnetD, d_coil_half_offset_back, d_coil_full_offset
-                , d_coil_half_offset, magnetD, d_coil_half_offset_back, d_coil_full_offset
-                , d_coil_half_offset, magnetD, d_coil_half_offset_back, d_coil_full_offset
-                , d_coil_half_offset, magnetD, d_coil_half_offset_back, d_coil_full_offset
-                , d_coil_half_offset, magnetD, d_coil_half_offset_back, d_coil_full_offset
-                , d_coil_half_offset, magnetD, d_coil_half_offset_back, d_coil_full_offset
-                , d_coil_half_offset, magnetD, d_coil_half_offset_back, d_coil_full_offset
-                , d_magnet_half_offset_back, d_back_to_line);
-
-///////////////////////// PLACEMENTS FOR MAGNET VF //////////////////////
-
 REAL F_BB=BB_LENGTH;
-REAL F_RADIUS=F_LENGTH/(F_BEND_ANGLE*DEGREE);
-REAL F_PHI=F_BEND_ANGLE*DEGREE/N_SECTORS;
-
-VALUE, VALUE={F_RADIUS, F_PHI};
-
-BUILD_AZIMUTHAL_REVERSE_OFFSET(f_magnet_half_offset_back, F_RADIUS, DEGREE*F_BEND_ANGLE/2, 0, 0, 0);
-BUILD_AZIMUTHAL_OFFSET(f_coil_half_offset, F_RADIUS, F_PHI/2, 0, 0, F_BB);
-BUILD_AZIMUTHAL_REVERSE_OFFSET(f_coil_half_offset_back, F_RADIUS, F_PHI/2, 0, 0, F_BB);
-BUILD_AZIMUTHAL_OFFSET(f_coil_full_offset, F_RADIUS, F_PHI, 0, 0, 0);
-
-f_off_line: LOCAL_CARTESIAN_OFFSET,
-        end_position_x=0,
-        end_position_y=F_OFFSET,
-        end_normal_x=1,
-        end_normal_y=0;
-
-f_back_to_line: LOCAL_CARTESIAN_OFFSET,
-        end_position_x=0,
-        end_position_y=-F_OFFSET,
-        end_normal_x=1,
-        end_normal_y=0;
+REAL D_BB=BB_LENGTH;
+REAL F1_POS=DRIFT_LENGTH/2.+F_LENGTH/2.;
+REAL F2_POS=DRIFT_LENGTH/2.+F_LENGTH+FD_GAP+D_LENGTH+FD_GAP+F_LENGTH/2.;
+REAL F_TILT=F_TILT_ANGLE*DEGREE;
+REAL D_POS=DRIFT_LENGTH/2.+F_LENGTH+FD_GAP+D_LENGTH/2.;
+REAL CELL_LENGTH=DRIFT_LENGTH/2.+F_LENGTH+FD_GAP+D_LENGTH+FD_GAP+F_LENGTH+DRIFT_LENGTH/2.;
 
 
-///////////////////////////// F_LINE ///////////////////////////////
+// BUILD_CENTRE_OFFSET(name, delta_x, delta_y, tilt, bb_length)
+BUILD_CENTRE_OFFSET(f1_offset, F1_POS, 0., F_TILT, F_BB);
+BUILD_CENTRE_REVERSE_OFFSET(f1_offset_back, F1_POS, 0., F_TILT, F_BB);
+BUILD_CENTRE_OFFSET(d_offset, D_POS, 0., 0, D_BB);
+BUILD_CENTRE_REVERSE_OFFSET(d_offset_back, D_POS, 0., 0, D_BB);
+BUILD_CENTRE_OFFSET(f2_offset, F2_POS, 0., -F_TILT, F_BB);
+BUILD_CENTRE_REVERSE_OFFSET(f2_offset_back, F2_POS, 0., -F_TILT, F_BB);
+BUILD_CENTRE_OFFSET(cell_offset, CELL_LENGTH, 0., -FFA_CELL_LENGTH, 0);
+value, VALUE={CELL_LENGTH};
 
-// as per d_line
-f_line: Line = (f_off_line, f_magnet_half_offset_back
-                , f_coil_half_offset, magnetF, f_coil_half_offset_back, f_coil_full_offset
-                , f_coil_half_offset, magnetF, f_coil_half_offset_back, f_coil_full_offset
-                , f_coil_half_offset, magnetF, f_coil_half_offset_back, f_coil_full_offset
-                , f_coil_half_offset, magnetF, f_coil_half_offset_back, f_coil_full_offset
-                , f_coil_half_offset, magnetF, f_coil_half_offset_back, f_coil_full_offset
-                , f_coil_half_offset, magnetF, f_coil_half_offset_back, f_coil_full_offset
-                , f_coil_half_offset, magnetF, f_coil_half_offset_back, f_coil_full_offset
-                , f_magnet_half_offset_back, f_back_to_line);
+///////////////////////////// TRIPLET CELL ///////////////////////////////
+
+cell: Line = (f1_offset, magnetF, f1_offset_back,
+              d_offset, magnetD, d_offset_back,
+              f2_offset, magnetF, f2_offset_back,
+              cell_offset);
 
 /////////////////////// BUMP /////////////////////////////////
 
@@ -590,9 +520,6 @@ ringdef: RINGDEFINITION, HARMONIC_NUMBER=1, LAT_RINIT=R0, LAT_PHIINIT=0,
          LAT_THETAINIT=0., BEAM_PHIINIT=BEAM_PHI_INIT_DEG, BEAM_PRINIT=0,
          BEAM_RINIT=0.0, SYMMETRY=1, RFFREQ=1, IS_CLOSED=false,
          MIN_R=0., MAX_R=10;
-// magnet_d_placement_in, magnet_d_placement_out, 
-cell: Line = (quarter_cell_drift, d_line, quarter_cell_drift, half_cell_rotate,
-              quarter_cell_drift, f_line, quarter_cell_drift, half_cell_rotate);
 
 // initial azimuthal placement
 start: LOCAL_CARTESIAN_OFFSET,
@@ -601,7 +528,7 @@ start: LOCAL_CARTESIAN_OFFSET,
             end_normal_x=0.,
             end_normal_y=-1.; 
 
-l1: Line = (ringdef, ringprobe, start, bump, 
+l1: Line = (ringdef, ringprobe, start, // bump, 
             segment, 
             cell, cell, cell, cell, cell,
             cell, cell, cell, cell, cell,

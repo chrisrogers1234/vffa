@@ -33,7 +33,7 @@ def get_baseline_substitution():
         "__d_bend_angle__":-16.0,
         # NOTE BB length 0.125 m -> width 1.0 m; length 2.0 m; double for safety
         "__magnet_width__":4.0, # m
-        "__bb_length__":8.0, # m
+        "__bb_length__":20.0, # m
         # field maps
         "__do_magnet_field_maps__":True,
         "__cartesian_x_min__":-5., # m
@@ -88,12 +88,12 @@ class Config(object):
         self.find_closed_orbits = { 
                 #order 6 [3944.5849617875692, -26.049083417439988, 158.4519347916439, -1.5875088457067648]
                 #order 10 [3971.0069543538857, -22.02559197601977, 74.96704487122588, -1.2762095154819235]],
-            "seed":[[3971.0069543538857, -22.02559197601977, 74.96704487122588, -1.2762095154819235]],
-            "deltas":[1.0]*4,
+            "seed":[[3967.1677201985717, -22.66301350844526, 87.97472636772909, -1.3647353045178932]],
+            "deltas":[0.1, 0.1, 0.1, 0.1],
             "adapt_deltas":False,
             "output_file":"closed_orbits_cache",
             "subs_overrides":{"__n_turns__":0.21, "__do_magnet_field_maps__":"False"},
-            "final_subs_overrides":{"__n_turns__":0.21, "__do_magnet_field_maps__":"True"},
+            "final_subs_overrides":{"__n_turns__":1.01, "__do_magnet_field_maps__":"True"},
             "us_cell":0,
             "ds_cell":1,
             "root_batch":0,
@@ -129,7 +129,7 @@ class Config(object):
             "x_seed":32.,
             "y_seed":32.,
             "min_delta":0.9,
-            "max_delta":1000.,
+            "max_delta":10000.,
             "required_n_hits":100,
             "dt_tolerance":0.5, # fraction of closed orbit dt
             "max_iterations":15,
@@ -148,19 +148,17 @@ class Config(object):
             "closed_orbit":co,
             "magnet_min_field":-1.0,
             "magnet_max_field":+1.0,
-            "max_iterations":5000,
+            "max_iterations":1000,
             "field_tolerance":1e-4,
             "amplitude_tolerance":1.,
             "tm_source":"closed_orbits_cache",
             "subs_overrides":{
                 "__n_turns__":1.1,
                 "__do_magnet_field_maps__":False,
-                "__max_x_power__":10,
                 "__do_bump__":True,
             },
             "final_subs_overrides":{
                 "__n_turns__":1.1,
-                "__max_x_power__":10,
                 "__do_magnet_field_maps__":True,
                 "__do_bump__":True,
             },
@@ -172,7 +170,7 @@ class Config(object):
                                 "__h_bump_2_field__":0.0,
                                 "__v_bump_2_field__":0.0,
                                 "__h_bump_3_field__":0.0,
-                                "__v_bump_3_field__":0.0,
+                                "__v_bump_3_field__":0.1,
                                 "__h_bump_4_field__":0.0,
                                 "__v_bump_4_field__":0.0,
                                 "__h_bump_5_field__":0.0,
@@ -213,15 +211,11 @@ class Config(object):
         }
         self.track_bump = {
             "input_file":"find_bump_parameters.tmp",
-            "foil_optimisation_stage":0, # from staged optimisation
-            "field_optimisation_stage":1, # from staged optimisation
-            "foil_station":0, # station assumed in find_bump_parameters
+            "injection_orbit":0, # reference to item from bump_list
             "subs_overrides":{
                 "__n_turns__":1.2,
-                "__do_magnet_field_maps__":True,
-                "__do_bump__":True,
+                "__no_field_maps__":"",
             },
-            "injection_orbit":[3897.68994, -17.78, 89.38, 3.927],
             "bump_list":None, # list of bumps which we will track (default to find_bump_parameters)
             "n_turns_list":None, # number of turns for forward tracking (default 1)
             "foil_probe_files":["FOILPROBE.h5"], # PROBE where the beam is injected
@@ -229,20 +223,21 @@ class Config(object):
             "ramp_probe_phi":5, # cell number where we start the beam following an injection
             "run_dir":"tmp/track_bump/",
             "energy":3.0,
+            "bump_probe_station":0,
         }
 
         self.substitution_list = [get_baseline_substitution()]
         
         self.run_control = {
-            "find_closed_orbits_4d":True,
+            "find_closed_orbits_4d":False,
             "find_tune":False,
-            "find_da":True,
-            "find_bump_parameters":False,
+            "find_da":False,
+            "find_bump_parameters":True,
             "track_bump":False,
             "clean_output_dir":False,
-            "output_dir":os.path.join(os.getcwd(), "output/sector_baseline/baseline"),
+            "output_dir":os.path.join(os.getcwd(), "output/sector_baseline/bumps_1"),
             "root_verbose":6000,
-            "faint_text":'\033[38;5;243m', #253m
+            "faint_text":'\033[38;5;240m',
             "default_text":'\033[0m'
         }
 
@@ -263,6 +258,6 @@ class Config(object):
             "verbose":0,
             "file_format":"hdf5",
             "analysis_coordinate_system":"azimuthal",
-            "dt_tolerance":100., # ns
+            "dt_tolerance":5., # ns
         }
 

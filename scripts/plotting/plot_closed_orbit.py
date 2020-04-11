@@ -29,6 +29,10 @@ class ClosedOrbitsPlotter(object):
         flattened = []
         for item in my_data:
             flattened += item
+        self.tm_lambda = lambda tm: print("Rotation:\n", numpy.real(tm.r),
+                                          "\nSymplecticity:\n", tm.symplecticity(tm.m),
+                                          "\nDet:", numpy.linalg.det(tm.r))
+        self.get_tm(flattened[0])
         self.data += flattened
         print("Types", [type(dat) for dat in self.data])
 
@@ -53,7 +57,6 @@ class ClosedOrbitsPlotter(object):
                 mgraph.Draw("AP")
                 canvas.Print(self.output_dir+"/"+axis_name+"_vs_"+name+".png")
 
-            DecoupledTransferMatrix.det_tolerance = 1e6
             canvas, mgraph = None, None
             for self.phase_advance_axis in 0, 1:
                 self.tm_lambda = self.tm_phase_advance
@@ -212,6 +215,7 @@ class ClosedOrbitsPlotter(object):
     root_objects = []
 
 def main():
+    DecoupledTransferMatrix.det_tolerance = 1e6
     utilities.setup_gstyle()
     if len(sys.argv[1:]) == 0:
         print("Usage - python plot_closed_orbits [file_name_1] [file_name_2] ...")
