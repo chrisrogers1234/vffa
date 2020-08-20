@@ -29,10 +29,11 @@ class ClosedOrbitsPlotter(object):
         flattened = []
         for item in my_data:
             flattened += item
-        self.tm_lambda = lambda tm: print("Rotation:\n", numpy.real(tm.r),
-                                          "\nSymplecticity:\n", tm.symplecticity(tm.m),
-                                          "\nDet:", numpy.linalg.det(tm.r))
-        self.get_tm(flattened[0])
+        self.tm_lambda = lambda tm: print("Rotation R:\n", numpy.real(tm.r),
+                                          "\nM Symplecticity:\n", tm.symplecticity(tm.m),
+                                          "\nM Det:", numpy.linalg.det(tm.m),
+                                          "\nR Det:", numpy.linalg.det(tm.r))
+        #self.get_tm(flattened[0])
         self.data += flattened
         print("Types", [type(dat) for dat in self.data])
 
@@ -176,7 +177,11 @@ class ClosedOrbitsPlotter(object):
     def get_tm(self, item):
         tm = item["tm"]
         tm = [row[1:5] for row in tm]
-        tm = DecoupledTransferMatrix(tm)
+        try:
+            tm = DecoupledTransferMatrix(tm)
+        except Exception:
+            sys.excepthook(*sys.exc_info())
+            return 0.
         return self.tm_lambda(tm)
 
     def tm_det(self, tm):

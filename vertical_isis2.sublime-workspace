@@ -1,0 +1,1117 @@
+{
+	"auto_complete":
+	{
+		"selected_items":
+		[
+			[
+				"sm",
+				"smoothingOrder_m"
+			]
+		]
+	},
+	"buffers":
+	[
+		{
+			"file": "scripts/bin/run_one.py",
+			"settings":
+			{
+				"buffer_size": 2651,
+				"encoding": "UTF-8",
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "scripts/plotting/plot_orbit.py",
+			"settings":
+			{
+				"buffer_size": 32143,
+				"encoding": "UTF-8",
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "lattice/VerticalTripletFFA.in",
+			"settings":
+			{
+				"buffer_size": 24218,
+				"encoding": "UTF-8",
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "scripts/plotting/plot_dump_fields.py",
+			"settings":
+			{
+				"buffer_size": 15207,
+				"encoding": "UTF-8",
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "scripts/plotting/plot_bump.py",
+			"settings":
+			{
+				"buffer_size": 13200,
+				"encoding": "UTF-8",
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "scripts/toy_model/toy_model.py",
+			"settings":
+			{
+				"buffer_size": 23579,
+				"encoding": "UTF-8",
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "scripts/toy_model/optimiser.py",
+			"settings":
+			{
+				"buffer_size": 2334,
+				"encoding": "UTF-8",
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "/mnt/db89a8c2-6f6b-4c5c-bbc4-5534fb22ff7a/cr67/OPAL/external_rogers_mint/install/lib/python3.7/site-packages/platypus/algorithms.py",
+			"settings":
+			{
+				"buffer_size": 64623,
+				"encoding": "UTF-8",
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "scripts/utils/decoupled_transfer_matrix.py",
+			"settings":
+			{
+				"buffer_size": 18671,
+				"encoding": "UTF-8",
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "/home/cr67/OPAL/external_rogers_mint/source/xboa/xboa/bunch/_bunch.py",
+			"settings":
+			{
+				"buffer_size": 88816,
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "scripts/plotting/plot_da.py",
+			"settings":
+			{
+				"buffer_size": 17040,
+				"encoding": "UTF-8",
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "scripts/plotting/plot_closed_orbit.py",
+			"settings":
+			{
+				"buffer_size": 8796,
+				"encoding": "UTF-8",
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "scripts/config/config_triplet_baseline.py",
+			"settings":
+			{
+				"buffer_size": 14817,
+				"encoding": "UTF-8",
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "scripts/analysis/find_closed_orbits_4d.py",
+			"settings":
+			{
+				"buffer_size": 15288,
+				"encoding": "UTF-8",
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "scripts/utils/utilities.py",
+			"settings":
+			{
+				"buffer_size": 6247,
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "scripts/analysis/find_bump_parameters.py",
+			"settings":
+			{
+				"buffer_size": 17758,
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "scripts/analysis/build_bump_surrogate_model.py",
+			"settings":
+			{
+				"buffer_size": 20044,
+				"encoding": "UTF-8",
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "scripts/analysis/bump_surrogate_model/minimiser.py",
+			"settings":
+			{
+				"buffer_size": 3083,
+				"encoding": "UTF-8",
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "/mnt/db89a8c2-6f6b-4c5c-bbc4-5534fb22ff7a/cr67/OPAL/external_rogers_mint/source/xboa/xboa/common/_common.py",
+			"settings":
+			{
+				"buffer_size": 51839,
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "scripts/opal_tracking/_opal_tracking.py",
+			"settings":
+			{
+				"buffer_size": 18244,
+				"encoding": "UTF-8",
+				"line_ending": "Unix"
+			}
+		}
+	],
+	"build_system": "",
+	"build_system_choices":
+	[
+	],
+	"build_varint": "",
+	"command_palette":
+	{
+		"height": 0.0,
+		"last_filter": "",
+		"selected_items":
+		[
+		],
+		"width": 0.0
+	},
+	"console":
+	{
+		"height": 0.0,
+		"history":
+		[
+		]
+	},
+	"distraction_free":
+	{
+		"menu_visible": true,
+		"show_minimap": false,
+		"show_open_files": false,
+		"show_tabs": false,
+		"side_bar_visible": false,
+		"status_bar_visible": false
+	},
+	"file_history":
+	[
+		"/mnt/db89a8c2-6f6b-4c5c-bbc4-5534fb22ff7a/cr67/work/2017-07-07_isis2/vertical_isis2/scripts/analysis/build_bump_surrogate_model.py",
+		"/mnt/db89a8c2-6f6b-4c5c-bbc4-5534fb22ff7a/cr67/work/2017-07-07_isis2/vertical_isis2/output/triplet_baseline/baseline_op2/tmp/build_bump_model/log",
+		"/mnt/db89a8c2-6f6b-4c5c-bbc4-5534fb22ff7a/cr67/work/2017-07-07_isis2/vertical_isis2/output/triplet_baseline/baseline_op2/tmp/build_bump_model/VerticalSectorFFA.tmp",
+		"/mnt/db89a8c2-6f6b-4c5c-bbc4-5534fb22ff7a/cr67/work/2017-07-07_isis2/vertical_isis2/scripts/analysis/track_bump.py",
+		"/mnt/db89a8c2-6f6b-4c5c-bbc4-5534fb22ff7a/cr67/work/2017-07-07_isis2/vertical_isis2/scripts/config/config_sector_baseline.py",
+		"/mnt/db89a8c2-6f6b-4c5c-bbc4-5534fb22ff7a/cr67/work/2017-07-07_isis2/vertical_isis2/lattice/VerticalTripletFFA.in",
+		"/mnt/db89a8c2-6f6b-4c5c-bbc4-5534fb22ff7a/cr67/work/2017-07-07_isis2/vertical_isis2/scripts/analysis/find_da.py",
+		"/mnt/db89a8c2-6f6b-4c5c-bbc4-5534fb22ff7a/cr67/OPAL/external_rogers_mint/source/xboa/xboa/algorithms/tune/_dphi_tune.py",
+		"/mnt/db89a8c2-6f6b-4c5c-bbc4-5534fb22ff7a/cr67/work/2017-07-07_isis2/vertical_isis2/lattice/VerticalSectorFFA.in",
+		"/mnt/db89a8c2-6f6b-4c5c-bbc4-5534fb22ff7a/cr67/work/2017-07-07_isis2/vertical_isis2/scripts/config/config_bump.py",
+		"/mnt/db89a8c2-6f6b-4c5c-bbc4-5534fb22ff7a/cr67/work/2017-07-07_isis2/vertical_isis2/scripts/utils/utilities.py",
+		"/mnt/db89a8c2-6f6b-4c5c-bbc4-5534fb22ff7a/cr67/work/2017-07-07_isis2/vertical_isis2/scripts/config/config_max_power.py",
+		"/mnt/db89a8c2-6f6b-4c5c-bbc4-5534fb22ff7a/cr67/work/2017-07-07_isis2/vertical_isis2/scripts/config/config_bump_scan.py",
+		"/mnt/db89a8c2-6f6b-4c5c-bbc4-5534fb22ff7a/cr67/work/2017-07-07_isis2/vertical_isis2/scripts/config/config_bump_triplet.py",
+		"/mnt/db89a8c2-6f6b-4c5c-bbc4-5534fb22ff7a/cr67/work/2017-07-07_isis2/vertical_isis2/scripts/plotting/toy_model.py",
+		"/mnt/db89a8c2-6f6b-4c5c-bbc4-5534fb22ff7a/cr67/work/2017-07-07_isis2/vertical_isis2/scripts/utils/decoupled_transfer_matrix.py",
+		"/mnt/db89a8c2-6f6b-4c5c-bbc4-5534fb22ff7a/cr67/work/2017-07-07_isis2/vertical_isis2/output/sector_baseline/sector_baseline-jb/tmp/find_closed_orbits/VerticalSectorFFA.tmp",
+		"/mnt/db89a8c2-6f6b-4c5c-bbc4-5534fb22ff7a/cr67/work/2017-07-07_isis2/elliptical_isis2/scripts/plotting/plot_orbit.py",
+		"/mnt/db89a8c2-6f6b-4c5c-bbc4-5534fb22ff7a/cr67/work/2017-07-07_isis2/elliptical_isis2/scripts/plotting/plot_dump_fields.py",
+		"/mnt/db89a8c2-6f6b-4c5c-bbc4-5534fb22ff7a/cr67/work/2017-07-07_isis2/elliptical_isis2/scripts/plotting/plot_closed_orbit.py",
+		"/mnt/db89a8c2-6f6b-4c5c-bbc4-5534fb22ff7a/cr67/work/2017-07-07_isis2/injection-definition/injection_definition.tex",
+		"/mnt/db89a8c2-6f6b-4c5c-bbc4-5534fb22ff7a/cr67/work/2017-07-07_isis2/vertical-ffa/vertical-ffa-note.tex",
+		"/mnt/db89a8c2-6f6b-4c5c-bbc4-5534fb22ff7a/cr67/work/2017-07-07_isis2/vertical_isis2/output/triplet_baseline/bumps_3/machida_tm.json",
+		"/home/cr67/OPAL/regression-tests/regression-tests-trunk/RegressionTests/MultipoleT-1/Mutipole-1.rogers",
+		"/mnt/db89a8c2-6f6b-4c5c-bbc4-5534fb22ff7a/cr67/work/2017-07-07_isis2/vertical_isis2/output/sector_baseline/bumps_4/log",
+		"/mnt/db89a8c2-6f6b-4c5c-bbc4-5534fb22ff7a/cr67/work/2017-07-07_isis2/vertical_isis2/output/sector_baseline/bumps_7/log",
+		"/home/cr67/Desktop/system-performance-paper.txt",
+		"/home/cr67/work/2017-07-07_isis2/vertical_isis2/scripts/config/config_bump.py",
+		"/home/cr67/work/2017-07-07_isis2/vertical_isis2/output/sector_baseline/bumps_3/tmp/track_bump/log",
+		"/home/cr67/work/2017-07-07_isis2/vertical_isis2/output/sector_baseline/bumps_3/log",
+		"/home/cr67/work/2017-07-07_isis2/vertical_isis2/lattice/VerticalSectorFFA.in",
+		"/home/cr67/work/2017-07-07_isis2/vertical_isis2/scripts/plotting/plot_bump_2.py",
+		"/home/cr67/work/2017-07-07_isis2/vertical_isis2/log",
+		"/home/cr67/work/2017-07-07_isis2/vertical_isis2/scripts/config/config_sector_baseline_bumps.py",
+		"/home/cr67/work/2017-07-07_isis2/vertical_isis2/scripts/config/config_triplet_baseline.py",
+		"/home/cr67/work/2017-07-07_isis2/vertical_isis2/scripts/config/config_bb_length.py",
+		"/home/cr67/work/2017-07-07_isis2/vertical_isis2/scripts/config/config_optimisation.py",
+		"/home/cr67/work/2017-07-07_isis2/vertical_isis2/lattice/VerticalTripletFFA.in",
+		"/home/cr67/work/2017-07-07_isis2/vertical_isis2/output/triplet_baseline/baseline/config_triplet_baseline.py",
+		"/home/cr67/work/2017-07-07_isis2/vertical_isis2/lattice/VerticalFFA.in",
+		"/home/cr67/work/2017-07-07_isis2/vertical_isis2/scripts/config/config_baseline.py",
+		"/mnt/db89a8c2-6f6b-4c5c-bbc4-5534fb22ff7a/cr67/OPAL/source/opal_src/src/Classic/Fields/Interpolation/NDGrid.cpp",
+		"/mnt/db89a8c2-6f6b-4c5c-bbc4-5534fb22ff7a/cr67/OPAL/source/opal_src/tests/classic_src/Fields/Interpolation/NDGridTest.cpp",
+		"/mnt/db89a8c2-6f6b-4c5c-bbc4-5534fb22ff7a/cr67/OPAL/external_rogers/env.sh"
+	],
+	"find":
+	{
+		"height": 39.0
+	},
+	"find_in_files":
+	{
+		"height": 0.0,
+		"where_history":
+		[
+		]
+	},
+	"find_state":
+	{
+		"case_sensitive": false,
+		"find_history":
+		[
+			"field_scale",
+			"t",
+			"seed_to_hit",
+			"track_many",
+			"get_tm",
+			"tracking in",
+			"seed_to_hit",
+			"track_many",
+			"track_",
+			"track_one",
+			"get_tm(self",
+			"4]",
+			"]5",
+			"seed_to_hit",
+			"var_list_1",
+			"z",
+			"symplecticity",
+			"var_list",
+			"seed_to_hit",
+			"tm_co_fitter",
+			"seed",
+			"fit_matrix",
+			"\"x\"",
+			"rotate_co",
+			"rotate_",
+			"get_tm",
+			"rotate_from_centroid",
+			"get_tm",
+			"final_tracking",
+			"track_one",
+			"station to",
+			"mapping",
+			"station to probe",
+			")\n",
+			"get_limits(self",
+			"get_limits",
+			"In tolerance",
+			"tolerance",
+			"\"tolerance",
+			"\"In ",
+			"\"In tolerance",
+			"n_steps",
+			"station to probe",
+			"Station to probe",
+			"read_h5_probes",
+			"get_names",
+			"get_names()",
+			"get_names",
+			"file_dict",
+			"station",
+			"RINGPROBE",
+			"invert",
+			"inverse_map_list",
+			"inverse_map",
+			"inverse_map_list",
+			"inverse_mapping",
+			"seed_list",
+			"build_inverse_map",
+			"seed_list",
+			"minimiser",
+			"out of tolerance",
+			"get_limits",
+			"get_point",
+			"build_mesh",
+			"seed_list",
+			"minimiser",
+			"point",
+			"print(",
+			"self.mesh",
+			"build_mesh",
+			"build_ndgrid",
+			"build_mesh",
+			"build_nd",
+			"print(",
+			"uilding inverse",
+			"building inverse",
+			"print",
+			"get_point",
+			"verbo",
+			"self.minuit",
+			"Minuit",
+			"point",
+			"get_fields_from_minuit",
+			"minuit",
+			"point_list",
+			"build_ndgrid",
+			"build_inverse_map",
+			"build_map",
+			"optimisation",
+			"build_one_map",
+			"__beam_charge__",
+			"ROOT",
+			"build_model",
+			"P_CHARGE",
+			"charge",
+			"P_CHARGE",
+			"matrix",
+			"do_substitutions",
+			"field_limit",
+			"cuts",
+			"iteration",
+			"first_tracking",
+			"store_index",
+			"overrides",
+			"bump_fields",
+			"optimisation_fields",
+			"optimisation",
+			"setup_subs",
+			"make_grid",
+			"shell",
+			"build_shell",
+			"run_one",
+			"optimisation",
+			"bump_target_orbit",
+			"do_one_optimisation",
+			"find_bump_",
+			"get_filename_root",
+			"mpla#",
+			"0",
+			"labelsize",
+			"figure.",
+			"axes",
+			"make_2d_hist",
+			"axes.",
+			"label(",
+			"spherical",
+			"foil_hits",
+			"figore"
+		],
+		"highlight": false,
+		"in_selection": false,
+		"preserve_case": false,
+		"regex": false,
+		"replace_history":
+		[
+		],
+		"reverse": false,
+		"show_context": true,
+		"use_buffer2": true,
+		"whole_word": false,
+		"wrap": true
+	},
+	"groups":
+	[
+		{
+			"selected": 12,
+			"sheets":
+			[
+				{
+					"buffer": 0,
+					"file": "scripts/bin/run_one.py",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 2651,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								1928,
+								1928
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/Python/Python.sublime-syntax",
+							"tab_size": 4,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 563.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 13,
+					"type": "text"
+				},
+				{
+					"buffer": 1,
+					"file": "scripts/plotting/plot_orbit.py",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 32143,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								21203,
+								21203
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/Python/Python.sublime-syntax",
+							"tab_size": 4,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 1275.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 6,
+					"type": "text"
+				},
+				{
+					"buffer": 2,
+					"file": "lattice/VerticalTripletFFA.in",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 24218,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								23194,
+								23194
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/Text/Plain text.tmLanguage",
+							"tab_size": 2,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 429.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 7,
+					"type": "text"
+				},
+				{
+					"buffer": 3,
+					"file": "scripts/plotting/plot_dump_fields.py",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 15207,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								14534,
+								14534
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/Python/Python.sublime-syntax",
+							"tab_size": 4,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 5509.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 17,
+					"type": "text"
+				},
+				{
+					"buffer": 4,
+					"file": "scripts/plotting/plot_bump.py",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 13200,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								11668,
+								11668
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/Python/Python.sublime-syntax",
+							"tab_size": 4,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 4438.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 8,
+					"type": "text"
+				},
+				{
+					"buffer": 5,
+					"file": "scripts/toy_model/toy_model.py",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 23579,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								1838,
+								1838
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/Python/Python.sublime-syntax",
+							"tab_size": 4,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 1887.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 10,
+					"type": "text"
+				},
+				{
+					"buffer": 6,
+					"file": "scripts/toy_model/optimiser.py",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 2334,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								428,
+								428
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/Python/Python.sublime-syntax",
+							"tab_size": 4,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 0.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 15,
+					"type": "text"
+				},
+				{
+					"buffer": 7,
+					"file": "/mnt/db89a8c2-6f6b-4c5c-bbc4-5534fb22ff7a/cr67/OPAL/external_rogers_mint/install/lib/python3.7/site-packages/platypus/algorithms.py",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 64623,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								42836,
+								42836
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/Python/Python.sublime-syntax",
+							"tab_size": 4,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 18322.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 16,
+					"type": "text"
+				},
+				{
+					"buffer": 8,
+					"file": "scripts/utils/decoupled_transfer_matrix.py",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 18671,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								15355,
+								15355
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/Python/Python.sublime-syntax",
+							"tab_size": 4,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 1281.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 3,
+					"type": "text"
+				},
+				{
+					"buffer": 9,
+					"file": "/home/cr67/OPAL/external_rogers_mint/source/xboa/xboa/bunch/_bunch.py",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 88816,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								59959,
+								59959
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/Python/Python.sublime-syntax",
+							"tab_size": 2,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 23239.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 18,
+					"type": "text"
+				},
+				{
+					"buffer": 10,
+					"file": "scripts/plotting/plot_da.py",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 17040,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								3669,
+								3669
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/Python/Python.sublime-syntax",
+							"tab_size": 4,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 1294.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 19,
+					"type": "text"
+				},
+				{
+					"buffer": 11,
+					"file": "scripts/plotting/plot_closed_orbit.py",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 8796,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								140,
+								140
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/Python/Python.sublime-syntax",
+							"tab_size": 4,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 0.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 4,
+					"type": "text"
+				},
+				{
+					"buffer": 12,
+					"file": "scripts/config/config_triplet_baseline.py",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 14817,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								10579,
+								10579
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/Python/Python.sublime-syntax",
+							"tab_size": 4,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 3608.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 0,
+					"type": "text"
+				},
+				{
+					"buffer": 13,
+					"file": "scripts/analysis/find_closed_orbits_4d.py",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 15288,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								3404,
+								3404
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/Python/Python.sublime-syntax",
+							"tab_size": 4,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 818.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 5,
+					"type": "text"
+				},
+				{
+					"buffer": 14,
+					"file": "scripts/utils/utilities.py",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 6247,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								1561,
+								1561
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/Python/Python.sublime-syntax",
+							"tab_size": 4,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 816.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 12,
+					"type": "text"
+				},
+				{
+					"buffer": 15,
+					"file": "scripts/analysis/find_bump_parameters.py",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 17758,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								5637,
+								5637
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/Python/Python.sublime-syntax",
+							"tab_size": 4,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 597.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 1,
+					"type": "text"
+				},
+				{
+					"buffer": 16,
+					"file": "scripts/analysis/build_bump_surrogate_model.py",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 20044,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								8227,
+								8227
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/Python/Python.sublime-syntax",
+							"tab_size": 4,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 2943.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 9,
+					"type": "text"
+				},
+				{
+					"buffer": 17,
+					"file": "scripts/analysis/bump_surrogate_model/minimiser.py",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 3083,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								1425,
+								1425
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/Python/Python.sublime-syntax",
+							"tab_size": 4,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 0.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 11,
+					"type": "text"
+				},
+				{
+					"buffer": 18,
+					"file": "/mnt/db89a8c2-6f6b-4c5c-bbc4-5534fb22ff7a/cr67/OPAL/external_rogers_mint/source/xboa/xboa/common/_common.py",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 51839,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								39361,
+								39361
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/Python/Python.sublime-syntax",
+							"tab_size": 2,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 13664.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 14,
+					"type": "text"
+				},
+				{
+					"buffer": 19,
+					"file": "scripts/opal_tracking/_opal_tracking.py",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 18244,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								12311,
+								12311
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/Python/Python.sublime-syntax",
+							"tab_size": 4,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 4592.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 2,
+					"type": "text"
+				}
+			]
+		}
+	],
+	"incremental_find":
+	{
+		"height": 26.0
+	},
+	"input":
+	{
+		"height": 0.0
+	},
+	"layout":
+	{
+		"cells":
+		[
+			[
+				0,
+				0,
+				1,
+				1
+			]
+		],
+		"cols":
+		[
+			0.0,
+			1.0
+		],
+		"rows":
+		[
+			0.0,
+			1.0
+		]
+	},
+	"menu_visible": true,
+	"output.find_results":
+	{
+		"height": 0.0
+	},
+	"pinned_build_system": "",
+	"project": "vertical_isis2.sublime-project",
+	"replace":
+	{
+		"height": 48.0
+	},
+	"save_all_on_build": true,
+	"select_file":
+	{
+		"height": 0.0,
+		"last_filter": "",
+		"selected_items":
+		[
+		],
+		"width": 0.0
+	},
+	"select_project":
+	{
+		"height": 0.0,
+		"last_filter": "",
+		"selected_items":
+		[
+		],
+		"width": 0.0
+	},
+	"select_symbol":
+	{
+		"height": 0.0,
+		"last_filter": "",
+		"selected_items":
+		[
+		],
+		"width": 0.0
+	},
+	"selected_group": 0,
+	"settings":
+	{
+	},
+	"show_minimap": true,
+	"show_open_files": true,
+	"show_tabs": false,
+	"side_bar_visible": true,
+	"side_bar_width": 204.0,
+	"status_bar_visible": true,
+	"template_settings":
+	{
+	}
+}

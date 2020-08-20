@@ -399,7 +399,7 @@ class FindBumpParameters(object):
         print("Seed kinetic energy:     ", test_hit["kinetic_energy"], flush=True)
         hit_list = tracking.track_many([test_hit])[1]
         print("Station to probe mapping:\n   ", end=' ')
-        for i, fname in enumerate(tracking.get_names()):
+        for i, fname in enumerate(tracking.get_name_list()):
             print("("+str(i)+",", fname+")", end=' ')
         print()
         hit_list = self.cuts(hit_list)

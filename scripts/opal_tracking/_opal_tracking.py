@@ -152,8 +152,10 @@ class OpalTracking(TrackingBase):
         self.beam_filename = beam_filename
         self.lattice_filename = lattice_filename
         if type(output_filename) == type(""):
-            output_filename = [output_filename]
-        self.output_name_list = output_filename
+            output_filename = {output_filename:None}
+        elif type(output_filename) == type([]):
+            output_filename = dict([(name, None) for name in output_filename])
+        self.output_name_dict = output_filename
         self.opal_path = opal_path
         if not os.path.isfile(self.opal_path):
             raise RuntimeError(str(self.opal_path)+" does not appear to exist."+\
@@ -172,15 +174,35 @@ class OpalTracking(TrackingBase):
         self.clear_path = None
         self._read_probes = self._read_ascii_probes
 
-    def get_names(self):
+    def get_name_dict(self):
         """
-        Get a list of names by globbing self.output_name_list
+        Get a dict of names by globbing self.output_name_dict
         """
-        name_list = []
-        for name in self.output_name_list:
-            name_list += glob.glob(name)
-        name_list = sorted(list(set(name_list)))
-        return name_list
+        name_dict = {}
+        # expand names by globbing each item in output_name_dict, while keeping
+        # the station mapping
+        for name in self.output_name_dict.keys():
+            station = self.output_name_dict[name]
+            name_list = glob.glob(name)
+            for name in name_list:
+                name_dict[name] = station
+        # if station is None, assign a station
+        used_station_list = list(name_dict.values())
+        default_station = 0
+        for name in sorted(name_dict.keys()):
+            station = name_dict[name]
+            if station == None:
+                while default_station in used_station_list:
+                    default_station += 1
+                name_dict[name] = default_station
+                used_station_list.append(default_station)
+        return name_dict
+
+    def get_name_list(self):
+        """
+        Get a list of names by globbing self.output_name_dict
+        """
+        return sorted(self.get_name_dict().keys())
 
     def save(self):
         """
@@ -189,7 +211,7 @@ class OpalTracking(TrackingBase):
         """
         if self.save_dir == None:
             return
-        for probe_file in self.get_names():
+        for probe_file in self.get_name_list():
             target = os.path.join(self.save_dir, probe_file)
             os.rename(probe_file, target)
 
@@ -198,7 +220,7 @@ class OpalTracking(TrackingBase):
         Delete output files (prior to tracking)
         """
         if self.clear_path == None:
-            clear_files = self.get_names()
+            clear_files = self.get_name_list()
         else:
             clear_files = glob.glob(self.clear_path)
         for a_file in clear_files:
@@ -328,21 +350,26 @@ class OpalTracking(TrackingBase):
 
     def _read_ascii_probes(self):
         # loop over files in the glob, read events and sort by event number
-        file_list = self.get_names()
-        if len(file_list) == 0:
+        file_dict = self.get_name_dict()
+        if len(file_dict) == 0:
             name_list = str(self.output_name_list)
             raise IOError("Failed to load any probes from "+name_list)
-        fin_list = [open(file_name) for file_name in file_list]
+        fin_list = []
+        for file_name, station in sorted(file_dict.items()):
+            try:
+                fin_list.append((open(file_name), station))
+            except OSError:
+                pass
         line = "0"
         line_number = 0
-        while line != "" and len(fin_list) > 0:
+        while line != "" and len(fin_dict) > 0:
             line_number += 1
-            for i, fin in enumerate(fin_list):
+            for fin, station in fin_list:
                 line = fin.readline()
                 if line == "":
                     break
                 try:
-                    event, hit = self.read_one_ascii_line(line, i)
+                    event, hit = self.read_one_ascii_line(line, station)
                     self.pass_through_analysis.process_hit(event, hit)
                 except ValueError:
                     pass
@@ -369,16 +396,21 @@ class OpalTracking(TrackingBase):
 
     def _read_h5_probes(self):
         # loop over files in the glob, read events and sort by event number
-        file_list = self.get_names()
+        file_dict = self.get_name_dict()
         if self.verbose:
-            print("Found following files", file_list)
-        if len(file_list) == 0:
-            name_list = str(self.output_name_list)
+            print("Found following files", str(file_dict))
+        if len(file_dict) == 0:
+            name_list = str(self.output_name_dict)
             raise IOError("Failed to load any probes from "+name_list)
-        file_list = [h5py.File(file_name, 'r') for file_name in file_list]
+        file_list = []
+        for file_name, station in sorted(file_dict.items()):
+            try:
+                file_list.append((h5py.File(file_name, 'r'), station))
+            except OSError:
+                pass
         hit = ""
-        for i, fin in enumerate(file_list):
-            hit_generator = self.generate_h5_step(fin, i)
+        for fin, station in file_list:
+            hit_generator = self.generate_h5_step(fin, station)
             for event, hit in hit_generator:
                 self.pass_through_analysis.process_hit(event, hit)
         self.last = self.pass_through_analysis.finalise()

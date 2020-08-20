@@ -93,7 +93,7 @@ class Config(object):
             "adapt_deltas":False,
             "output_file":"closed_orbits_cache",
             "subs_overrides":{"__n_turns__":0.21, "__do_magnet_field_maps__":"False"},
-            "final_subs_overrides":{"__n_turns__":0.21, "__do_magnet_field_maps__":"True"},
+            "final_subs_overrides":{"__n_turns__":1.21, "__do_magnet_field_maps__":"True"},
             "us_cell":0,
             "ds_cell":1,
             "root_batch":0,
@@ -215,7 +215,8 @@ class Config(object):
             "input_file":"find_bump_parameters.tmp",
             "foil_optimisation_stage":0, # from staged optimisation
             "field_optimisation_stage":1, # from staged optimisation
-            "foil_station":0, # station assumed in find_bump_parameters
+            "proton_orbit_station":0, # proton orbit taken from this station
+            "proton_orbit_phi":0., # protons start here
             "subs_overrides":{
                 "__n_turns__":1.2,
                 "__do_magnet_field_maps__":True,

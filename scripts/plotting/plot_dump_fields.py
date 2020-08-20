@@ -2,6 +2,7 @@ import numpy
 import sys
 import os
 import math
+import copy
 import glob
 import ROOT
 
@@ -302,11 +303,18 @@ class LogFileStripper(object):
         self.elements = elements
         self.flog = None
         self.elements_list = []
+        self.line = ""
+#OPAL> * Added H_BUMP_2 to Ring
+#OPAL> * Start position (1347.9, 3601.3, 0) normal (-0.994158, 0.107931, 0), phi -1.46265
+#OPAL> * End position (1347.9, 3601.3, 0) normal (-0.994158, 0.107931, 0)
 
-    def strip_line(self, key):
-        line = self.flog.readline()
+    def strip_line(self, key, will_read = True):
+        if will_read:
+            self.line = self.flog.readline()
+        line = copy.deepcopy(self.line)
         if key not in line:
             raise RuntimeError("strip log file failed to find "+key+" in "+line)
+        line = line.split(key)[1]
         line = line.split("(")[1]
         line = line.split(")")[0]
         values = [float(word) for word in line.split(",")]
@@ -324,12 +332,13 @@ class LogFileStripper(object):
                 for key in self.elements.keys():
                     if key not in line:
                         continue
-                    print(key, end=' ... ')
                     sys.stdout.flush()
                     my_element = {
                         "start":self.strip_line("Start position"),
+                        "normal":self.strip_line("normal", False),
                         "end":self.strip_line("End position"),
                         "name":key,
+                        "line":line,
                         "color":self.elements[key],
                     }
                     self.elements_list.append(my_element)
@@ -341,9 +350,14 @@ class LogFileStripper(object):
         graph = ROOT.TGraph(len(self.elements_list))
         for i, element in enumerate(self.elements_list):
             pos = [(element["start"][i]+element["end"][i])/2. for i in range(3)]
+            norm = round(element["normal"][ax_1], 6), round(element["normal"][ax_2], 6)
             x = pos[ax_1]/1000.
             y = pos[ax_2]/1000.
+            r = (x**2+y**2)**0.5
             graph.SetPoint(i, x, y)
+            print(element["name"], "pos:", (round(x, 6), round(y, 6)), "normal:", norm)
+            if r < 3:
+                print(element["line"])
         graph.SetMarkerStyle(7)
         graph.SetMarkerColor(element["color"])
         canvas.cd()

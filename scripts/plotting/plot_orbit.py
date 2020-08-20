@@ -13,8 +13,8 @@ import h5py
 
 from utils import utilities
 import plotting.plot_dump_fields as plot_dump_fields
-import PyOpal.parser
-import PyOpal.field
+#import PyOpal.parser
+#import PyOpal.field
 
 
 MASS = 938.2720813
@@ -120,7 +120,7 @@ def r_phi_track_file(data):
         data["pphi"][i] = -px*math.sin(phi)+py*math.cos(phi)
     return data
 
-def parse_file(file_name, heading, types):
+def parse_file(file_name, heading, types, test_function = None):
     if len(heading) != len(types):
         raise KeyError("Heading mismatched to types in parse_file "+file_name)
     fin = open(file_name)
@@ -137,29 +137,37 @@ def parse_file(file_name, heading, types):
             print("Line\n  "+line+"\nmismatched to heading\n  "+str(heading)+"\nin parse_file "+file_name)
         else:
             words = [types[i](x) for i, x in enumerate(words)]
+            is_okay = test_function == None or not test_function(words)
+            if not is_okay:
+                print("Breaking due to failed test function at", words)
+                break
             for i, item in enumerate(heading):
                 data[item].append(words[i])
         line = fin.readline()[:-1]
     print("Got data from file "+file_name)
     return data
 
-def parse_track_file(filename):
+def parse_track_file(filename, test_function = None):
     file_name = filename
     heading = ["id", "x", "px", "y", "py", "z", "pz"]#, "bx", "by", "bz", "ex", "ey", "ez"]
     types = [str]+[float]*(len(heading)-1)
-    data = parse_file(file_name, heading, types)
+    data = parse_file(file_name, heading, types, test_function)
     data["px"] = [px*MASS for px in data["px"]]
     data["py"] = [py*MASS for py in data["py"]]
     data["pz"] = [pz*MASS for pz in data["pz"]]
+    data["z"] = [z*-1 for z in data["z"]]
     data = r_phi_track_file(data)
     return data
 
-def load_track_orbit(file_name):
+def load_track_orbit(file_name, y_range = None):
     fin = open(file_name)
     step_list = []
     for i, line in enumerate(fin.readlines()):
         if i < 2:
           continue
+        if y_range != None:
+            if step["y_pos"] < y_range[0] or step["y_pos"] > y_range[1]:
+                break
         words = line.split()
         step = {}
         step["particle_index"] = int(words[0][2:])
@@ -564,8 +572,8 @@ def plot_zoom(output_dir, opal_run_dir, step_list_of_lists):
     for format in ["png"]:
         canvas.Print(output_dir+"closed_orbit_plan-zoom."+format)
 
-def plot_cartesian(output_dir, opal_run_dir, step_list):
-    field_plot = plot_dump_fields.PlotDumpFields(opal_run_dir+"FieldMapXY.dat", "magnetic_cartesian") #"em_cartesian")
+def plot_cartesian(output_dir, opal_run_dir, step_list, file_type):
+    field_plot = plot_dump_fields.PlotDumpFields(opal_run_dir+"FieldMapXY.dat", file_type) #"em_cartesian")
     field_plot.load_dump_fields()
 
     probe_cuts = [lambda item: item["id"] == 0] # cut if any of probe_cuts is true
@@ -575,15 +583,16 @@ def plot_cartesian(output_dir, opal_run_dir, step_list):
     #z_min, z_max = 0.05, 0.2
     inner_radius, axis_radius, outer_radius, ncells = 3.5, 3.995, 4.5, 20
     inner_radius_a, axis_radius_a, outer_radius_a, ncells_a = 3.4, 3.995, 4.5, 10
-    z_min, z_max, phi_min, phi_max = -0.0, 0.3, 0, 120
+    z_min, z_max, phi_min, phi_max = -0.9, 0.1, 0, 252
+
+    field_dict = {"MAGNETD":ROOT.kBlue, "MAGNETF":ROOT.kBlue}
+    for i in range(1, 6):
+        field_dict["H_BUMP_"+str(i)+" "] = ROOT.kMagenta
+        field_dict["V_BUMP_"+str(i)+" "] = ROOT.kMagenta
+    log_plot = plot_dump_fields.LogFileStripper(opal_run_dir+"log", field_dict)
 
     Colors.reset()
     canvas = field_plot.plot_dump_fields("x", "y", "bz")
-    log_plot = plot_dump_fields.LogFileStripper(opal_run_dir+"log",
-                                                {"MAGNETD":ROOT.kBlue,
-                                                 "MAGNETF":ROOT.kBlue,
-                                                 "H_BUMP_":ROOT.kMagenta,
-                                                 "V_BUMP_":ROOT.kMagenta})
     log_plot.plot_log_file(canvas, 0, 1)
     plot_beam_pipe(inner_radius, outer_radius, ncells, canvas)
     plot_beam_pipe(inner_radius_a, outer_radius_a, ncells_a, canvas)
@@ -609,6 +618,7 @@ def plot_cartesian(output_dir, opal_run_dir, step_list):
 
     Colors.reset()
     canvas = field_plot.plot_dump_fields("x", "y", "br")
+    log_plot.plot_log_file(canvas, 0, 1)
     plot_beam_pipe(inner_radius, outer_radius, ncells, canvas)
     plot_beam_pipe(inner_radius_a, outer_radius_a, ncells_a, canvas)
     plot_axis(axis_radius, ncells, canvas)
@@ -626,7 +636,7 @@ def plot_cartesian(output_dir, opal_run_dir, step_list):
     canvas, axes, graph = plot_x_y_projection(step_list, canvas)
     for format in ["png"]:
         canvas.Print(output_dir+"closed_orbit_plan_bphi."+format)
-    return
+    #return
 
     Colors.reset()
     canvas = field_plot.plot_dump_fields("x", "y", "btot")
@@ -637,7 +647,7 @@ def plot_cartesian(output_dir, opal_run_dir, step_list):
     canvas, axes, graph = plot_x_y_projection(step_list, canvas)
     for format in ["png"]:
         canvas.Print(output_dir+"closed_orbit_plan_btot."+format)
-
+    return
     canvas = field_plot.plot_dump_fields("x", "y", "bx")
     canvas, axes, graph = plot_x_y_projection(step_list, canvas)
     plot_beam_pipe(inner_radius, outer_radius, ncells, canvas)
@@ -727,7 +737,7 @@ def plot_orbit_field(output_dir, step_list_of_lists, canvas):
         try:
             oob, bx, by, bz, dummy, dummy, dummy = \
                                     PyOpal.field.get_field_value(x, y, z, 0.)
-        except ValueError:
+        except (ValueError, NameError):
             print("Could not plot orbit field - no field object available")
             return
         cell_number = transform.cell_number(x, y)
@@ -800,24 +810,35 @@ def parse_args(args):
     parser = argparse.ArgumentParser()
     parser.add_argument('file_name_list', type=str, nargs='+')
     parser.add_argument('--lattice_file', dest='lattice_file')
+    parser.add_argument('--file_type', dest='file_type', default='magnetic_cartesian')
     args = parser.parse_args()
     tgt_dir = os.path.split(args.file_name_list[0])[0]
     output_dir = os.path.split(tgt_dir)[0]
     run_dir = os.path.split(tgt_dir)[1]
     run_file_list = [os.path.split(arg)[1] for arg in args.file_name_list]
     lattice_file = args.lattice_file
-    return output_dir, run_dir, run_file_list, lattice_file
+    return output_dir, run_dir, run_file_list, lattice_file, args.file_type
 
-def main(output_dir, run_dir, run_file_list, lattice_file):
+def z_out_of_bounds(words):
+    z_min, z_max = -0.01, 1.0 # m
+    return  words[-2] < z_min or words[-2] > z_max
+
+def phi_almost_2pi(words):
+    return words[-4] < -0.01 and words[-4] > -0.1 and words[-6] > 0.
+
+def main(output_dir, run_dir, run_file_list, lattice_file, file_type):
     load_lattice(lattice_file)
     canvas = None #get_machida_field()
     output_dir += "/"
     opal_run_dir = output_dir+run_dir+"/"
     print("OPAL RUN DIR", opal_run_dir)
     step_list_of_lists = []
+    both = lambda words: z_out_of_bounds(words) or phi_almost_2pi(words)
     for run_file in run_file_list:
-        step_list_of_lists.append(parse_track_file(opal_run_dir+run_file))
-    plot_cartesian(output_dir, opal_run_dir, step_list_of_lists)
+        # stop loading if z goes out of range
+        data = parse_track_file(opal_run_dir+run_file,  phi_almost_2pi)
+        step_list_of_lists.append(data)
+    plot_cartesian(output_dir, opal_run_dir, step_list_of_lists, file_type)
     #plot_cylindrical(output_dir, opal_run_dir, step_list_of_lists)
     try:
         plot_orbit_field(output_dir, step_list_of_lists, canvas)

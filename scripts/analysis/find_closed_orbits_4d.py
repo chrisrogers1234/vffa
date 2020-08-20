@@ -32,7 +32,9 @@ class ClosedOrbitFinder4D(object):
         self.run_dir = os.path.join(self.config.run_control["output_dir"],
                                     self.config_co["run_dir"])
         self.centroid = None
-        self.var_list = ["x", "px", "y", "py"]
+        self.var_list_1 = ["x", "x'", "y", "y'"]
+        #self.var_list_2 = ["x", "px", "y", "py", "t", "kinetic_energy"]
+        self.var_list = self.var_list_1
         self.subs_tracking = {}
         self.output_list = []
         self.print_list = []
@@ -47,9 +49,9 @@ class ClosedOrbitFinder4D(object):
 
     def seed_to_hit(self, seed, t):
         hit = utils.utilities.reference(self.config, self.energy)
+        hit["t"] = t
         for i, var in enumerate(self.var_list):
             hit[var] = seed[i]
-        hit["t"] = t
         hit.mass_shell_condition("pz") # adjust pz so E^2 = p^2 + m^2
         return hit
 
@@ -69,45 +71,12 @@ class ClosedOrbitFinder4D(object):
         return numpy.array(rotation_matrix)
 
 
-    def rotate_from_centroid(self, hit_list):
+    def get_vector(self, hit_list):
         tm_list = []
-        # 0 element in the hit_list defines the centroid
-        # take s-vector as being the momentum vector of hit_list[0]
-        # take all positions, etc perpendicular to the s-vector
-        centroid = hit_list[0]
-        ref_position = numpy.array([centroid['x'],
-                                    centroid['y'],
-                                    centroid['z']])
-        ref_momentum = numpy.array([centroid['px'],
-                                    centroid['py'],
-                                    centroid['pz']])
-        svec = ref_momentum/numpy.linalg.norm(ref_momentum)
-        #rot = self.rotation_matrix(numpy.array([0., 0., 1.]), svec)
-        rot = numpy.array([[1., 0., 0.], [0., 1., 0.], [0., 0., 1.]])
         for hit in hit_list:
-            # project onto plane normal to the momentum vector
-            hit_position = numpy.array([hit['x'], hit['y'], hit['z']])
-            #distance_to_plane = numpy.dot(svec, hit_position-ref_position)
-            #hit['x'] += distance_to_plane*hit['px']
-            #hit['y'] += distance_to_plane*hit['py']
-            #hit['z'] += distance_to_plane*hit['pz']
-            # convert to coordinate system relative to centroid
-            hit_pos = numpy.array([
-                hit['x'],# - ref_position[0],
-                hit['y'],# - ref_position[1],
-                hit['z'],# - ref_position[2],
-            ])
-            hit_mom = numpy.array([
-                hit['px'],
-                hit['py'],
-                hit['pz'],
-            ])
-            # rotate to coordinate system parallel to centroid
-            hit_pos = numpy.dot(rot, hit_pos)
-            hit_mom = numpy.dot(rot, hit_mom)
-            vector = [hit_pos[0], hit_mom[0], hit_pos[1], hit_mom[1]]
+            vector = [hit[var] for var in self.var_list]
             tm_list.append(vector)
-        return tm_list, rot
+        return tm_list
 
     def track_many(self, seed_list, t, is_final):
         overrides = self.config_co["subs_overrides"]
@@ -127,10 +96,17 @@ class ClosedOrbitFinder4D(object):
 
     def get_decoupled(self, tm):
         m = tm.get_coefficients_as_matrix()
+        print("get decoupled - before cut")
+        for row in m:
+            for element in row:
+                print(format(element, "8.4g"), end=" ")
+            print()
         dim = len(m)
-        for i, row in enumerate(m):
-            row = row[1:5]
-            m[i] = row
+        m = [row[1:5] for row in m[0:4]]
+        print("get decoupled - after cut")
+        for row in m:
+            print(row)
+        print("done")
         DecoupledTransferMatrix.det_tolerance = 1e9
         decoupled = DecoupledTransferMatrix(m)
         return decoupled
@@ -216,8 +192,8 @@ class ClosedOrbitFinder4D(object):
             value_list.append([seeds[i]+values[i]*deltas[i] for i in range(dim)])
         track_list = self.track_many(value_list, 0., False)[1:]
         try:
-            tm_list_in, rot_in = self.rotate_from_centroid([a_track[us_cell] for a_track in track_list])
-            tm_list_out, rot_out = self.rotate_from_centroid([a_track[ds_cell] for a_track in track_list])
+            tm_list_in = self.get_vector([a_track[us_cell] for a_track in track_list])
+            tm_list_out = self.get_vector([a_track[ds_cell] for a_track in track_list])
             print(self.str_matrix(tm_list_in, "14.8g"))
             print(self.str_matrix(tm_list_out, "14.8g"))
         except IndexError:
@@ -225,10 +201,9 @@ class ClosedOrbitFinder4D(object):
             err += str([len(track) for track in track_list])+" track points. "
             err += "Require "+str( ds_cell+1 )+" track points."
             print(err)
-            sys.exit()
             raise RuntimeError(err) from None
         track_list[0]
-        return tm_list_in, rot_in, tm_list_out, rot_out, track_list[0]
+        return tm_list_in, tm_list_out, track_list[0]
 
     def get_error(self, delta):
         scale = self.config_co["deltas"]
@@ -253,28 +228,26 @@ class ClosedOrbitFinder4D(object):
             decoupled = tm.decoupled(coupled)
             print(self.str_matrix(decoupled))
 
-    def rotate_co(self, new_co, rot):
-        pos = [new_co[0], new_co[2], 0.]
-        return new_co
-
     def tm_co_fitter(self, seeds):
         output = {}
         dim = len(seeds)
+        print("DIMENSION", dim)
         tolerance = self.config_co["tolerance"]
         max_iter = self.config_co["max_iterations"]
         if max_iter == 0:
             return {
                 "seed":seeds,
-                "tm":[[0., 1., 0., 0., 0.],
-                      [0., 0., 1., 0., 0.],
-                      [0., 0., 0., 1., 0.],
-                      [0., 0., 0., 0., 1.]],
+                "tm":[[0., 1., 0., 0., 0., 0.],
+                      [0., 0., 1., 0., 0., 0.],
+                      [0., 0., 0., 1., 0., 0.],
+                      [0., 0., 0., 0., 1., 0.],
+                      [0., 0., 0., 0., 0., 1.]],
                 "substitutions":utils.utilities.do_lattice(self.config,
                                                            self.subs,
                                                            self.config_co["subs_overrides"]),
                 "errors":[-1],
             }
-        deltas = self.config_co["deltas"]
+        deltas = self.config_co["deltas"][0:len(self.var_list)]
         a_track = None
         tm = None
         new_deltas = copy.deepcopy(deltas)
@@ -287,7 +260,7 @@ class ClosedOrbitFinder4D(object):
             self.centroid = self.seed_to_hit(new_seeds, 0.)
             try:
                 print("tracking in")
-                tm_list_in, rot_in, tm_list_out, rot_out, ref_track = self.get_tm(new_seeds, deltas)
+                tm_list_in, tm_list_out, ref_track = self.get_tm(new_seeds, deltas)
                 print("tracking out")
             except Exception:
                 # if tm calculation fails, we abort with the last successful result
@@ -298,7 +271,6 @@ class ClosedOrbitFinder4D(object):
             tm = self.fit_matrix(tm_list_in, tm_list_out)
             new_co, dm = self.get_co(tm)
             print("New closed orbit", new_co)
-            #self.rotate_co(new_co, rot_in)
             self.print_ref_track(ref_track, seeds, dm)
             for i in range(dim):
                 new_deltas[i] = abs(tm_list_out[0][i] - tm_list_in[0][i])
@@ -367,6 +339,7 @@ class ClosedOrbitFinder4D(object):
                 self.centroid = self.seed_to_hit(seed, 0.)
                 a_track = None
                 try:
+                    self.var_list = self.var_list_1
                     output = self.tm_co_fitter(seed)
                     output["seed_in"] = seed
                     output["seed_hit"] = self.seed_to_hit(output["seed"], 0.).dict_from_hit()

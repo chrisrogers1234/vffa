@@ -23,17 +23,6 @@ class TrackBump(object):
         self.config = config
         self.tmp_dir = os.path.join(self.config.run_control["output_dir"],
                                self.config.track_bump["run_dir"])
-        lattice_name = self.config.tracking["lattice_file_out"].split(".")[0]
-        for item in glob.glob(self.tmp_dir+"/"+lattice_name+"-trackOrbit*"):
-            try:
-                print("Clearing", item)
-                os.unlink(item)
-            except OSError: # maybe the dir already exists
-                pass
-        try:
-            os.makedirs(self.tmp_dir)
-        except OSError: # maybe the dir already exists
-            pass
         self.subs = {}
         self.tracking_result = []
         self.bump_data = []
@@ -41,6 +30,19 @@ class TrackBump(object):
         self.injection_orbit = self.config.track_bump["injection_orbit"]
         self.file_index = 0
         self.data_dict = {}
+
+    def clear_dir(self):
+        lattice_name = self.config.tracking["lattice_file_out"].split(".")[0]
+        for item in glob.glob(self.tmp_dir+"/"+lattice_name+"-trackOrbit*"):
+            try:
+                print("Clearing", item)
+                os.unlink(item)
+            except OSError: # maybe the file never existed
+                pass
+        try:
+            os.makedirs(self.tmp_dir)
+        except OSError: # maybe the dir already exists
+            pass
 
     def load_files(self):
         fglob = os.path.join(self.config.run_control["output_dir"],
@@ -75,6 +77,7 @@ class TrackBump(object):
                                                     self.get_field_list(item)
 
     def track_bumps(self):
+        self.clear_dir()
         self.load_bump_parameters()
         print("Back tracking using injection orbit:", self.injection_orbit)
         for i, key in enumerate(sorted(self.data_dict.keys())):
@@ -95,8 +98,6 @@ class TrackBump(object):
             print(magnet_name, format(bump["field_list"][magnet], "10.6g"))
         print("Proton orbit:", bump["proton_orbit"])
 
-
-
     def get_field_list(self, a_bump):
         """
         Get the list of fields for a given bumper setting
@@ -107,7 +108,7 @@ class TrackBump(object):
         """
         Get the target orbit at the foil for this bump setting
         """
-        foil = str(self.config.track_bump["foil_station"])
+        foil = str(self.config.track_bump["proton_orbit_station"])
         proton_orbit = a_bump["target_orbit"][foil]
         return proton_orbit
 
@@ -121,7 +122,7 @@ class TrackBump(object):
 
     def fore_track(self, fields, proton_orbit):
         self.file_index += 1
-        foil_phi = self.subs["__foil_probe_phi__"]
+        foil_phi = self.config.track_bump["proton_orbit_phi"]
         foil_probe = self.config.track_bump["foil_probe_files"]
         energy = self.config.track_bump["energy"]
         self.do_substitutions(fields, foil_phi, +1.0)
@@ -129,14 +130,17 @@ class TrackBump(object):
         test_hit = utilities.reference(self.config, energy,
                                        proton_orbit[0], proton_orbit[1],
                                        proton_orbit[2], proton_orbit[3])
-        tracking.track_many([test_hit])
+        try:
+            tracking.track_many([test_hit])
+        except OSError: # did not load any output files - we don't care
+            pass
         lattice_name = self.config.tracking["lattice_file_out"].split(".")[0]
         os.rename(lattice_name+"-trackOrbit.dat",
                   lattice_name+"-trackOrbit-fore-"+str(self.file_index)+".dat")
 
     def back_track(self, fields):
         self.file_index += 1
-        foil_phi = self.subs["__foil_probe_phi__"]
+        foil_phi = self.config.track_bump["foil_phi"]
         injected_beam = self.injection_orbit
         foil_probe = self.config.track_bump["foil_probe_files"]
         energy = self.config.track_bump["energy"]
@@ -148,9 +152,11 @@ class TrackBump(object):
         test_hit["px"] *= -1
         test_hit["py"] *= -1
         test_hit["pz"] *= -1
-        tracking.track_many([test_hit])
+        try:
+            tracking.track_many([test_hit])
+        except OSError: # did not load any output files - we don't care
+            pass
         lattice_name = self.config.tracking["lattice_file_out"].split(".")[0]
-        self.file_index += 1
         os.rename(lattice_name+"-trackOrbit.dat",
                   lattice_name+"-trackOrbit-back-"+str(self.file_index)+".dat")
 

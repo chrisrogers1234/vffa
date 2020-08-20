@@ -30,6 +30,10 @@ class DecoupledTransferMatrix(object):
     - t_evalue, t_evector is the eigenvalue and corresponding eigenvectors of t
     - v_t is the periodic transfer matrix in t, such that v_t = t^T v_t t
     - phase is a list giving the phase advance in the eigensystem
+    - chol is the cholesky matrix of v_t (converts from unit circle to decoupled
+      coordinates)
+    - chol_inv is the inverse cholesky matrix of v_t (converts from decoupled to
+      unit circle coordinates)
     Note that from the definition of t and r, it follows that for some phase
     space vector in the coupled space u_2 = m u_1
     """
@@ -63,6 +67,7 @@ class DecoupledTransferMatrix(object):
         self.r_inv = None
         self.v_t = None
         self.phase = [None]*self.dim
+        self.chol_inv = None
         self._get_decoupling()
 
     def _get_decoupling(self):
@@ -78,6 +83,7 @@ class DecoupledTransferMatrix(object):
         par_t_evector = numpy.array(par_t_evector)
         self.t_evector = numpy.array(par_t_evector)
         self.v_t = numpy.zeros([self.dim*2, self.dim*2]) # real
+        t_test = numpy.zeros((2*self.dim, 2*self.dim))
         for i in range(self.dim):
             j = 2*i
             #evector = numpy.transpose(self.m_evector)[i]
@@ -88,6 +94,7 @@ class DecoupledTransferMatrix(object):
                 ratio = evector[j+1]/evector[j]
                 beta_i = 1./numpy.imag(ratio)
                 alpha_i = -beta_i * numpy.real(ratio)
+                gamma_i = (1+alpha_i*alpha_i)/beta_i
             except FloatingPointError:
                 beta_i = -1.
                 alpha_i = 0.
@@ -96,17 +103,25 @@ class DecoupledTransferMatrix(object):
             par_t_evector[j+1, j] = 1./cmath.sqrt(beta_i)*(-alpha_i+1j)*exp_phi_i
             par_t_evector[j,   j+1] = numpy.conj(par_t_evector[j, j])
             par_t_evector[j+1, j+1] = numpy.conj(par_t_evector[j+1, j])
-            self.phase[i] = phase_i
             sign = 1.
             if beta_i < 0:
+                phase_i = -phase_i
                 sign = -1.
+            self.phase[i] = phase_i
             self.v_t[j, j] = sign*beta_i
             self.v_t[j, j+1] = -sign*alpha_i
             self.v_t[j+1, j] = -sign*alpha_i
-            self.v_t[j+1, j+1] = sign*(1+alpha_i*alpha_i)/beta_i
+            self.v_t[j+1, j+1] = sign*gamma_i
+            t_test[j, j] = math.cos(phase_i)+sign*alpha_i*math.sin(phase_i)
+            t_test[j+1, j+1] = math.cos(phase_i)-sign*alpha_i*math.sin(phase_i)
+            t_test[j, j+1] = sign*beta_i*math.sin(phase_i)
+            t_test[j+1, j] = -sign*gamma_i*math.sin(phase_i)
         self.r = numpy.dot(self.m_evector, numpy.linalg.inv(par_t_evector))
+        self.r = self.r/numpy.linalg.det(self.r)**(1./self.dim)
         self.r_inv = numpy.linalg.inv(self.r)
-        self.t = numpy.dot(self.r_inv, numpy.dot(self.m, self.r))
+        #self.t = numpy.dot(self.r_inv, numpy.dot(self.m, self.r))
+        self.t = t_test
+        self.m = numpy.dot(self.r, numpy.dot(self.t, self.r_inv))
         self.t_evalue = numpy.array([0+0j]*(2*self.dim))
         for i in range(0, 2*self.dim, 2):
             t_quad = self.t[i:i+2, i:i+2]
@@ -114,6 +129,8 @@ class DecoupledTransferMatrix(object):
             self.t_evalue[i] = quad_evalue[0]
             self.t_evalue[i+1] = quad_evalue[1]
             self.t_evector[i:i+2, i:i+2] = quad_evector
+        self.chol = numpy.linalg.cholesky(self.v_t)
+        self.chol_inv = numpy.linalg.inv(self.chol)
 
 
     def get_v_m(self, eigen_emittances):
@@ -141,15 +158,24 @@ class DecoupledTransferMatrix(object):
     def get_amplitude(self, axis, coupled_phase_space_vector):
         """
         Get the 2d amplitude in a given eigen plane
+        Returns the amplitude
         """
         decoupled = self.decoupled(coupled_phase_space_vector)
-        decoupled = decoupled[2*axis:2*axis+1]
-        matrix = self.v_t[2*axis:2*axis+1, 2*axis:2*axis+1]
+        decoupled = decoupled[2*axis:2*axis+2]
+        matrix = numpy.linalg.inv(self.v_t)[2*axis:2*axis+2, 2*axis:2*axis+2]
         decoupled_t = numpy.transpose(decoupled)
         amplitude = numpy.dot(numpy.dot(decoupled_t, matrix), decoupled)
-        print("AMPLITUDE", amplitude.shape)
         return amplitude
 
+    def get_cholesky_vector(self, coupled_phase_space_vector):
+        """
+        Get the cholesky decomposed position of the particle
+       - coupled_phase_space_vector: phase space vector in the coupled space
+        Returns a 4d cholesky vector (normalised to v_t ellipse)
+        """
+        decoupled = self.decoupled(coupled_phase_space_vector)
+        c_vector = numpy.dot(self.chol_inv, decoupled)
+        return c_vector
 
     def get_phase_advance(self, axis):
         """
@@ -214,6 +240,65 @@ class DecoupledTransferMatrix(object):
         decoupled_phase_space_vector = numpy.array(decoupled_phase_space_vector)
         coupled_psv = numpy.dot(self.r, decoupled_phase_space_vector)
         return numpy.real(coupled_psv)
+
+    def coupled_to_nd_action_angles(self, coupled_phase_space_vector):
+        """
+        Decompose the vector into an nd action and n-1 angles
+       - coupled_phase_space_vector: phase space vector in the coupled space
+        Returns a vector like (angle 0, ..., angle n-1, action_nd) where
+        angle is expressed in radians over [0, pi] except angle n-1 which ranges
+        over [-pi, pi]; and action is the length^2 of the coupled phase space
+        vector in cholesky coordinates
+        """
+        c_vector = self.get_cholesky_vector(coupled_phase_space_vector)
+        r = numpy.linalg.norm(c_vector)
+        aa_vector = [None]*(self.dim*2-1)+[r*r]
+        for i in range(self.dim*2-1):
+            try:
+                aa_vector[i] = math.acos(c_vector[i]/r)
+            except ValueError:
+                aa_vector[i] = 0.
+            r *= math.sin(aa_vector[i])
+        if c_vector[-1] < 0:
+            aa_vector[-2] *= -1
+
+        # should print values of c_vector and same value calc'd from aa vector
+        #print("coupled_to_nd_action_angles test:")
+        # r = aa_vector[-1]**0.5
+        #for i in range(self.dim*2-1):
+        #    print ("    cvec", c_vector[i], "test", r*math.cos(aa_vector[i]))
+        #    r *= math.sin(aa_vector[i])
+        #print ("    cvec", c_vector[-1], "test", r)
+
+        return aa_vector
+
+    def coupled_to_action_angle(self, coupled_phase_space_vector):
+        """
+        Get the action-angle coordinates
+       - coupled_phase_space_vector: phase space vector in the coupled space
+        Returns a vector like (angle 0, action 0, ..., angle N, action N) where
+        angle is expressed in radians in domain [-PI, PI]
+        """
+        c_vector = self.get_cholesky_vector(coupled_phase_space_vector)
+        aa_vector = [None]*(self.dim*2)
+        for i in range(0, 2*self.dim, 2):
+            aa_vector[i] = math.atan2(c_vector[i], c_vector[i+1])
+            aa_vector[i+1] = c_vector[i]**2+c_vector[i+1]**2
+        return aa_vector
+
+    def action_angle_to_coupled(self, action_angle_vector):
+        """
+        Get the coupled phase space vector
+        - action_angle_vector: phase space vector in the action angle coordinates
+        Returns a vector in the coupled coordinates
+        """
+        c_vector = [None]*(self.dim*2)
+        for i in range(0, self.dim*2, 2):
+            c_vector[i+1] = math.cos(action_angle_vector[i])*action_angle_vector[i+1]**0.5
+            c_vector[i] = math.sin(action_angle_vector[i])*action_angle_vector[i+1]**0.5
+        decoupled =  numpy.dot(self.chol, c_vector)
+        coupled = self.coupled(decoupled)
+        return coupled
 
     def print_tests(self):
         print("M")

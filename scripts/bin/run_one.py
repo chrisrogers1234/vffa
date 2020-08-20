@@ -13,6 +13,7 @@ import analysis.find_closed_orbits_4d
 import analysis.find_tune
 import analysis.find_da
 import analysis.find_bump_parameters
+import analysis.build_bump_surrogate_model
 import analysis.track_bump
 
 from utils import utilities
@@ -68,6 +69,8 @@ def main():
         analysis.find_da.main(config)
     if config.run_control["find_bump_parameters"]:
         analysis.find_bump_parameters.main(config)
+    if config.run_control["build_bump_surrogate_model"]:
+        analysis.build_bump_surrogate_model.main(config)
     if config.run_control["track_bump"]:
         analysis.track_bump.main(config)
 
