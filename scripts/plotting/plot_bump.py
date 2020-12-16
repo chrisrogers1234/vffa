@@ -4,24 +4,14 @@ import json
 import sys
 
 import xboa.common as common
+import matplotlib
+import matplotlib.pyplot
 import ROOT
 
 import utils.utilities as utilities
 
 
-
-def load_file(file_name):
-    fin = open(file_name)
-    print("Loading", file_name, end=' ')
-    sys.stdout.flush()
-    data_out = json.loads(fin.read())
-    if len(data_out) == 0:
-        print(" empty file, abort")
-        sys.exit(1)
-    print(" done")
-    return data_out
-
-def load_file_alt(file_name):
+def load_file_alt(file_name, flip_vertical):
     fin = open(file_name)
     print("Loading", file_name, end=' ')
     sys.stdout.flush()
@@ -40,11 +30,14 @@ def load_file_alt(file_name):
     print("... loaded", n_iterations, "lines with",
           "worst score", format(max(score_list), "8.4g"), 
           "best score", format(data_out['score'], "8.4g"))
+    if flip_vertical:
+        for hit in data_out["tracking"]:
+            hit[3] *= -1
+            hit[4] *= -1
     data_out['n_iterations'] = n_iterations
     return [data_out]
 
-def plot_actions(data, plot_dir, foil_probe, tm):
-    pass
+
 
 def get_bump_position(data, foil_probe, foil_var):
     bump_position = []
@@ -276,6 +269,19 @@ def plot_closed_orbit(data, co_axis, plot_dir, station, add_points=()):
     canvas = common.make_root_canvas("closed orbit "+co_axis+" "+str(station))
     mgraph = ROOT.TMultiGraph()
     marker_styles = [20, 20, 21, 21, 22, 24, 24, 25, 25, 26]
+    if len(add_points) > 0:
+        pos = [vec[ip] for vec in add_points]
+        mom = [vec[im] for vec in add_points]
+        pos_all += pos
+        mom_all += mom
+        hist, graph = common.make_root_graph("closed orbit",
+                                             pos, "",
+                                             mom, "", sort=False)
+        graph.SetLineColor(ROOT.kGray)
+        graph.SetMarkerColor(ROOT.kGray)
+        style = marker_styles[0]
+        graph.SetMarkerStyle(style)
+        mgraph.Add(graph)
     for i, bump in enumerate(data):
         pos, mom = [], []
         station_list = [item[0] for item in bump["tracking"]]
@@ -289,25 +295,13 @@ def plot_closed_orbit(data, co_axis, plot_dir, station, add_points=()):
             hist, graph = common.make_root_graph("closed orbit",
                                                     pos, "",
                                                     mom, "")
-            style = marker_styles[i % len(marker_styles)]
+            style = marker_styles[i+1 % len(marker_styles)]
             graph.SetMarkerStyle(style)
             mgraph.Add(graph)
             pos_all += pos
             mom_all += mom
         except IndexError:
             print("Failed to plot")
-    if len(add_points) > 0:
-        pos = [vec[ip] for vec in add_points]
-        mom = [vec[im] for vec in add_points]
-        pos_all += pos
-        mom_all += mom
-        hist, graph = common.make_root_graph("closed orbit",
-                                             pos, "",
-                                             mom, "")
-        graph.SetMarkerColor(ROOT.kBlue)
-        style = marker_styles[i % len(marker_styles)]
-        graph.SetMarkerStyle(style)
-        mgraph.Add(graph)
     mgraph.GetXaxis().SetTitle(var[ip])
     mgraph.GetYaxis().SetTitle(var[im])
     pos_limits = get_limits(pos_all, 0.1)
@@ -321,13 +315,63 @@ def plot_closed_orbit(data, co_axis, plot_dir, station, add_points=()):
     for format in ["png"]:
         canvas.Print(plot_dir+"/"+co_axis+"_closed_orbit_probe_"+str(station)+"."+format)
 
+def plot_fields_2(data, plot_dir, x_values):
+    bump_fields = {}
+    for bump in data:
+        for key in bump["bump_fields"]:
+            if key not in bump_fields:
+                bump_fields[key] = []
+            bump_fields[key].append(bump["bump_fields"][key])
+    figure = matplotlib.pyplot.figure()
+    axes = figure.add_subplot(1, 1, 1)
+    if type(x_values) == type(""):
+        x_name = x_values.replace("__", "").replace("_", " ").replace("field", "")
+        axes.set_xlabel(x_name+" [T]")
+        x_values = bump_fields[x_values]
+    else:
+        axes.set_xlabel("Setting number")
+    axes.set_ylabel("Bump field [T]")
+    print(bump_fields.keys())
+    for key in sorted(bump_fields.keys()):
+        name = key.replace("__", "").replace("_", " ").replace("field", "")
+        if "h bump" in name:
+            style = "dotted"
+        else:
+            style = "dashed"
+        axes.plot(x_values, bump_fields[key], label=name, linestyle=style, marker="o")
+    axis_xrange = list(axes.get_xlim())
+    axis_xrange[1] += (axis_xrange[1]-axis_xrange[0])*0.5
+    axes.set_xlim(axis_xrange)
+    axes.legend()
+    figure.savefig(plot_dir+"/bump_fields.png")
+
+def load_trajectory(file_name, station, fix, fixed_point, momentum):
+    if file_name == None:
+        return []
+    fin = open(file_name)
+    for line in fin.readlines():
+        pass
+    trajectory = json.loads(line)["beam_trajectory"]
+    # offset everything so that trajectory[fixed_point] = fix
+    delta = [fix[i] - trajectory[fixed_point][i] for i in range(4)]
+    for j, point in enumerate(trajectory):
+        point[1] *= momentum
+        point[3] *= momentum
+        for i in range(4):
+            point[i] += delta[i]
+        trajectory[j] = [station]+point
+    trajectory = trajectory[0:fixed_point]
+    return trajectory
+
+
 root_objects = []
 var = {0:"station",
        1:"Radial position [mm]", 2:"Radial momentum [MeV/c]",
        3:"Height [mm]", 4:"Vertical momentum [MeV/c]"}
 
 def main(file_list):
-    number_of_phases = 2
+    flip_vertical = False
+    number_of_phases = 1
     score_tolerance = 1000.
     foil_probe = 0
     foil_var = 3
@@ -341,21 +385,29 @@ def main(file_list):
         for file_name in sorted(glob.glob(file_glob)):
             index += 1
             if index % number_of_phases != 0:
-                score.append(load_file_alt(file_name)[0]["score"])
-                n_iterations.append(load_file_alt(file_name)[0]["n_iterations"])
+                score.append(load_file_alt(file_name, flip_vertical)[0]["score"])
+                n_iterations.append(load_file_alt(file_name, flip_vertical)[0]["n_iterations"])
                 continue
-            data += load_file_alt(file_name)
+            data += load_file_alt(file_name, flip_vertical)
             data[-1]["score"] = score+[data[-1]["score"]]
             data[-1]["n_iterations"] = n_iterations+[data[-1]["n_iterations"]]
             score, n_iterations = [], []
+    traj_fname = "output/triplet_baseline/anticorrelated_painting/toy_model/dp_p_0.0013__col_dens_2e-05__n_tot_50__n_i_25__inj_emit_0.1__k_1.0__tgt_emit_8.0/run_summary.json"
+    trajectory = [] #load_trajectory(traj_fname, 0, [3744.07267-10, 3.843, -89.83+8, -1.158], 32, 75.0)
     for probe in [0, 7]:
         for axis in ['x', 'y', 'x-y']:
             if probe == 0:
-                add_points = ([probe]+ [3744.08063, 3.843, 89.81, 1.151],)
+                add_points = trajectory + \
+                             [[probe]+ [3744.07267, 3.843, -89.83, -1.158],] #3744.08063, 3.843, -9.81, 1.151],)
             else:
-                add_points = ([probe]+[3739.427804804206, -0.0002874136417290174, 88.77890374233482, -0.0008126002995965109],)
+                add_points = ([probe]+[3739.427804804206, -0.0002874136417290174, -88.77890374233482, -0.0008126002995965109],)
+            if flip_vertical:
+                for point in add_points:
+                    point[2] *= -1
+                    point[3] *= -1
             plot_closed_orbit(data, axis, plot_dir, probe, add_points)
     plot_fields(data, plot_dir, foil_probe, foil_var, foil_axis)
+    plot_fields_2(data, plot_dir, [0, 1, 2, 3, 4])
     plot_all_fields_2d(data, plot_dir, foil_probe, 3, 1)
     for bump in data:
         print(bump["score"])
@@ -367,3 +419,4 @@ def main(file_list):
 if __name__ == "__main__":
     main(sys.argv[1:])
     input("Done - Press <CR> to end")
+

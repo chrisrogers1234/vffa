@@ -43,7 +43,11 @@ REAL N_PARTICLES=__n_particles__;
 
 ////////// MAIN MAGNETS/////////
 REAL BF=__bf__;
+REAL DELTA_BF=__delta_bf__;
+REAL BF_OFFSET=__bf_offset__; // distance from centre line to BF A and BF B [m]
 REAL BD=__bd__;
+REAL DELTA_BD=__delta_bd__;
+REAL BD_OFFSET=__bd_offset__;
 REAL F_LENGTH=__f_length__; // total length of all coils including occupancy is F_LENGTH
 REAL D_LENGTH=__d_length__;
 REAL FD_GAP=__fd_gap__;
@@ -98,21 +102,6 @@ REAL H_BUMP_4_FIELD=__h_bump_4_field__;
 REAL H_BUMP_5_PHI=__h_bump_5_phi__;
 REAL H_BUMP_5_DPHI=__h_bump_5_dphi__;
 REAL H_BUMP_5_FIELD=__h_bump_5_field__;
-REAL H_BUMP_6_PHI=__h_bump_6_phi__;
-REAL H_BUMP_6_FIELD=__h_bump_6_field__;
-REAL H_BUMP_6_DPHI=__h_bump_6_dphi__;
-REAL H_BUMP_7_PHI=__h_bump_7_phi__;
-REAL H_BUMP_7_FIELD=__h_bump_7_field__;
-REAL H_BUMP_7_DPHI=__h_bump_7_dphi__;
-REAL H_BUMP_8_PHI=__h_bump_8_phi__;
-REAL H_BUMP_8_FIELD=__h_bump_8_field__;
-REAL H_BUMP_8_DPHI=__h_bump_8_dphi__;
-REAL H_BUMP_9_PHI=__h_bump_9_phi__;
-REAL H_BUMP_9_FIELD=__h_bump_9_field__;
-REAL H_BUMP_9_DPHI=__h_bump_9_dphi__;
-REAL H_BUMP_10_PHI=__h_bump_10_phi__;
-REAL H_BUMP_10_FIELD=__h_bump_10_field__;
-REAL H_BUMP_10_DPHI=__h_bump_10_dphi__;
 
 REAL V_BUMP_LENGTH=0.1;
 REAL V_BUMP_FRINGE_LENGTH=0.01;
@@ -134,21 +123,6 @@ REAL V_BUMP_4_FIELD=__v_bump_4_field__;
 REAL V_BUMP_5_PHI=__v_bump_5_phi__;
 REAL V_BUMP_5_DPHI=__v_bump_5_dphi__;
 REAL V_BUMP_5_FIELD=__v_bump_5_field__;
-REAL V_BUMP_6_PHI=__v_bump_6_phi__;
-REAL V_BUMP_6_FIELD=__v_bump_6_field__;
-REAL V_BUMP_6_DPHI=__v_bump_6_dphi__;
-REAL V_BUMP_7_PHI=__v_bump_7_phi__;
-REAL V_BUMP_7_FIELD=__v_bump_7_field__;
-REAL V_BUMP_7_DPHI=__v_bump_7_dphi__;
-REAL V_BUMP_8_PHI=__v_bump_8_phi__;
-REAL V_BUMP_8_FIELD=__v_bump_8_field__;
-REAL V_BUMP_8_DPHI=__v_bump_8_dphi__;
-REAL V_BUMP_9_PHI=__v_bump_9_phi__;
-REAL V_BUMP_9_FIELD=__v_bump_9_field__;
-REAL V_BUMP_9_DPHI=__v_bump_9_dphi__;
-REAL V_BUMP_10_PHI=__v_bump_10_phi__;
-REAL V_BUMP_10_FIELD=__v_bump_10_field__;
-REAL V_BUMP_10_DPHI=__v_bump_10_dphi__;
 
 //////////// FIELD MAPS ///////////////
 REAL MAP_C_X_MIN=__cartesian_x_min__;
@@ -180,9 +154,14 @@ null: LOCAL_CARTESIAN_OFFSET,
 //////////// MAIN MAGNETS /////////////////////
 REAL F_CENTRE_LENGTH=F_LENGTH;
 REAL D_CENTRE_LENGTH=D_LENGTH;
+REAL BD_A=BD*(DELTA_BD);
+REAL BD_B=BD*(1-DELTA_BD);
+REAL BF_A=BF*(DELTA_BF);
+REAL BF_B=BF*(1-DELTA_BF);
 
-magnetF: VERTICALFFAMAGNET,
-          B0=BF,
+
+magnetF_A: VERTICALFFAMAGNET,
+          B0=BF_A,
           FIELD_INDEX=M_INDEX,
           MAX_HORIZONTAL_POWER=MAX_HORIZONTAL_POWER,
           END_LENGTH=F_END_LENGTH,
@@ -192,8 +171,19 @@ magnetF: VERTICALFFAMAGNET,
           WIDTH=MAG_WIDTH,
           BB_LENGTH=BB_LENGTH;
 
-magnetD: VERTICALFFAMAGNET,
-          B0=BD,
+magnetF_B: VERTICALFFAMAGNET,
+          B0=BF_B,
+          FIELD_INDEX=M_INDEX,
+          MAX_HORIZONTAL_POWER=MAX_HORIZONTAL_POWER,
+          END_LENGTH=F_END_LENGTH,
+          CENTRE_LENGTH=F_CENTRE_LENGTH*2,
+          HEIGHT_NEG_EXTENT=NEG_EXTENT,
+          HEIGHT_POS_EXTENT=POS_EXTENT,
+          WIDTH=MAG_WIDTH,
+          BB_LENGTH=BB_LENGTH;
+
+magnetD_A: VERTICALFFAMAGNET,
+          B0=BD_A,
           FIELD_INDEX=M_INDEX,
           MAX_HORIZONTAL_POWER=MAX_HORIZONTAL_POWER,
           END_LENGTH=D_END_LENGTH,
@@ -202,6 +192,18 @@ magnetD: VERTICALFFAMAGNET,
           HEIGHT_POS_EXTENT=POS_EXTENT,
           WIDTH=MAG_WIDTH,
           BB_LENGTH=BB_LENGTH;
+
+magnetD_B: VERTICALFFAMAGNET,
+          B0=BD_B,
+          FIELD_INDEX=M_INDEX,
+          MAX_HORIZONTAL_POWER=MAX_HORIZONTAL_POWER,
+          END_LENGTH=D_END_LENGTH,
+          CENTRE_LENGTH=D_CENTRE_LENGTH*2,
+          HEIGHT_NEG_EXTENT=NEG_EXTENT,
+          HEIGHT_POS_EXTENT=POS_EXTENT,
+          WIDTH=MAG_WIDTH,
+          BB_LENGTH=BB_LENGTH;
+
 
 /////////// Transform from point P0 to start of magnet BB with given centre //////////
 OFFSET_X(delta_x, delta_y, tilt, bb_length, x_out): MACRO {
@@ -357,23 +359,38 @@ REAL F2_POS=DRIFT_LENGTH/2.+F_LENGTH+FD_GAP+D_LENGTH+FD_GAP+F_LENGTH/2.;
 REAL F_TILT=F_TILT_ANGLE*DEGREE;
 REAL D_POS=DRIFT_LENGTH/2.+F_LENGTH+FD_GAP+D_LENGTH/2.;
 REAL CELL_LENGTH=DRIFT_LENGTH/2.+F_LENGTH+FD_GAP+D_LENGTH+FD_GAP+F_LENGTH+DRIFT_LENGTH/2.;
-
+REAL BF_A_OFFSET=BF_OFFSET; // horizontal offset for bf_a
+REAL BF_B_OFFSET=-1*BF_OFFSET; // horizontal offset for bf_b (not working when passes as arg to function)
+REAL BD_A_OFFSET=BD_OFFSET; // horizontal offset for bf_a
+REAL BD_B_OFFSET=-1*BD_OFFSET; // horizontal offset for bf_b (not working when passes as arg to function)
 
 // BUILD_CENTRE_OFFSET(name, delta_x, delta_y, tilt, bb_length)
-BUILD_CENTRE_OFFSET(f1_offset, F1_POS, 0., F_TILT, F_BB);
-BUILD_CENTRE_REVERSE_OFFSET(f1_offset_back, F1_POS, 0., F_TILT, F_BB);
-BUILD_CENTRE_OFFSET(d_offset, D_POS, 0., 0, D_BB);
-BUILD_CENTRE_REVERSE_OFFSET(d_offset_back, D_POS, 0., 0, D_BB);
-BUILD_CENTRE_OFFSET(f2_offset, F2_POS, 0., -F_TILT, F_BB);
-BUILD_CENTRE_REVERSE_OFFSET(f2_offset_back, F2_POS, 0., -F_TILT, F_BB);
+BUILD_CENTRE_OFFSET(f1_a_offset, F1_POS, BF_A_OFFSET, F_TILT, F_BB);
+BUILD_CENTRE_REVERSE_OFFSET(f1_a_offset_back, F1_POS, BF_A_OFFSET, F_TILT, F_BB);
+BUILD_CENTRE_OFFSET(f1_b_offset, F1_POS, BF_B_OFFSET, F_TILT, F_BB);
+BUILD_CENTRE_REVERSE_OFFSET(f1_b_offset_back, F1_POS, BF_B_OFFSET, F_TILT, F_BB);
+
+BUILD_CENTRE_OFFSET(d_a_offset, D_POS, BD_A_OFFSET, 0, D_BB);
+BUILD_CENTRE_REVERSE_OFFSET(d_a_offset_back, D_POS, BD_A_OFFSET, 0, D_BB);
+BUILD_CENTRE_OFFSET(d_b_offset, D_POS, BD_B_OFFSET, 0, D_BB);
+BUILD_CENTRE_REVERSE_OFFSET(d_b_offset_back, D_POS, BD_B_OFFSET, 0, D_BB);
+
+BUILD_CENTRE_OFFSET(f2_a_offset, F2_POS, BF_A_OFFSET, -F_TILT, F_BB);
+BUILD_CENTRE_REVERSE_OFFSET(f2_a_offset_back, F2_POS, BF_A_OFFSET, -F_TILT, F_BB);
+BUILD_CENTRE_OFFSET(f2_b_offset, F2_POS, BF_B_OFFSET, -F_TILT, F_BB);
+BUILD_CENTRE_REVERSE_OFFSET(f2_b_offset_back, F2_POS, BF_B_OFFSET, -F_TILT, F_BB);
+
 BUILD_CENTRE_OFFSET(cell_offset, CELL_LENGTH, 0., -FFA_CELL_LENGTH, 0);
 value, VALUE={CELL_LENGTH};
 
 ///////////////////////////// TRIPLET CELL ///////////////////////////////
 
-cell: Line = (f1_offset, magnetF, f1_offset_back,
-              d_offset, magnetD, d_offset_back,
-              f2_offset, magnetF, f2_offset_back,
+cell: Line = (f1_a_offset, magnetF_A, f1_a_offset_back,
+              f1_b_offset, magnetF_B, f1_b_offset_back,
+              d_a_offset, magnetD_A, d_a_offset_back,
+              d_b_offset, magnetD_B, d_b_offset_back,
+              f2_a_offset, magnetF_A, f2_a_offset_back,
+              f2_b_offset, magnetF_B, f2_b_offset_back,
               cell_offset);
 
 /////////////////////// BUMP /////////////////////////////////
@@ -393,21 +410,6 @@ magnetSeptum: MultipoleT, L=SEPTUM_LENGTH,
               VARRADIUS=FALSE;
 BUILD_AZIMUTHAL_OFFSET(septum_offset, R0, SEPTUM_PHI*FFA_CELL_LENGTH, SEPTUM_DR, 2*PI*SEPTUM_ROT, 0.);
 BUILD_AZIMUTHAL_REVERSE_OFFSET(septum_offset_back, R0, SEPTUM_PHI*FFA_CELL_LENGTH, SEPTUM_DR, 2*PI*SEPTUM_ROT, 0.);
-
-BUILD_H_BUMP(name, field): MACRO {
-name: MultipoleT,
-    L=H_BUMP_LENGTH, RFRINGE=H_BUMP_FRINGE_LENGTH, LFRINGE=H_BUMP_FRINGE_LENGTH,
-    HAPERT=1.0, VAPERT=2.0, ANGLE=0.0, TP={ field },
-    BBLENGTH=0., MAXFORDER=H_BUMP_ORDER, MAXXORDER=H_BUMP_ORDER, VARRADIUS=FALSE;
-}
-
-BUILD_V_BUMP(name, field): MACRO {
-name: MultipoleT,
-    L=V_BUMP_LENGTH, RFRINGE=V_BUMP_FRINGE_LENGTH, LFRINGE=V_BUMP_FRINGE_LENGTH,
-    HAPERT=1.0, VAPERT=2.0, ANGLE=0.0, TP={ field },
-    BBLENGTH=0., MAXFORDER=V_BUMP_ORDER, MAXXORDER=V_BUMP_ORDER, VARRADIUS=FALSE;
-}
-
 
 // bump in HORIZONTAL PLANE produced by a vertical dipole field
 h_bump_1: MultipoleT,

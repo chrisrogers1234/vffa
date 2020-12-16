@@ -1,13 +1,13 @@
 import os
-from . import config_baseline
+from . import config_triplet_baseline
 
-class Config(config_baseline.Config):
+class Config(config_triplet_baseline.Config):
     def __init__(self):
         super(Config, self).__init__()
         self.substitution_list = []
-        for i in range(41):
-            length = 0.125+0.001*i
-            self.substitution_list.append(config_baseline.get_baseline_substitution())
+        for i in range(6):
+            length = 0.20-i*0.02
+            self.substitution_list.append(config_triplet_baseline.get_baseline_substitution())
             self.substitution_list[-1]["__d_end_length__"] = length
             self.substitution_list[-1]["__f_end_length__"] = length
             self.substitution_list[-1]["__step_size__"] = 1e-4
@@ -19,6 +19,6 @@ class Config(config_baseline.Config):
             "find_bump_parameters":False,
             "track_bump":False,
             "clean_output_dir":False,
-            "output_dir":os.path.join(os.getcwd(), "output/july_baseline/end_length_scan_fine"),
+            "output_dir":os.path.join(os.getcwd(), "output/triplet_baseline/end_length_scan"),
             "root_verbose":6000,
         }

@@ -56,6 +56,7 @@ class ClosedOrbitsPlotter(object):
                     lambda item: Hit.new_from_dict(item["seed_hit"])[name],
                     axis, None, None)
                 mgraph.Draw("AP")
+                name = name.replace("'", "p")
                 canvas.Print(self.output_dir+"/"+axis_name+"_vs_"+name+".png")
 
             canvas, mgraph = None, None
@@ -191,7 +192,7 @@ class ClosedOrbitsPlotter(object):
     def tm_phase_advance(self, tm):
         pa = [tm.get_phase_advance(j) for j in range(2)]
         pa = sorted(pa)
-        pa = pa[self.phase_advance_axis]/2./math.pi
+        pa = abs(pa[self.phase_advance_axis]/2./math.pi)
         return pa
 
     def get_co(self, item):
@@ -212,6 +213,8 @@ class ClosedOrbitsPlotter(object):
         parser.set_defaults(log_x=False)
         args = parser.parse_args()
         self.output_dir = os.path.split(args.file_names[0])[0]
+        self.output_dir = os.path.join(self.output_dir, "plot_closed_orbits")
+        utilities.clear_dir(self.output_dir)
         for file_name in args.file_names:
             self.load_file(file_name)
         self.log_x = args.log_x

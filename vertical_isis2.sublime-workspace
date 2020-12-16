@@ -4,6 +4,22 @@
 		"selected_items":
 		[
 			[
+				"co",
+				"foil_column_density"
+			],
+			[
+				"max",
+				"max_amplitude_u"
+			],
+			[
+				"rms_emittance_",
+				"rms_emittance_4d"
+			],
+			[
+				"ToyModel",
+				"ToyModel"
+			],
+			[
 				"sm",
 				"smoothingOrder_m"
 			]
@@ -24,16 +40,25 @@
 			"file": "scripts/plotting/plot_orbit.py",
 			"settings":
 			{
-				"buffer_size": 32143,
+				"buffer_size": 35187,
 				"encoding": "UTF-8",
 				"line_ending": "Unix"
 			}
 		},
 		{
-			"file": "lattice/VerticalTripletFFA.in",
+			"file": "scripts/plotting/plot_bump.py",
 			"settings":
 			{
-				"buffer_size": 24218,
+				"buffer_size": 15493,
+				"encoding": "UTF-8",
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "scripts/plotting/plot_da.py",
+			"settings":
+			{
+				"buffer_size": 17040,
 				"encoding": "UTF-8",
 				"line_ending": "Unix"
 			}
@@ -48,20 +73,28 @@
 			}
 		},
 		{
-			"file": "scripts/plotting/plot_bump.py",
+			"file": "scripts/plotting/plot_closed_orbit.py",
 			"settings":
 			{
-				"buffer_size": 13200,
+				"buffer_size": 8796,
 				"encoding": "UTF-8",
 				"line_ending": "Unix"
 			}
 		},
 		{
-			"file": "scripts/toy_model/toy_model.py",
+			"file": "lattice/VerticalTripletFFA1.in",
 			"settings":
 			{
-				"buffer_size": 23579,
+				"buffer_size": 24527,
 				"encoding": "UTF-8",
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "scripts/toy_model/foil_model/particle.py",
+			"settings":
+			{
+				"buffer_size": 2300,
 				"line_ending": "Unix"
 			}
 		},
@@ -69,7 +102,86 @@
 			"file": "scripts/toy_model/optimiser.py",
 			"settings":
 			{
-				"buffer_size": 2334,
+				"buffer_size": 14240,
+				"encoding": "UTF-8",
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "print_json.py",
+			"settings":
+			{
+				"buffer_size": 1167,
+				"encoding": "UTF-8",
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "scripts/toy_model/_toy_model.py",
+			"settings":
+			{
+				"buffer_size": 44757,
+				"encoding": "UTF-8",
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "scripts/toy_model/plot_toy_output.py",
+			"settings":
+			{
+				"buffer_size": 9484,
+				"encoding": "UTF-8",
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "scripts/toy_model/run_toy_model.py",
+			"settings":
+			{
+				"buffer_size": 3028,
+				"encoding": "UTF-8",
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "scripts/toy_model/foil_model/material.py",
+			"settings":
+			{
+				"buffer_size": 7951,
+				"encoding": "UTF-8",
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "scripts/toy_model/foil_model/constants.py",
+			"settings":
+			{
+				"buffer_size": 1580,
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "scripts/toy_model/tests/foil/foil_test_muons.py",
+			"settings":
+			{
+				"buffer_size": 4028,
+				"encoding": "UTF-8",
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "share/foil/materials.json",
+			"settings":
+			{
+				"buffer_size": 4892,
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "lattice/beams/plot_beams.py",
+			"settings":
+			{
+				"buffer_size": 2072,
 				"encoding": "UTF-8",
 				"line_ending": "Unix"
 			}
@@ -87,7 +199,7 @@
 			"file": "scripts/utils/decoupled_transfer_matrix.py",
 			"settings":
 			{
-				"buffer_size": 18671,
+				"buffer_size": 18701,
 				"encoding": "UTF-8",
 				"line_ending": "Unix"
 			}
@@ -96,24 +208,33 @@
 			"file": "/home/cr67/OPAL/external_rogers_mint/source/xboa/xboa/bunch/_bunch.py",
 			"settings":
 			{
-				"buffer_size": 88816,
+				"buffer_size": 88813,
 				"line_ending": "Unix"
 			}
 		},
 		{
-			"file": "scripts/plotting/plot_da.py",
+			"file": "scripts/config/config_anticorrelated.py",
 			"settings":
 			{
-				"buffer_size": 17040,
+				"buffer_size": 15155,
 				"encoding": "UTF-8",
 				"line_ending": "Unix"
 			}
 		},
 		{
-			"file": "scripts/plotting/plot_closed_orbit.py",
+			"file": "scripts/config/config_correlated.py",
 			"settings":
 			{
-				"buffer_size": 8796,
+				"buffer_size": 13078,
+				"encoding": "UTF-8",
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "scripts/config/config_single_turn_injection_catch.py",
+			"settings":
+			{
+				"buffer_size": 7089,
 				"encoding": "UTF-8",
 				"line_ending": "Unix"
 			}
@@ -122,16 +243,16 @@
 			"file": "scripts/config/config_triplet_baseline.py",
 			"settings":
 			{
-				"buffer_size": 14817,
+				"buffer_size": 14891,
 				"encoding": "UTF-8",
 				"line_ending": "Unix"
 			}
 		},
 		{
-			"file": "scripts/analysis/find_closed_orbits_4d.py",
+			"file": "scripts/config/config_bump_triplet.py",
 			"settings":
 			{
-				"buffer_size": 15288,
+				"buffer_size": 5472,
 				"encoding": "UTF-8",
 				"line_ending": "Unix"
 			}
@@ -145,10 +266,37 @@
 			}
 		},
 		{
+			"file": "scripts/analysis/find_closed_orbits_4d.py",
+			"settings":
+			{
+				"buffer_size": 15270,
+				"encoding": "UTF-8",
+				"line_ending": "Unix"
+			}
+		},
+		{
 			"file": "scripts/analysis/find_bump_parameters.py",
 			"settings":
 			{
-				"buffer_size": 17758,
+				"buffer_size": 17762,
+				"encoding": "UTF-8",
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "scripts/analysis/track_bump.py",
+			"settings":
+			{
+				"buffer_size": 9749,
+				"encoding": "UTF-8",
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "scripts/analysis/track_beam.py",
+			"settings":
+			{
+				"buffer_size": 5715,
 				"line_ending": "Unix"
 			}
 		},
@@ -220,6 +368,29 @@
 	},
 	"file_history":
 	[
+		"/home/cr67/work/2017-07-07_isis2/vertical_isis2/output/triplet_baseline/correlated_painting/fields__0.1_T/find_bump_parameters_003.out",
+		"/home/cr67/work/2017-07-07_isis2/vertical_isis2/output/triplet_baseline/correlated_painting/fields__0.1_T/find_bump_parameters_004.out",
+		"/home/cr67/work/2017-07-07_isis2/vertical_isis2/output/triplet_baseline/correlated_painting/fields__0.1_T/find_bump_parameters_005.out",
+		"/home/cr67/work/2017-07-07_isis2/vertical_isis2/output/triplet_baseline/correlated_painting/fields__0.1_T/find_bump_parameters_006.out",
+		"/home/cr67/work/2017-07-07_isis2/vertical_isis2/output/triplet_baseline/correlated_painting/fields__0.1_T/find_bump_parameters_007.out",
+		"/home/cr67/work/2017-07-07_isis2/vertical_isis2/output/triplet_baseline/correlated_painting/fields__0.1_T/find_bump_parameters_008.out",
+		"/home/cr67/work/2017-07-07_isis2/vertical_isis2/output/triplet_baseline/correlated_painting/dp_p_0.0013__col_dens_2e-05__eps_0.25__n_i_1__n_t_1/config.json",
+		"/mnt/db89a8c2-6f6b-4c5c-bbc4-5534fb22ff7a/cr67/OPAL/source/opal_src/src/Algorithms/ParallelCyclotronTracker.cpp",
+		"/home/cr67/work/2017-07-07_isis2/vertical_isis2/scripts/toy_model/toy_model.py",
+		"/home/cr67/work/2017-07-07_isis2/vertical_isis2/scripts/toy_model/tests/dispersion/dispersion_test.py",
+		"/home/cr67/work/2017-07-07_isis2/vertical_isis2/scripts/toy_model/tests/transport/transport_test.py",
+		"/home/cr67/work/2017-07-07_isis2/vertical_isis2/scripts/toy_model/tests/foil/foil_test.py",
+		"/home/cr67/work/2017-07-07_isis2/vertical_isis2/scripts/toy_model/foil_model/material.pyc",
+		"/home/cr67/work/2017-07-07_isis2/vertical_isis2/scripts/toy_model/optimiser.py",
+		"/home/cr67/work/2018-10-16_injection/foil/share/fets_foils.json",
+		"/home/cr67/work/2018-10-16_injection/foil/scripts/_simulated_cooling.py",
+		"/home/cr67/work/2018-10-16_injection/foil/bin/plots.py",
+		"/home/cr67/work/2018-10-16_injection/foil/scripts/particle.py",
+		"/home/cr67/work/2018-10-16_injection/foil/share/materials.json",
+		"/home/cr67/work/2018-10-16_injection/foil/scripts/material.py",
+		"/home/cr67/work/2017-07-07_isis2/vertical_isis2/scripts/toy_model/foil_model/material.py",
+		"/home/cr67/work/2018-10-16_injection/foil/bin/plots2.py",
+		"/home/cr67/work/2017-07-07_isis2/vertical_isis2/lattice/beams/plot.py",
 		"/mnt/db89a8c2-6f6b-4c5c-bbc4-5534fb22ff7a/cr67/work/2017-07-07_isis2/vertical_isis2/scripts/analysis/build_bump_surrogate_model.py",
 		"/mnt/db89a8c2-6f6b-4c5c-bbc4-5534fb22ff7a/cr67/work/2017-07-07_isis2/vertical_isis2/output/triplet_baseline/baseline_op2/tmp/build_bump_model/log",
 		"/mnt/db89a8c2-6f6b-4c5c-bbc4-5534fb22ff7a/cr67/work/2017-07-07_isis2/vertical_isis2/output/triplet_baseline/baseline_op2/tmp/build_bump_model/VerticalSectorFFA.tmp",
@@ -267,7 +438,7 @@
 	],
 	"find":
 	{
-		"height": 39.0
+		"height": 24.0
 	},
 	"find_in_files":
 	{
@@ -281,134 +452,134 @@
 		"case_sensitive": false,
 		"find_history":
 		[
-			"field_scale",
-			"t",
-			"seed_to_hit",
-			"track_many",
-			"get_tm",
-			"tracking in",
-			"seed_to_hit",
-			"track_many",
-			"track_",
-			"track_one",
-			"get_tm(self",
-			"4]",
-			"]5",
-			"seed_to_hit",
-			"var_list_1",
-			"z",
-			"symplecticity",
-			"var_list",
-			"seed_to_hit",
-			"tm_co_fitter",
-			"seed",
-			"fit_matrix",
-			"\"x\"",
-			"rotate_co",
-			"rotate_",
-			"get_tm",
-			"rotate_from_centroid",
-			"get_tm",
-			"final_tracking",
-			"track_one",
-			"station to",
-			"mapping",
-			"station to probe",
-			")\n",
-			"get_limits(self",
-			"get_limits",
-			"In tolerance",
-			"tolerance",
-			"\"tolerance",
-			"\"In ",
-			"\"In tolerance",
-			"n_steps",
-			"station to probe",
-			"Station to probe",
-			"read_h5_probes",
-			"get_names",
-			"get_names()",
-			"get_names",
-			"file_dict",
-			"station",
-			"RINGPROBE",
-			"invert",
-			"inverse_map_list",
-			"inverse_map",
-			"inverse_map_list",
-			"inverse_mapping",
-			"seed_list",
-			"build_inverse_map",
-			"seed_list",
-			"minimiser",
-			"out of tolerance",
-			"get_limits",
-			"get_point",
-			"build_mesh",
-			"seed_list",
-			"minimiser",
-			"point",
-			"print(",
-			"self.mesh",
-			"build_mesh",
-			"build_ndgrid",
-			"build_mesh",
-			"build_nd",
-			"print(",
-			"uilding inverse",
-			"building inverse",
-			"print",
-			"get_point",
-			"verbo",
+			"text",
+			"text(",
+			"verbose",
 			"self.minuit",
-			"Minuit",
-			"point",
+			"minuit_function",
 			"get_fields_from_minuit",
 			"minuit",
-			"point_list",
-			"build_ndgrid",
-			"build_inverse_map",
-			"build_map",
-			"optimisation",
-			"build_one_map",
-			"__beam_charge__",
-			"ROOT",
-			"build_model",
-			"P_CHARGE",
-			"charge",
-			"P_CHARGE",
-			"matrix",
-			"do_substitutions",
-			"field_limit",
-			"cuts",
-			"iteration",
-			"first_tracking",
-			"store_index",
-			"overrides",
-			"bump_fields",
-			"optimisation_fields",
-			"optimisation",
-			"setup_subs",
-			"make_grid",
-			"shell",
-			"build_shell",
-			"run_one",
-			"optimisation",
-			"bump_target_orbit",
-			"do_one_optimisation",
-			"find_bump_",
-			"get_filename_root",
-			"mpla#",
-			"0",
-			"labelsize",
-			"figure.",
-			"axes",
-			"make_2d_hist",
-			"axes.",
-			"label(",
-			"spherical",
+			"migrad",
+			"plot_bump",
+			"SEPTUM_LENGTH",
+			"SEPTUM_DPHI",
+			"H_BUMP_1_DPHI",
+			"SEPTUM_ROT",
+			"SEPTUM_ORDER",
+			"ANGLE",
+			"SEPTUM_ORDER",
+			"SEPTUM",
+			"VerticalTri",
+			"VerticalFFATri",
+			"VerticalFFATr",
+			"plot_cartesian",
+			"BUILD_AZIMUTHAL_OFFSET",
+			"SEPTUM_DR",
+			"plot_toy_ou",
+			"55",
+			"\"bump_index\": 2",
+			"\"bump_index\": 0",
+			"\"bump_index\": 1",
+			"\"bump_index\": 2",
+			"loading",
+			"track_bump",
+			"get_proton_orbit",
+			"foil_optimis",
+			"injection_orbit",
+			"input_file",
+			"BUMP_GLOBAL",
+			"] = ",
+			"sub[",
+			"matplotlib",
+			"finalise",
+			"max_foil",
+			"pyplot.show",
+			"show",
+			"dir_name",
+			"toy_model_1",
+			"plot_freq",
+			"self.axes2",
+			"self.fig2",
+			"summary",
+			"correlated_defa",
+			"self.bumps_function",
+			"bumps_function",
+			"optimise",
+			"anticorrelated_default_bumps",
+			"with args",
+			"stat_one_turn",
+			"anticorrelated_default_bumps",
+			"back track",
+			"initialise",
+			"hits_per_turn",
+			"beam_trajectory",
+			"bump_orbit",
+			"stat_one_turn",
+			"stats(",
+			"output ",
+			"optimiser",
+			"plot_",
+			"inject_one",
+			"output_dir",
+			"self.output",
+			"output",
+			"fout",
+			"beta_x",
+			"do_plots",
+			"print(",
+			"amplitude_u_",
+			"dp_over_p_1",
+			"dp_over_p_",
+			"paramet",
+			"param",
+			"foil_column_density",
+			"y_key",
+			"excinf",
+			"func",
+			"y_funcs",
+			"corr",
+			"correlati",
+			"print(",
+			"output",
+			"acceptance_count",
+			"n_outside",
+			"self.output[",
+			" self.output[",
+			"sigma_dp",
+			"self.output[",
+			"do_stats",
+			"convert_to_aa",
+			"stat_one_turn",
+			"do_plots",
+			"plot_one_turn",
+			"convert_to_decoupled",
+			"do_plots",
+			"self.output[",
+			"\"mean_foil",
+			"self.foil_hits",
 			"foil_hits",
-			"figore"
+			"get_output",
+			"finalise",
+			"run_toy_model",
+			"amplitude_plots",
+			"dp_over_p_data",
+			"dp_over_p_",
+			"momentum_ac",
+			"momentum_acceptance",
+			"amplitude_u",
+			"max_foil_hits",
+			"get_range",
+			"1e-3",
+			"dp_over_p",
+			"max_amplitude_4d",
+			"amplitude",
+			"sort_key",
+			"sort_keys",
+			"colors",
+			"correlated_bumps",
+			"self.output",
+			"self.output ",
+			"self.output"
 		],
 		"highlight": false,
 		"in_selection": false,
@@ -416,6 +587,13 @@
 		"regex": false,
 		"replace_history":
 		[
+			"\"bump_index\": 1",
+			"\"bump_index\": 2",
+			"\"bump_index\": 3",
+			"\\\"bump_index\\\": 3",
+			":",
+			"",
+			" "
 		],
 		"reverse": false,
 		"show_context": true,
@@ -426,7 +604,7 @@
 	"groups":
 	[
 		{
-			"selected": 12,
+			"selected": 10,
 			"sheets":
 			[
 				{
@@ -453,10 +631,10 @@
 							"translate_tabs_to_spaces": true
 						},
 						"translation.x": 0.0,
-						"translation.y": 563.0,
+						"translation.y": 270.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 13,
+					"stack_index": 14,
 					"type": "text"
 				},
 				{
@@ -465,15 +643,15 @@
 					"semi_transient": false,
 					"settings":
 					{
-						"buffer_size": 32143,
+						"buffer_size": 35187,
 						"regions":
 						{
 						},
 						"selection":
 						[
 							[
-								21203,
-								21203
+								22546,
+								22546
 							]
 						],
 						"settings":
@@ -483,87 +661,27 @@
 							"translate_tabs_to_spaces": true
 						},
 						"translation.x": 0.0,
-						"translation.y": 1275.0,
+						"translation.y": 8463.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 6,
+					"stack_index": 12,
 					"type": "text"
 				},
 				{
 					"buffer": 2,
-					"file": "lattice/VerticalTripletFFA.in",
-					"semi_transient": false,
-					"settings":
-					{
-						"buffer_size": 24218,
-						"regions":
-						{
-						},
-						"selection":
-						[
-							[
-								23194,
-								23194
-							]
-						],
-						"settings":
-						{
-							"syntax": "Packages/Text/Plain text.tmLanguage",
-							"tab_size": 2,
-							"translate_tabs_to_spaces": true
-						},
-						"translation.x": 0.0,
-						"translation.y": 429.0,
-						"zoom_level": 1.0
-					},
-					"stack_index": 7,
-					"type": "text"
-				},
-				{
-					"buffer": 3,
-					"file": "scripts/plotting/plot_dump_fields.py",
-					"semi_transient": false,
-					"settings":
-					{
-						"buffer_size": 15207,
-						"regions":
-						{
-						},
-						"selection":
-						[
-							[
-								14534,
-								14534
-							]
-						],
-						"settings":
-						{
-							"syntax": "Packages/Python/Python.sublime-syntax",
-							"tab_size": 4,
-							"translate_tabs_to_spaces": true
-						},
-						"translation.x": 0.0,
-						"translation.y": 5509.0,
-						"zoom_level": 1.0
-					},
-					"stack_index": 17,
-					"type": "text"
-				},
-				{
-					"buffer": 4,
 					"file": "scripts/plotting/plot_bump.py",
 					"semi_transient": false,
 					"settings":
 					{
-						"buffer_size": 13200,
+						"buffer_size": 15493,
 						"regions":
 						{
 						},
 						"selection":
 						[
 							[
-								11668,
-								11668
+								8086,
+								8086
 							]
 						],
 						"settings":
@@ -573,164 +691,14 @@
 							"translate_tabs_to_spaces": true
 						},
 						"translation.x": 0.0,
-						"translation.y": 4438.0,
+						"translation.y": 2928.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 8,
+					"stack_index": 2,
 					"type": "text"
 				},
 				{
-					"buffer": 5,
-					"file": "scripts/toy_model/toy_model.py",
-					"semi_transient": false,
-					"settings":
-					{
-						"buffer_size": 23579,
-						"regions":
-						{
-						},
-						"selection":
-						[
-							[
-								1838,
-								1838
-							]
-						],
-						"settings":
-						{
-							"syntax": "Packages/Python/Python.sublime-syntax",
-							"tab_size": 4,
-							"translate_tabs_to_spaces": true
-						},
-						"translation.x": 0.0,
-						"translation.y": 1887.0,
-						"zoom_level": 1.0
-					},
-					"stack_index": 10,
-					"type": "text"
-				},
-				{
-					"buffer": 6,
-					"file": "scripts/toy_model/optimiser.py",
-					"semi_transient": false,
-					"settings":
-					{
-						"buffer_size": 2334,
-						"regions":
-						{
-						},
-						"selection":
-						[
-							[
-								428,
-								428
-							]
-						],
-						"settings":
-						{
-							"syntax": "Packages/Python/Python.sublime-syntax",
-							"tab_size": 4,
-							"translate_tabs_to_spaces": true
-						},
-						"translation.x": 0.0,
-						"translation.y": 0.0,
-						"zoom_level": 1.0
-					},
-					"stack_index": 15,
-					"type": "text"
-				},
-				{
-					"buffer": 7,
-					"file": "/mnt/db89a8c2-6f6b-4c5c-bbc4-5534fb22ff7a/cr67/OPAL/external_rogers_mint/install/lib/python3.7/site-packages/platypus/algorithms.py",
-					"semi_transient": false,
-					"settings":
-					{
-						"buffer_size": 64623,
-						"regions":
-						{
-						},
-						"selection":
-						[
-							[
-								42836,
-								42836
-							]
-						],
-						"settings":
-						{
-							"syntax": "Packages/Python/Python.sublime-syntax",
-							"tab_size": 4,
-							"translate_tabs_to_spaces": true
-						},
-						"translation.x": 0.0,
-						"translation.y": 18322.0,
-						"zoom_level": 1.0
-					},
-					"stack_index": 16,
-					"type": "text"
-				},
-				{
-					"buffer": 8,
-					"file": "scripts/utils/decoupled_transfer_matrix.py",
-					"semi_transient": false,
-					"settings":
-					{
-						"buffer_size": 18671,
-						"regions":
-						{
-						},
-						"selection":
-						[
-							[
-								15355,
-								15355
-							]
-						],
-						"settings":
-						{
-							"syntax": "Packages/Python/Python.sublime-syntax",
-							"tab_size": 4,
-							"translate_tabs_to_spaces": true
-						},
-						"translation.x": 0.0,
-						"translation.y": 1281.0,
-						"zoom_level": 1.0
-					},
-					"stack_index": 3,
-					"type": "text"
-				},
-				{
-					"buffer": 9,
-					"file": "/home/cr67/OPAL/external_rogers_mint/source/xboa/xboa/bunch/_bunch.py",
-					"semi_transient": false,
-					"settings":
-					{
-						"buffer_size": 88816,
-						"regions":
-						{
-						},
-						"selection":
-						[
-							[
-								59959,
-								59959
-							]
-						],
-						"settings":
-						{
-							"syntax": "Packages/Python/Python.sublime-syntax",
-							"tab_size": 2,
-							"translate_tabs_to_spaces": true
-						},
-						"translation.x": 0.0,
-						"translation.y": 23239.0,
-						"zoom_level": 1.0
-					},
-					"stack_index": 18,
-					"type": "text"
-				},
-				{
-					"buffer": 10,
+					"buffer": 3,
 					"file": "scripts/plotting/plot_da.py",
 					"semi_transient": false,
 					"settings":
@@ -756,11 +724,41 @@
 						"translation.y": 1294.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 19,
+					"stack_index": 28,
 					"type": "text"
 				},
 				{
-					"buffer": 11,
+					"buffer": 4,
+					"file": "scripts/plotting/plot_dump_fields.py",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 15207,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								13538,
+								13538
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/Python/Python.sublime-syntax",
+							"tab_size": 4,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 4778.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 3,
+					"type": "text"
+				},
+				{
+					"buffer": 5,
 					"file": "scripts/plotting/plot_closed_orbit.py",
 					"semi_transient": false,
 					"settings":
@@ -786,24 +784,54 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 4,
+					"stack_index": 8,
 					"type": "text"
 				},
 				{
-					"buffer": 12,
-					"file": "scripts/config/config_triplet_baseline.py",
+					"buffer": 6,
+					"file": "lattice/VerticalTripletFFA1.in",
 					"semi_transient": false,
 					"settings":
 					{
-						"buffer_size": 14817,
+						"buffer_size": 24527,
 						"regions":
 						{
 						},
 						"selection":
 						[
 							[
-								10579,
-								10579
+								2122,
+								2122
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/Text/Plain text.tmLanguage",
+							"tab_size": 4,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 0.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 9,
+					"type": "text"
+				},
+				{
+					"buffer": 7,
+					"file": "scripts/toy_model/foil_model/particle.py",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 2300,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								1541,
+								1541
 							]
 						],
 						"settings":
@@ -813,27 +841,117 @@
 							"translate_tabs_to_spaces": true
 						},
 						"translation.x": 0.0,
-						"translation.y": 3608.0,
+						"translation.y": 0.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 20,
+					"type": "text"
+				},
+				{
+					"buffer": 8,
+					"file": "scripts/toy_model/optimiser.py",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 14240,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								10924,
+								10924
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/Python/Python.sublime-syntax",
+							"tab_size": 4,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 3303.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 15,
+					"type": "text"
+				},
+				{
+					"buffer": 9,
+					"file": "print_json.py",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 1167,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								644,
+								644
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/Python/Python.sublime-syntax",
+							"tab_size": 4,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 0.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 19,
+					"type": "text"
+				},
+				{
+					"buffer": 10,
+					"file": "scripts/toy_model/_toy_model.py",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 44757,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								8268,
+								8268
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/Python/Python.sublime-syntax",
+							"tab_size": 4,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 2703.0,
 						"zoom_level": 1.0
 					},
 					"stack_index": 0,
 					"type": "text"
 				},
 				{
-					"buffer": 13,
-					"file": "scripts/analysis/find_closed_orbits_4d.py",
+					"buffer": 11,
+					"file": "scripts/toy_model/plot_toy_output.py",
 					"semi_transient": false,
 					"settings":
 					{
-						"buffer_size": 15288,
+						"buffer_size": 9484,
 						"regions":
 						{
 						},
 						"selection":
 						[
 							[
-								3404,
-								3404
+								8413,
+								8413
 							]
 						],
 						"settings":
@@ -843,14 +961,434 @@
 							"translate_tabs_to_spaces": true
 						},
 						"translation.x": 0.0,
-						"translation.y": 818.0,
+						"translation.y": 2951.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 5,
+					"stack_index": 1,
+					"type": "text"
+				},
+				{
+					"buffer": 12,
+					"file": "scripts/toy_model/run_toy_model.py",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 3028,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								1248,
+								1248
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/Python/Python.sublime-syntax",
+							"tab_size": 4,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 0.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 17,
+					"type": "text"
+				},
+				{
+					"buffer": 13,
+					"file": "scripts/toy_model/foil_model/material.py",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 7951,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								5740,
+								5740
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/Python/Python.sublime-syntax",
+							"tab_size": 4,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 1350.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 25,
 					"type": "text"
 				},
 				{
 					"buffer": 14,
+					"file": "scripts/toy_model/foil_model/constants.py",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 1580,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								1086,
+								1086
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/Python/Python.sublime-syntax",
+							"tab_size": 4,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 0.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 23,
+					"type": "text"
+				},
+				{
+					"buffer": 15,
+					"file": "scripts/toy_model/tests/foil/foil_test_muons.py",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 4028,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								1394,
+								1394
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/Python/Python.sublime-syntax",
+							"tab_size": 4,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 0.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 22,
+					"type": "text"
+				},
+				{
+					"buffer": 16,
+					"file": "share/foil/materials.json",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 4892,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								1728,
+								1728
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/JavaScript/JSON.sublime-syntax",
+							"tab_size": 4,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 315.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 24,
+					"type": "text"
+				},
+				{
+					"buffer": 17,
+					"file": "lattice/beams/plot_beams.py",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 2072,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								1134,
+								1134
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/Python/Python.sublime-syntax",
+							"tab_size": 4,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 51.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 32,
+					"type": "text"
+				},
+				{
+					"buffer": 18,
+					"file": "/mnt/db89a8c2-6f6b-4c5c-bbc4-5534fb22ff7a/cr67/OPAL/external_rogers_mint/install/lib/python3.7/site-packages/platypus/algorithms.py",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 64623,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								42836,
+								42836
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/Python/Python.sublime-syntax",
+							"tab_size": 4,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 18322.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 34,
+					"type": "text"
+				},
+				{
+					"buffer": 19,
+					"file": "scripts/utils/decoupled_transfer_matrix.py",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 18701,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								4736,
+								4736
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/Python/Python.sublime-syntax",
+							"tab_size": 4,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 2004.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 30,
+					"type": "text"
+				},
+				{
+					"buffer": 20,
+					"file": "/home/cr67/OPAL/external_rogers_mint/source/xboa/xboa/bunch/_bunch.py",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 88813,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								59959,
+								59959
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/Python/Python.sublime-syntax",
+							"tab_size": 2,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 4.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 18,
+					"type": "text"
+				},
+				{
+					"buffer": 21,
+					"file": "scripts/config/config_anticorrelated.py",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 15155,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								5017,
+								5017
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/Python/Python.sublime-syntax",
+							"tab_size": 4,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 588.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 7,
+					"type": "text"
+				},
+				{
+					"buffer": 22,
+					"file": "scripts/config/config_correlated.py",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 13078,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								2200,
+								2200
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/Python/Python.sublime-syntax",
+							"tab_size": 4,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 728.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 13,
+					"type": "text"
+				},
+				{
+					"buffer": 23,
+					"file": "scripts/config/config_single_turn_injection_catch.py",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 7089,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								6866,
+								6866
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/Python/Python.sublime-syntax",
+							"tab_size": 4,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 1260.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 10,
+					"type": "text"
+				},
+				{
+					"buffer": 24,
+					"file": "scripts/config/config_triplet_baseline.py",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 14891,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								14425,
+								14425
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/Python/Python.sublime-syntax",
+							"tab_size": 4,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 4518.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 11,
+					"type": "text"
+				},
+				{
+					"buffer": 25,
+					"file": "scripts/config/config_bump_triplet.py",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 5472,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								1898,
+								1898
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/Python/Python.sublime-syntax",
+							"tab_size": 4,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 180.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 16,
+					"type": "text"
+				},
+				{
+					"buffer": 26,
 					"file": "scripts/utils/utilities.py",
 					"semi_transient": false,
 					"settings":
@@ -873,27 +1411,27 @@
 							"translate_tabs_to_spaces": true
 						},
 						"translation.x": 0.0,
-						"translation.y": 816.0,
+						"translation.y": 1170.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 12,
+					"stack_index": 26,
 					"type": "text"
 				},
 				{
-					"buffer": 15,
-					"file": "scripts/analysis/find_bump_parameters.py",
+					"buffer": 27,
+					"file": "scripts/analysis/find_closed_orbits_4d.py",
 					"semi_transient": false,
 					"settings":
 					{
-						"buffer_size": 17758,
+						"buffer_size": 15270,
 						"regions":
 						{
 						},
 						"selection":
 						[
 							[
-								5637,
-								5637
+								1773,
+								1773
 							]
 						],
 						"settings":
@@ -903,14 +1441,104 @@
 							"translate_tabs_to_spaces": true
 						},
 						"translation.x": 0.0,
-						"translation.y": 597.0,
+						"translation.y": 2520.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 1,
+					"stack_index": 27,
 					"type": "text"
 				},
 				{
-					"buffer": 16,
+					"buffer": 28,
+					"file": "scripts/analysis/find_bump_parameters.py",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 17762,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								14104,
+								14104
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/Python/Python.sublime-syntax",
+							"tab_size": 4,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 4518.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 4,
+					"type": "text"
+				},
+				{
+					"buffer": 29,
+					"file": "scripts/analysis/track_bump.py",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 9749,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								3243,
+								3243
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/Python/Python.sublime-syntax",
+							"tab_size": 4,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 1953.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 6,
+					"type": "text"
+				},
+				{
+					"buffer": 30,
+					"file": "scripts/analysis/track_beam.py",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 5715,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								5166,
+								5166
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/Python/Python.sublime-syntax",
+							"tab_size": 4,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 1350.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 5,
+					"type": "text"
+				},
+				{
+					"buffer": 31,
 					"file": "scripts/analysis/build_bump_surrogate_model.py",
 					"semi_transient": false,
 					"settings":
@@ -922,8 +1550,8 @@
 						"selection":
 						[
 							[
-								8227,
-								8227
+								19810,
+								19810
 							]
 						],
 						"settings":
@@ -933,14 +1561,14 @@
 							"translate_tabs_to_spaces": true
 						},
 						"translation.x": 0.0,
-						"translation.y": 2943.0,
+						"translation.y": 6976.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 9,
+					"stack_index": 31,
 					"type": "text"
 				},
 				{
-					"buffer": 17,
+					"buffer": 32,
 					"file": "scripts/analysis/bump_surrogate_model/minimiser.py",
 					"semi_transient": false,
 					"settings":
@@ -966,11 +1594,11 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 11,
+					"stack_index": 21,
 					"type": "text"
 				},
 				{
-					"buffer": 18,
+					"buffer": 33,
 					"file": "/mnt/db89a8c2-6f6b-4c5c-bbc4-5534fb22ff7a/cr67/OPAL/external_rogers_mint/source/xboa/xboa/common/_common.py",
 					"semi_transient": false,
 					"settings":
@@ -996,11 +1624,11 @@
 						"translation.y": 13664.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 14,
+					"stack_index": 33,
 					"type": "text"
 				},
 				{
-					"buffer": 19,
+					"buffer": 34,
 					"file": "scripts/opal_tracking/_opal_tracking.py",
 					"semi_transient": false,
 					"settings":
@@ -1012,8 +1640,8 @@
 						"selection":
 						[
 							[
-								12311,
-								12311
+								16918,
+								16918
 							]
 						],
 						"settings":
@@ -1023,10 +1651,10 @@
 							"translate_tabs_to_spaces": true
 						},
 						"translation.x": 0.0,
-						"translation.y": 4592.0,
+						"translation.y": 5538.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 2,
+					"stack_index": 29,
 					"type": "text"
 				}
 			]
@@ -1034,7 +1662,7 @@
 	],
 	"incremental_find":
 	{
-		"height": 26.0
+		"height": 24.0
 	},
 	"input":
 	{
@@ -1071,7 +1699,7 @@
 	"project": "vertical_isis2.sublime-project",
 	"replace":
 	{
-		"height": 48.0
+		"height": 44.0
 	},
 	"save_all_on_build": true,
 	"select_file":

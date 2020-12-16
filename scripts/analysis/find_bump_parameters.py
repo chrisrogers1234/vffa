@@ -73,10 +73,15 @@ class FindBumpParameters(object):
     def field_names_gen(self):
         n_h_bumps = self.config.find_bump_parameters["n_h_bumps"]
         n_v_bumps = self.config.find_bump_parameters["n_v_bumps"]
-        for i in range(n_h_bumps):
-            yield "__h_bump_"+str(i+1)+"_field__"
-        for i in range(n_v_bumps):
-            yield "__v_bump_"+str(i+1)+"_field__"
+        if "field_names" in self.config.find_bump_parameters:
+            for name in self.config.find_bump_parameters["field_names"]:
+                yield name
+            return
+        else:
+            for i in range(n_h_bumps):
+                yield "__h_bump_"+str(i+1)+"_field__"
+            for i in range(n_v_bumps):
+                yield "__v_bump_"+str(i+1)+"_field__"
 
     def store_data(self):
         outname = self.get_filename_root()+"_"+f'{self.store_index:03}'+".out"

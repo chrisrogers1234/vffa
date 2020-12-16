@@ -218,10 +218,10 @@ class PlotDumpFields(object):
         min_3, max_3 = min(self.field_map[var_3]), max(self.field_map[var_3])
         unique_id = str(len(self.root_objects))
         name = var_3+" vs "+var_1+" and "+var_2+" "+unique_id
-        canvas = ROOT.TCanvas(name)
+        canvas = ROOT.TCanvas(name, name, 1000, 950)
         name_dict = self.name_dict
         self.set_z_axis(min_3, max_3)
-        hist = ROOT.TH2D(name, var_3+";"+name_dict[var_1]+";"+name_dict[var_2], n_1, min_1, max_1, n_2, min_2, max_2)
+        hist = ROOT.TH2D(name, name_dict[var_3]+";"+name_dict[var_1]+";"+name_dict[var_2], n_1, min_1, max_1, n_2, min_2, max_2)
         hist.SetStats(False)
         for i in range(self.n_lines):
             hist.Fill(self.field_map[var_1][i], self.field_map[var_2][i], self.field_map[var_3][i])
@@ -232,7 +232,8 @@ class PlotDumpFields(object):
         return canvas
 
     root_objects = []
-    name_dict = {"phi":"#phi [degree]", "r":"r [m]", "x":"x [m]", "y":"y [m]", "z":"z [m]"}
+    name_dict = {"phi":"#phi [degree]", "r":"r [m]", "x":"x [m]", "y":"y [m]", "z":"z [m]",
+                 "btot":"B_{tot} [T]", "br":"B_{r} [T]", "bz":"B_{z} [T]", "bphi":"B_{#phi} [T]"}
 
     def sine_fit(self):
         voltage = max(self.y_list)

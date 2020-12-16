@@ -13,12 +13,17 @@ import h5py
 
 from utils import utilities
 import plotting.plot_dump_fields as plot_dump_fields
-#import PyOpal.parser
-#import PyOpal.field
 
+import matplotlib
+#try:
+#    import PyOpal.parser
+#    import PyOpal.field
+##except ImportError:
+#    print("Failed to import PyOpal")
 
 MASS = 938.2720813
 TARGET = "ID1"
+Z_FLIP = 1
 
 try:
     import ROOT
@@ -32,7 +37,7 @@ class RootObjects:
     other = []
 
 class Colors:
-    ref_colours = numpy.array([ROOT.kBlue, ROOT.kGreen+1, ROOT.kRed, 
+    ref_colours = numpy.array([ROOT.kBlue, ROOT.kRed, ROOT.kGreen+1, 
                                ROOT.kOrange+2, ROOT.kYellow+2, ROOT.kMagenta+1])
     colours = copy.deepcopy(ref_colours)
 
@@ -155,7 +160,7 @@ def parse_track_file(filename, test_function = None):
     data["px"] = [px*MASS for px in data["px"]]
     data["py"] = [py*MASS for py in data["py"]]
     data["pz"] = [pz*MASS for pz in data["pz"]]
-    data["z"] = [z*-1 for z in data["z"]]
+    data["z"] = [z*Z_FLIP for z in data["z"]]
     data = r_phi_track_file(data)
     return data
 
@@ -209,9 +214,9 @@ def plot_x_y_projection(step_list_of_lists, canvas = None):
 def plot_r_phi_projection(step_list, canvas = None):
     axes = None
     if canvas == None:
-        canvas = ROOT.TCanvas("x_y_projection", "x_y_projection")
+        canvas = ROOT.TCanvas("r_phi_projection", "r_phi_projection")
         canvas.Draw()
-        axes = ROOT.TH2D("x_y_projection_axes", ";#phi [degree];r [m]",
+        axes = ROOT.TH2D("r_phi_projection_axes", ";#phi [degree];r [m]",
                          1000, 90., 150.,
                          1000, 1., 4.)
         axes.SetStats(False)
@@ -395,7 +400,7 @@ def load_ascii_probe(a_file, cuts):
         item = {
             "x":numbers[0],
             "y":numbers[1],
-            "z":numbers[2],
+            "z":numbers[2]*Z_FLIP,
             "phi":math.degrees(math.atan2(numbers[1], numbers[0])),
             "r":(numbers[0]**2+numbers[1]**2)**0.5
         }
@@ -421,7 +426,7 @@ def load_h5_probe(file_name, cuts):
                 "id":h5_step["id"][i],
                 "x":h5_step["x"][i],
                 "y":h5_step["y"][i],
-                "z":h5_step["z"][i],
+                "z":h5_step["z"][i]*Z_FLIP,
                 "phi":math.degrees(math.atan2(h5_step["y"][i],
                                               h5_step["x"][i])),
                 "r":(h5_step["x"][i]**2+h5_step["y"][i]**2)**0.5
@@ -446,7 +451,7 @@ def plot_probes(canvas, probe_data, axis_1, axis_2):
 
 def plot_b_field(step_list):
     canvas = ROOT.TCanvas("bfield", "bfield")
-    axes = ROOT.TH2D("bfield_axes", ";phi [rad];b [T]",
+    axes = ROOT.TH2D("bfield_axes", ";phi [rad];B [T]",
                      1000, -2.*math.pi, 2.*math.pi,
                      1000, -25., 25.)
     axes.SetStats(False)
@@ -583,7 +588,7 @@ def plot_cartesian(output_dir, opal_run_dir, step_list, file_type):
     #z_min, z_max = 0.05, 0.2
     inner_radius, axis_radius, outer_radius, ncells = 3.5, 3.995, 4.5, 20
     inner_radius_a, axis_radius_a, outer_radius_a, ncells_a = 3.4, 3.995, 4.5, 10
-    z_min, z_max, phi_min, phi_max = -0.9, 0.1, 0, 252
+    z_min, z_max, phi_min, phi_max = -0.3, 0.1, 0, 252
 
     field_dict = {"MAGNETD":ROOT.kBlue, "MAGNETF":ROOT.kBlue}
     for i in range(1, 6):
@@ -601,6 +606,7 @@ def plot_cartesian(output_dir, opal_run_dir, step_list, file_type):
     canvas, axes, graph = plot_x_y_projection(step_list, canvas)
     for format in ["png"]:
         canvas.Print(output_dir+"closed_orbit_plan_bz."+format)
+    return
 
     Colors.reset()
     canvas = None
@@ -609,12 +615,11 @@ def plot_cartesian(output_dir, opal_run_dir, step_list, file_type):
     plot_probes(canvas, probe_data, "phi", "z")
     plot_phi_pipe(ncells+1, 0, 360, -2.0, 2.0, ROOT.kGray, canvas)
     plot_phi_pipe(ncells_a+1, 0, 360, -2.0, 2.0, 1, canvas)
-    plot_phi_pipe(2, 72-36*0.07, 72+36*0.07, 0.05, 0.08, ROOT.kGray, canvas)
-    plot_phi_pipe(2, 0, 360, 0.0878, -0.05, ROOT.kGray, canvas)
+    #plot_phi_pipe(2, 72-36*0.07, 72+36*0.07, 0.05, 0.08, ROOT.kGray, canvas)
+    #plot_phi_pipe(2, 0, 360, 0.0878, -0.05, ROOT.kGray, canvas)
     for format in ["png"]:
         canvas.Print(output_dir+"closed_orbit_elevation."+format)
     Colors.reset()
-    return
 
     Colors.reset()
     canvas = field_plot.plot_dump_fields("x", "y", "br")
@@ -717,6 +722,8 @@ def get_machida_field():
     return canvas
 
 def plot_orbit_field(output_dir, step_list_of_lists, canvas):
+    x_axis = "phi"
+    zoom = [[102.5, 113.5], [-0.1, 0.1]]
     output = open(output_dir+"/rogers_tracking.txt", "w")
     transform = CoordinateTransform(math.radians(18), 1.25)
     a_list = step_list_of_lists[0]
@@ -732,6 +739,7 @@ def plot_orbit_field(output_dir, step_list_of_lists, canvas):
     cell_old, x_cell, y_cell = 0., 0., 0.
     x_init = 0.
     print("               x/m               y/m               z/m               bx/T              by/T              bz/T         ", file=output)
+    phi_list = a_list["phi"]
     for i in range(n_steps):
         [x, y, z] = [a_list[var][i] for var in var_list]
         try:
@@ -761,14 +769,18 @@ def plot_orbit_field(output_dir, step_list_of_lists, canvas):
         if abs(bz) > max_b:
             bz = max_b*bz/abs(bz)
         bm = (bx**2+by**2)**0.5
-        g_list[0].SetPoint(i, x_cell, bx_cell)
-        g_list[1].SetPoint(i, x_cell, by_cell)
-        g_list[2].SetPoint(i, x_cell, bz_cell)
+        if x_axis == "phi":
+            x_point = phi_list[i]
+        else:
+            x_point = x_cell
+        g_list[0].SetPoint(i, x_point, bx_cell)
+        g_list[1].SetPoint(i, x_point, by_cell)
+        g_list[2].SetPoint(i, x_point, bz_cell)
         min_b_read = min([bx_cell, by_cell, bz_cell, min_b_read])
         max_b_read = max([bx_cell, by_cell, bz_cell, max_b_read])
-        #g_list[3].SetPoint(i, x_cell, y_cell)
-        #g_list[0].SetPoint(i, x_cell, (z-z0))
-        print(format(x_cell, "16.8g"),
+        #g_list[3].SetPoint(i, x_point, y_cell)
+        #g_list[0].SetPoint(i, x_point, (z-z0))
+        print(format(x_point, "16.8g"),
               format(y_cell, "16.8g"),
               format(z, "16.8g"),
               format(-bx_cell, "16.8g"),
@@ -779,7 +791,11 @@ def plot_orbit_field(output_dir, step_list_of_lists, canvas):
     print
 
     multigraph = ROOT.TMultiGraph()
-    multigraph.SetTitle(";s [m];B [T]")
+    if x_axis == "phi":
+        x_label = "#phi [degree]"
+    else:
+        x_label = "s [m]"
+    multigraph.SetTitle(";"+x_label+";B [T]")
     Colors.reset()
     for i, graph in enumerate(g_list):
         graph.SetTitle(name_list[i])
@@ -805,41 +821,118 @@ def plot_orbit_field(output_dir, step_list_of_lists, canvas):
     RootObjects.canvases.append(canvas)
     canvas.BuildLegend()
     canvas.Print(output_dir+"/event_field.png")
+    if zoom != None:
+        multigraph.GetHistogram().GetXaxis().SetRangeUser(zoom[0][0], zoom[0][1]);
+        multigraph.GetHistogram().GetYaxis().SetRangeUser(zoom[1][0], zoom[1][1]);
+        canvas.Modified()
+        canvas.Update()
+        canvas.Print(output_dir+"/event_field_zoom.png")
+
+def get_delta_data(ref_list, test_list, param, phi_lim):
+    ref_index = 0
+    test_index = 0
+    phi_list = []
+    x_list = []
+    try:
+        while True:
+            phi = ref_list['phi'][ref_index]
+            ref_x = ref_list[param][ref_index]
+            if phi < phi_lim[0] or phi > phi_lim[1]:
+                ref_index += 1
+                continue
+            while True:
+                test_phi1 = test_list['phi'][test_index+1]
+                if test_phi1 < phi:
+                    test_index += 1
+                    continue
+                test_phi0 = test_list['phi'][test_index]
+                test_x0 = test_list[param][test_index]
+                test_x1 = test_list[param][test_index+1]
+                test_x = (test_x1-test_x0)/(test_phi1-test_phi0)*(phi-test_phi0)+test_x0
+                x_list.append(test_x-ref_x)
+                phi_list.append(phi)
+                break
+            ref_index += 1
+    except IndexError:
+        pass
+    return phi_list, x_list
+
+def plot_cylindrical_delta(output_dir, test_list_of_lists, ref_list_of_lists, param, data_lambda, phi_lim, vertical_list, test_label, ref_label):
+    print("Plotting cylindrical delta")
+    unit = {"r":"[m]", "z":"[m]"}[param]
+    fig = matplotlib.pyplot.figure()
+    axes = fig.add_subplot(1, 1, 1)
+    axes.set_xlabel("$\\phi$ [degree]")
+    axes.set_ylabel(test_label+" - "+ref_label+" "+param+" "+unit)
+    xticks = [36.0*i for i in range(11)]+vertical_list
+    axes.set_xticks(xticks)
+    for i, test_list in enumerate(test_list_of_lists):
+        ref_list = ref_list_of_lists[i]
+        phi_list, x_list = get_delta_data(ref_list, test_list, param, phi_lim)
+        if data_lambda != None:
+            x_list = [data_lambda(x) for x in x_list]
+        axes.plot(phi_list, x_list)
+    for vertical in vertical_list:
+        v_list = [vertical, vertical]
+        p_list = axes.get_ylim()
+        axes.plot(v_list, p_list, linestyle='--', color='gray')
+        axes.set_ylim(p_list)
+    fig.savefig(output_dir+"/phi_delta_"+param+".png")
+    matplotlib.pyplot.show(block=False)    
 
 def parse_args(args):
     parser = argparse.ArgumentParser()
     parser.add_argument('file_name_list', type=str, nargs='+')
     parser.add_argument('--lattice_file', dest='lattice_file')
     parser.add_argument('--file_type', dest='file_type', default='magnetic_cartesian')
+    parser.add_argument('--output_dir', default='')
     args = parser.parse_args()
     tgt_dir = os.path.split(args.file_name_list[0])[0]
-    output_dir = os.path.split(tgt_dir)[0]
+    if args.output_dir == '':
+        output_dir = os.path.split(tgt_dir)[0]
+    else:
+        output_dir = args.output_dir
     run_dir = os.path.split(tgt_dir)[1]
-    run_file_list = [os.path.split(arg)[1] for arg in args.file_name_list]
+    run_file_list = args.file_name_list
     lattice_file = args.lattice_file
     return output_dir, run_dir, run_file_list, lattice_file, args.file_type
 
 def z_out_of_bounds(words):
-    z_min, z_max = -0.01, 1.0 # m
+    z_min, z_max = -1.0, 0.1 # m
     return  words[-2] < z_min or words[-2] > z_max
 
 def phi_almost_2pi(words):
-    return words[-4] < -0.01 and words[-4] > -0.1 and words[-6] > 0.
+    return words[-4] < -0.01 and words[-4] > -0.1 and words[1] > 0.0
+
+def going_forwards(words):
+    return words[-6] > 0.0
+
+def plot_delta(output_dir, test_list_of_lists, ref_list_of_lists, test_label, ref_label):
+    dphi = 3.095*36.0-108
+    phi_lim = [0., 360.0]# [108-dphi*2, 108+dphi*2]
+    vertical_list = [] #[108-dphi, 108+dphi]
+    plot_cylindrical_delta(output_dir, test_list_of_lists, ref_list_of_lists, "r", None, phi_lim, vertical_list, test_label, ref_label)
+    plot_cylindrical_delta(output_dir, test_list_of_lists, ref_list_of_lists, "z", None, phi_lim, vertical_list, test_label, ref_label)
+
 
 def main(output_dir, run_dir, run_file_list, lattice_file, file_type):
-    load_lattice(lattice_file)
+    #load_lattice(lattice_file)
     canvas = None #get_machida_field()
     output_dir += "/"
     opal_run_dir = output_dir+run_dir+"/"
     print("OPAL RUN DIR", opal_run_dir)
     step_list_of_lists = []
-    both = lambda words: z_out_of_bounds(words) or phi_almost_2pi(words)
+    test = lambda words: z_out_of_bounds(words) or phi_almost_2pi(words)
     for run_file in run_file_list:
         # stop loading if z goes out of range
-        data = parse_track_file(opal_run_dir+run_file,  phi_almost_2pi)
+        data = parse_track_file(run_file,  test)
         step_list_of_lists.append(data)
     plot_cartesian(output_dir, opal_run_dir, step_list_of_lists, file_type)
     #plot_cylindrical(output_dir, opal_run_dir, step_list_of_lists)
+    test_list_of_lists = step_list_of_lists[1:]
+    ref_list_of_lists = step_list_of_lists[0:1]*len(test_list_of_lists)
+    if len(test_list_of_lists) > 0 and len(ref_list_of_lists) > 0:
+        plot_delta(output_dir, test_list_of_lists, ref_list_of_lists, "Distorted", "undistorted") # plots test-ref
     try:
         plot_orbit_field(output_dir, step_list_of_lists, canvas)
     except ValueError:

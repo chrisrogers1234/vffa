@@ -25,7 +25,7 @@ class Material(object):
         self.delta = my_mat["delta"]
         self.molecular_mass = my_mat["molecular_mass"] #*constants.units["u"]
         self.elements_list = my_mat["elements_list"]
-        self.X0 = my_mat["radiation_length"]/self.density
+        self.X0 = my_mat["radiation_length"]/self.density # cm
         # E_t has units of MeV; other constants are dimensionless
         self.stripping_n10_Et = my_mat["sigma_0,1"]["E_t"]
         a_list = ["a_"+str(i) for i in range(1,7)]
@@ -163,7 +163,7 @@ class Material(object):
         """
         PDG model for the scattering angle
         - a_particle: particle to be scattered
-        - thickness: thickness (float) of materials
+        - thickness: thickness (float) of materials; should be a real distance (not normalised to density)
         returns the projected RMS according to the PDG formula
         """
         a_particle = copy.deepcopy(a_particle)

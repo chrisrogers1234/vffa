@@ -49,7 +49,7 @@ class TrackBump(object):
                              self.config.track_bump["input_file"])
         bump_data = []
         print("Loading bump files")
-        for fname in glob.glob(fglob):
+        for fname in sorted(glob.glob(fglob)):
             print("   ", fname)
             with open(fname) as fin:
                 str_in = fin.readlines()[-1]
@@ -75,6 +75,7 @@ class TrackBump(object):
             if id_["optimisation_stage"] == self.config.track_bump["field_optimisation_stage"]:
                 self.data_dict[data_key]["field_list"] = \
                                                     self.get_field_list(item)
+            print("Found id", id_)
 
     def track_bumps(self):
         self.clear_dir()
@@ -115,6 +116,9 @@ class TrackBump(object):
     def do_substitutions(self, fields, phi_init, charge):
         overrides = self.config.track_bump["subs_overrides"]
         #print json.dumps(self.subs, indent=2)
+        n_cells = self.subs["__n_cells__"]
+        if phi_init > n_cells/2:
+            phi_init -= n_cells
         overrides["__beam_phi_init__"] = phi_init
         self.subs["__beam_charge__"] = charge
         overrides.update(fields)
@@ -144,7 +148,7 @@ class TrackBump(object):
         injected_beam = self.injection_orbit
         foil_probe = self.config.track_bump["foil_probe_files"]
         energy = self.config.track_bump["energy"]
-        self.do_substitutions(fields, foil_phi, -1.0)
+        self.do_substitutions(fields, foil_phi, +1.0)
         tracking = utilities.setup_tracking(self.config, foil_probe, energy)
         test_hit = utilities.reference(self.config, energy,
                                        injected_beam[0], injected_beam[1],

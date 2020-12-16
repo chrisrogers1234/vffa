@@ -98,6 +98,7 @@ class DecoupledTransferMatrix(object):
             except FloatingPointError:
                 beta_i = -1.
                 alpha_i = 0.
+                gamma_i = -1.
             phase_i = numpy.angle(self.m_evalue[j])
             par_t_evector[j,   j] = cmath.sqrt(beta_i)*exp_phi_i
             par_t_evector[j+1, j] = 1./cmath.sqrt(beta_i)*(-alpha_i+1j)*exp_phi_i
