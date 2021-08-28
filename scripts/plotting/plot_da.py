@@ -9,7 +9,6 @@ import ROOT
 import numpy
 import scipy.spatial
 import matplotlib
-matplotlib.use('Agg')
 import matplotlib.pyplot
 
 import xboa.common as common
@@ -101,23 +100,30 @@ class DAPlotter(object):
         area += delta_area
         return area
 
-    def plot_da(self, max_n_points, plot_dir, acceptance):
+    def plot_da(self, max_n_points, plot_dir, target_variable):
+        stroke = 10
         variables = utilities.get_substitutions_axis(self.data, "substitutions")
         plot_dir = os.path.join(plot_dir, "plot_da")
         utilities.clear_dir(plot_dir)
         self.plot_dir = plot_dir
+        u_points = []
+        v_points = []
+        u_var_points = []
+        v_var_points = []
         for index, item in enumerate(self.data):
+            figure = matplotlib.pyplot.figure(figsize=(20, 10))
             for key in variables:
                 variables[key] = item['substitutions'][key]
-            for da_key in 'y_da', 'x_da': 
+            figure.suptitle(self.get_title(variables))
+            ax_index = 0
+            for da_key in 'x_da', 'y_da':
                 if da_key not in list(item.keys()):
                     print("Did not find", da_key, "in keys", list(item.keys()), "... skipping")
                     continue
                 for axis1, axis2 in ('x', "px"), ('y', "py"):
-                    canvas = self.plot_one_da(item, da_key, axis1, axis2, max_n_points, variables, acceptance)
-                    plot_name = "da_"+str(index)+"_"+da_key+"_"+axis1+"_"+axis2
-                    for format in ["eps", "png", "root"]:
-                        canvas.Print(plot_dir+"/"+plot_name+"."+format)
+                    ax_index += 1
+                    axes = figure.add_subplot(2, 4, ax_index)
+                    self.plot_one_da(item, da_key, axis1, axis2, max_n_points, axes, [100, 10], stroke)
 
                     continue
                     if axis1[0] not in da_key:
@@ -127,9 +133,40 @@ class DAPlotter(object):
                     for format in ["eps", "png", "root"]:
                         canvas.Print(plot_dir+"/"+plot_name+"."+format)
                         chol_canvas.Print(plot_dir+"/"+plot_name+"_cholesky."+format)
+                da_row = self.get_da_row(item[da_key], max_n_points)
+                u_data, v_data = self.get_decoupled_data(item, da_key, index, axis1, axis2, stroke)
+                ax_index += 1
+                axes = figure.add_subplot(2, 4, ax_index)
+                self.make_plot(axes, u_data, da_row, da_key+" "+str(index)+": u vs pu", "u", "pu", [80, 0.20])
+                ax_index += 1
+                axes = figure.add_subplot(2, 4, ax_index)
+                self.make_plot(axes, v_data, da_row, da_key+" "+str(index)+": v vs pv", "v", "pv", [1000, 0.20])
+                try:
+                    u_acceptance = max([item1[0][0] for item1 in u_data if len(item1[0]) >= max_n_points])
+                    v_acceptance = max([item1[0][0] for item1 in v_data if len(item1[0]) >= max_n_points])
+                    x_variable = item['substitutions'][target_variable]
+                    if u_acceptance > 1e-5:
+                        u_points.append(u_acceptance)
+                        u_var_points.append(x_variable)
+                    if v_acceptance > 1e-5:
+                        v_points.append(v_acceptance)
+                        v_var_points.append(x_variable)
+                except ValueError:
+                    pass
 
+            plot_name = "da_"+str(index)
+            for format in ["png"]:
+                figure.savefig(plot_dir+"/"+plot_name+"."+format)
 
-                self.plot_decoupled_da(item, da_key, index, axis1, axis2, max_n_points, variables, acceptance)
+        figure = matplotlib.pyplot.figure()
+        axes = figure.add_subplot(1, 1, 1)
+        axes.scatter(u_var_points, u_points, label="U", s=4)
+        axes.scatter(v_var_points, v_points, label="V", s=4)
+        axes.set_xlabel(target_variable.replace("__", "").replace("_", " ")+" [T]")
+        axes.set_ylabel("Initial value")
+        axes.legend()
+        figure.savefig(plot_dir+"/acceptance_vs_"+target_variable.replace("__", "")+".png")
+
 
     def make_global_plot(self, min_n_points, plot_dir):
         axis_candidates = utilities.get_substitutions_axis(self.data, "substitutions")
@@ -187,8 +224,11 @@ class DAPlotter(object):
 
     def get_title(self, variables):
         title = ""
-        for key in variables:
-            title += utilities.sub_to_name(key)+": "+str(variables[key])
+        key_list = sorted(variables, key = lambda var: [x for x in reversed(var)])
+        for i, key in enumerate(key_list):
+            title += utilities.sub_to_name(key)+": "+format(variables[key], "5.3g")+" "
+            if i+1 % 5 == 4:
+                title += "\n"
         return title
 
     def plot_one_phi(self, row_data, da_key, axis1, axis2, max_n_points, variables):
@@ -260,94 +300,68 @@ class DAPlotter(object):
         graph.SetLineColor(ROOT.kOrange)
         return graph
 
-    def plot_one_da(self, row_data, da_key, axis1, axis2, max_n_points, variables, acceptance):
+    def plot_one_da(self, row_data, da_key, axis1, axis2, max_n_points, axes, scale, stroke):
         hit_data = row_data[da_key]
-        name = da_key+"_"+axis1+" vs "+axis2
-        title = self.get_title(variables)
-        name += " "+title
-        canvas = None
         da_row = self.get_da_row(hit_data, max_n_points)
-        graph_list = []
-        acceptance_graph = None
         units = {'x':'mm', 'y':'mm', 'px':'MeV/c', 'py':'MeV/c', "x'":'rad', "y'":'rad'}
+        mean_x, mean_y = None, None
         for i, hit_list in enumerate(hit_data):
-            hit_list = [Hit.new_from_dict(hit_dict) for hit_dict in hit_list[1]]
+            hit_list = [Hit.new_from_dict(hit_dict) for hit_dict in hit_list[1][::stroke]]
             x_data = [hit[axis1] for hit in hit_list]
             y_data = [hit[axis2] for hit in hit_list]
-            axis1_label = axis1+" ["+units[axis1]+"]"
-            axis2_label = axis2+" ["+units[axis2]+"]"
-            hist, graph = common.make_root_graph(name+" "+str(i), x_data, axis1_label, y_data, axis2_label)
-            graph.SetMarkerStyle(7)
-            if i == da_row:
-                canvas = common.make_root_canvas(name)
-                hist.SetTitle(title)
-                hist.Draw()
-            elif i < da_row:
-                graph.SetMarkerColor(ROOT.kGreen)
-            else:
-                graph.SetMarkerColor(ROOT.kGray)
-            graph_list.append(graph)
-            pz = hit_list[0]['pz']
-            mass = common.pdg_pid_to_mass[2212]
-            if axis2 == "px" or axis2 == "py":
-                geom_acceptance = acceptance*mass #mm mrad normalised -> MeV/c
-            elif axis2 == "x'" or axis2 == "y'":
-                geom_acceptance = acceptance*mass/pz 
-            #if i == 3:
-            #    acceptance_graph = self.plot_acceptance(geom_acceptance, x_data, y_data, axis2)
-
-        for graph in graph_list:
-            graph.Draw("SAMEP")
-        if acceptance_graph != None:
-            acceptance_graph.Draw("SAME C")
-        canvas.Update()
-        return canvas
+            if mean_x == None:
+                mean_x = numpy.mean(x_data)
+                mean_y = numpy.mean(y_data)
+            colour = "black"
+            if i < da_row:
+                colour = "limegreen"
+            elif i > da_row:
+                colour = "xkcd:light grey"
+            axes.scatter(x_data, y_data, s=1, c=colour)
+            axes.set_xlabel(axis1+" ["+units[axis1]+"]")
+            axes.set_ylabel(axis2+" ["+units[axis2]+"]")
+            axes.set_xlim(mean_x-scale[0]/2., mean_x+scale[0]/2.)
+            axes.set_ylim(mean_y-scale[1]/2., mean_y+scale[1]/2.)
 
     def get_seed(self, hit, ref):
         seed = [hit[var]-ref[var] for var in self.var_list]
         return seed
 
-    def make_plot(self, data_list, da_row, name, x_name, y_name):
-        graph_list = []
+    def make_plot(self, axes, data_list, da_row, name, x_name, y_name, scale):
+        i = 0
+        mean_x, mean_y = None, None
         for x_data, y_data in data_list:
-            i = len(graph_list)
-            hist, graph = common.make_root_graph(name+str(i), x_data, x_name, y_data, y_name)
-            graph.SetMarkerStyle(7)
             if i == da_row:
-                canvas = common.make_root_canvas(name)
-                hist.SetTitle(name)
-                hist.Draw()
+                colour = "black"
             elif i == 0 and i < da_row:
-                graph.SetMarkerColor(ROOT.kBlue)
+                colour = "blue"
             elif i < da_row:
-                graph.SetMarkerColor(ROOT.kGreen)
+                colour = "limegreen"
             else:
-                graph.SetMarkerColor(ROOT.kGray)
-            graph_list.append(graph)
-        canvas.cd()
-        canvas.Update()
-        for graph in graph_list[da_row+1:]+graph_list[1:da_row]+\
-                     graph_list[0:1]+graph_list[da_row:da_row+1]:
-            graph.Draw("SAMEP")
-        name = name.replace(":", "")
-        name = name.replace(" ", "_")
-        for fmt in self.formats:
-            canvas.Print(self.plot_dir+"/"+name+"."+fmt)
+                colour = "xkcd:light grey"
+            if mean_x == None:
+                mean_x = numpy.mean(x_data)
+                mean_y = numpy.mean(y_data)
+            axes.scatter(x_data, y_data, s=1, c=colour)
+            i += 1
+        axes.set_xlabel(x_name)
+        axes.set_ylabel(y_name)
+        if scale[0] != None:
+            axes.set_xlim(mean_x-scale[0]/2., mean_x+scale[0]/2.)
+            axes.set_ylim(mean_y-scale[1]/2., mean_y+scale[1]/2.)
 
-    def plot_decoupled_da(self, row_data, da_key, index, axis1, axis2, max_n_points, variables, acceptance):
+    def get_decoupled_data(self, row_data, da_key, index, axis1, axis2, stroke):
         hit_data = row_data[da_key]
-        da_row = self.get_da_row(hit_data, max_n_points)
         tm = row_data["ref_track"][0]
         tm = copy.deepcopy(row_data["tm"])
         for i, row in enumerate(tm):
             tm[i] = row[1:5]
         tm = DecoupledTransferMatrix(tm)
-        name = da_key+"_"+axis1+" vs "+axis2
-        u_data, v_data, au_data, av_data, a4_data = [], [], [], [], []
+        u_data, v_data = [], []
 
         closed_orbit = Hit.new_from_dict(row_data["ref_track"][0])
         for i, hit_list in enumerate(hit_data):
-            hit_list = [Hit.new_from_dict(hit_dict) for hit_dict in hit_list[1]]
+            hit_list = [Hit.new_from_dict(hit_dict) for hit_dict in hit_list[1][::stroke]]
             seed_list = [self.get_seed(hit, closed_orbit) for hit in hit_list]
             seed_list = [tm.decoupled(seed) for seed in seed_list]
             u = [seed[0] for seed in seed_list]
@@ -356,13 +370,7 @@ class DAPlotter(object):
             pv = [seed[3] for seed in seed_list]
             u_data.append((u, pu))
             v_data.append((v, pv))
-
-            #turns = range(len(seed_list))
-            #amp_data_u = [self.get_amplitude(tm, seed, [0, 1]) for seed in seed_list]
-            ##amp_data_v = [self.get_amplitude(tm, seed, [2, 3]) for seed in seed_list]
-            #amp_data_4d = [self.get_amplitude(tm, seed, [0, 1, 2, 3]) for seed in seed_list]
-        self.make_plot(u_data, da_row, da_key+" "+str(index)+": u vs pu", "u", "pu")
-        self.make_plot(v_data, da_row, da_key+" "+str(index)+": v vs pv", "v", "pv")
+        return u_data, v_data
 
     def test(self):
         points = numpy.array([
@@ -384,19 +392,20 @@ class DAPlotter(object):
 def main():
     base_dir = "output/"
     #base_fname = base_dir+"/baseline/get_da.tmp"
-    min_n_turns = 100
+    min_n_hits = 10
     for file_name in glob.glob(sys.argv[1]):
         plotter = DAPlotter(file_name)
         #if file_name != base_fname:
         #    data += load_data(base_fname)
         plot_dir = os.path.split(file_name)[0]
         # acceptance should be normalised mm mrad
-        plotter.plot_da(min_n_turns, plot_dir, 2.7*1e-3*math.pi)
-        plotter.make_global_plot(min_n_turns, plot_dir) # 500 turn da
+        plotter.plot_da(min_n_hits, plot_dir, "__v_bump_2_field__")
+        #plotter.make_global_plot(min_n_turns, plot_dir) # 500 turn da
 
 if __name__ == "__main__":
     #test()
     main()
+    matplotlib.pyplot.show(block=False)
     print("Finished - press <CR> to close")
     input()
 

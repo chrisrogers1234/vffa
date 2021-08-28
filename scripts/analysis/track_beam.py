@@ -1,149 +1,298 @@
 import os
 import json
-import subprocess
-import numpy.random
-import xboa.common
-from xboa.hit import Hit
+import copy
+import math
+import shutil
+import glob
+import time
+
+import numpy
+import xboa.hit
+
+import plotting.plot_fields
 
 from opal_tracking import OpalTracking
-from opal_tracking import TunesAnalysis
-from opal_tracking import PhaseSpacePlots
-from utils import utilities
+import utils.utilities
+from utils.decoupled_transfer_matrix import DecoupledTransferMatrix
+DecoupledTransferMatrix.det_tolerance = 1.
+
+
+class BeamGen(object):
+    def __init__(self, config):
+        self.config = config
+
+    def load_closed_orbit(self):
+        file_name = os.path.join(self.config.run_control["output_dir"],
+                                 self.config.track_beam["closed_orbit_file"])
+        fin = open(file_name)
+        self.closed_orbits  = json.loads(fin.read())
+
+    def gen_beam(self):
+        raise NotImplementedError("Not implemented")
+
+class BeamShells(BeamGen):
+    def __init__(self, config, beam):
+        self.config = copy.deepcopy(config)
+        self.config.track_beam = beam
+        self.tm = None
+        self.mean = None
+        self.betagamma = 1.0
+
+    def get_mean(self, co):
+        hit = xboa.hit.Hit.new_from_dict(co["seed_hit"])
+        self.mean = [hit[var] for var in self.config.track_beam["variables"]]
+        self.betagamma = hit["p"]/hit["mass"]
+
+    def get_tm(self, co):
+        tm = co["tm"]
+        tm = copy.deepcopy(co["tm"])
+        for i, row in enumerate(tm):
+            tm[i] = row[1:5]
+        self.tm = DecoupledTransferMatrix(tm, True)
+
+    def get_action(self, actions):
+        dist = self.config.track_beam["amplitude_dist"]
+        min_amp = 0.0
+        max_amp = self.config.track_beam["max_amplitude_4d"]
+        if dist == "grid":
+            return actions[0], actions[1]
+        au, av = -1, -1
+        while au+av > max_amp or au+av < min_amp:
+            if dist == "uniform":
+                au = numpy.random.uniform(min_amp, actions[0])
+                av = numpy.random.uniform(min_amp, actions[1])
+            else:
+                raise KeyError("Did not recognise amplitude_dist type "+str(dist))
+        return au, av
+
+    def get_phi(self, actions):
+        n_phi_u = self.config.track_beam["n_per_dimension"]
+        n_phi_v = self.config.track_beam["n_per_dimension"]
+        if actions[0] == 0.0:
+            n_phi_u = 1
+        if actions[1] == 0.0:
+            n_phi_v = 1
+        phi_list = []
+        dist = self.config.track_beam["phase_dist"]
+        for ui in range(n_phi_u):
+            for vi in range(n_phi_v):
+                if dist == "grid":
+                    phi_list.append([ui*2.*math.pi/n_phi_u-math.pi,
+                                     vi*2.*math.pi/n_phi_v-math.pi])
+                elif dist == "uniform":
+                    phi_list.append([numpy.random.uniform(-math.pi, math.pi),
+                                     numpy.random.uniform(-math.pi, math.pi)])
+        return phi_list
+
+    def get_aa_list(self, actions):
+        aa_list = []
+        phi_list = self.get_phi(actions)
+        for phi_u, phi_v in phi_list:
+            au, av = self.get_action(actions)
+            aa = [phi_u, au, phi_v, av]
+            aa_list.append(aa)
+        return aa_list
+
+    def get_psv_list(self, aa_list):
+        psv_list = []
+        for aa in aa_list:
+            coupled = self.tm.action_angle_to_coupled(aa)
+            psv = [coupled[i]+self.mean[i] for i in range(4)]
+            psv_list.append(psv)
+            print("aa:", aa, "coupled:", coupled, "psv:", psv)
+        return psv_list
+
+    def get_hit_list(self, psv_list):
+        hit_list = []
+        print("Tracking following particles:")
+        for psv in psv_list:
+            print(psv)
+            mass = xboa.common.pdg_pid_to_mass[2212]
+            energy = self.config.track_beam["energy"]+mass
+            pz = (energy**2-mass**2)**0.5
+            hit_dict = {"energy":energy, "mass":mass, "pid":2212, "pz":pz}
+            for i, var in enumerate(self.config.track_beam["variables"]):
+                hit_dict[var] = psv[i]
+            hit = xboa.hit.Hit.new_from_dict(hit_dict, "pz")
+            hit_list.append(hit)
+        return hit_list
+
+
+    def gen_beam(self):
+        self.load_closed_orbit()
+        hit_list = []
+        for co in self.closed_orbits:
+            self.get_mean(co)
+            self.get_tm(co)
+            eigen_emittance_list = self.config.track_beam["eigen_emittances"]
+            for actions in eigen_emittance_list:
+                aa_list = self.get_aa_list(actions) # action angle
+                for aa in aa_list:
+                    aa[1] /= self.betagamma
+                    aa[3] /= self.betagamma
+                psv_list = self.get_psv_list(aa_list) # phase space vector
+                hit_list += self.get_hit_list(psv_list) # hit
+        return hit_list
+
 
 class TrackBeam(object):
     def __init__(self, config):
         self.config = config
-        self.output_dir = config.run_control["output_dir"]
-        self.centre = None
-        self.ellipse = None
-        self.run_dir = ""
-        self.cwd = os.getcwd()
-        self.hits_in = []
-        self.hits_out = []
-        self.energy = None
+        self.tmp_dir = os.path.join(self.config.run_control["output_dir"],
+                               self.config.track_beam["run_dir"])
+        self.last_tracking = None
 
-    def load_tune_data(self):
-        file_name = self.output_dir+"/"+self.config.find_tune["output_file"]
-        fin = open(file_name)
-        data = [json.loads(line) for line in fin.readlines()]
-        return data
+    def setup(self):
+        #self.beam_gen = BeamShells(self.config)
+        self.hit_list = None #self.beam_gen.gen_beam()
 
-    def fit_tune_data(self, data):
-        eps_max = self.config.track_beam['eps_max']
-        x_emittance = self.config.track_beam['x_emittance']
-        y_emittance = self.config.track_beam['y_emittance']
-        sigma_pz = self.config.track_beam['sigma_pz']
-        sigma_z = self.config.track_beam['sigma_z']
+    def save_tracking(self, out_dir):
+        src_dir = self.tmp_dir
+        base_dir = os.path.join(self.config.run_control["output_dir"],
+                                self.config.track_beam["save_dir"])
+        target_dir = os.path.join(base_dir, out_dir)
+        print("Saving to", target_dir)
+        if not os.path.exists(base_dir):
+            os.makedirs(base_dir)
+        if os.path.exists(target_dir):
+            shutil.rmtree(target_dir)
+        shutil.copytree(src_dir, target_dir)
+        time.sleep(1)
 
-        self.energy = data['substitutions']['__energy__']
-        pid = self.config.tracking["pdg_pid"]
-        mass = xboa.common.pdg_pid_to_mass[abs(pid)]
-        p = ((self.energy+mass)**2 - mass**2)**0.5
+    def do_tracking(self):
+        if len(self.config.substitution_list) > 1:
+            raise RuntimeError("Didnt code subs list > 1")
+        utils.utilities.clear_dir(self.tmp_dir)
+        here = os.getcwd()
+        os.chdir(self.tmp_dir)
 
-        x_centre, x_ellipse = xboa.common.fit_ellipse(
-                                                  data['x_signal'],
-                                                  eps_max,
-                                                  verbose = False)
-        y_centre, y_ellipse = xboa.common.fit_ellipse(
-                                                  data['y_signal'],
-                                                  eps_max,
-                                                  verbose = False)
-        x_ellipse *= (x_emittance/numpy.linalg.det(x_ellipse))**0.5
-        y_ellipse *= (y_emittance/numpy.linalg.det(y_ellipse))**0.5
-        self.centre = numpy.array([x for x in x_centre]+[y for y in y_centre]+[0., p])
-        self.ellipse = numpy.zeros((6, 6))
-        for i in range(2):
-            for j in range(2):
-                self.ellipse[i, j] = x_ellipse[i, j]
-                self.ellipse[i+2, j+2] = y_ellipse[i, j]
-        #for i in [0, 2]:
-        #    self.ellipse[i+1, i+1] *= p*p
-        #    self.ellipse[i, i+1] *= p
-        #    self.ellipse[i+1, i] *= p
-        self.ellipse[4, 4] = sigma_z
-        self.ellipse[5, 5] = sigma_pz
-        print("Centre", self.centre)
-        print("Ellipse")
-        print(self.ellipse)
+        self.config.tracking["analysis_coordinate_system"] = "opal"
+        for setting in self.config.track_beam["settings"]:
+            self.track_setting(setting)
+        print("done")
+        os.chdir(here)
 
-    def setup_workspace(self):
-        self.run_dir = self.config.run_control["output_dir"]+"/"+self.config.track_beam["run_dir"]
-        try:
-            os.makedirs(self.run_dir)
-        except OSError:
-            pass # maybe the dir already exists
-        os.chdir(self.run_dir)
+    def dummy():
+        """
+        self.tracking = utils.utilities.setup_tracking(self.config,
+                                                  setting["probe_files"],
+                                                  self.config.track_beam["energy"])
+        utils.utilities.do_lattice(self.config,
+                                   self.config.substitution_list[0],
+                                   self.config.track_beam["fore_subs_overrides"])
 
-    def generate_beam(self):
-        n_events = self.config.track_beam["subs_overrides"]["__n_events__"]
-        events = numpy.random.multivariate_normal(self.centre, self.ellipse, n_events)
-        keys = "x", "px", "y", "py", "z", "pz"
-        self.hits_in = []
-        for item in events:
-            hit = self.reference()
-            for i, key in enumerate(keys):
-                hit[key] = item[i]
-            self.hits_in.append(hit)
-        for hit in self.hits_in[0:10]:
-            print("   ", [hit[key] for key in keys])
-        print("Made", len(self.hits_in), "hits")
-        
+        print("Tracking", len(self.hit_list), "tracks")
+        direction = self.config.track_beam["direction"]
+        if direction == "forwards" or direction == "both":
 
-    def run_tracking(self, index):
-        opal_exe = self.config.tracking["opal_path"]
-        input_file = self.config.tracking["lattice_file"]
-        n_cores = self.config.tracking["n_cores"]
-        mpi_exe = self.config.tracking["mpi_exe"]
-        lattice_file = self.run_dir+'SectorFFAGMagnet.tmp'
+            print("    ... forwards - tracking", len(self.hit_list), "hits")
+            for i in self.config.track_beam["print_events"]:
+                print("      Event", i, end="  ")
+                for var in ["x", "y", "z", "px", "py", "pz"]:
+                    print(var+":", self.hit_list[i][var], end=" ")
+                print()
 
-        subs = self.config.substitution_list[index]
-        for key, value in self.config.track_beam["subs_overrides"].items():
-            subs[key] = value
-        xboa.common.substitute(input_file, lattice_file, subs)
-        log_name = self.run_dir+"/log"
-        ref_hit = self.reference()
-        probe_files = self.config.track_beam["probe_files"]
-        self.tracking = OpalTracking("SectorFFAGMagnet.tmp", 'disttest.dat', ref_hit, probe_files, opal_exe, log_name, None, n_cores, mpi_exe)
+            hit_list_of_lists = tracking.track_many(self.hit_list)
+            print("    ... found", [len(hit_list) for hit_list in hit_list_of_lists], "output hits")
+            print("    from", tracking.get_name_dict(), "\n")
+            self.save_tracking("forwards")
 
-        tunes_analysis = TunesAnalysis(self.config)
-        phase_space_plots = PhaseSpacePlots(self.config)
-        tunes_analysis.set_match(self.centre[0:4], self.ellipse[0:4, 0:4])
-        if self.config.track_beam["do_track"]:
-            print("Running tracking with\n   ", end=' ')
-            for key, value in subs.items():
-                print(utilities.sub_to_name(key)+":", value, end=' ')
+            for filename in glob.glob("*.h5"):
+                os.unlink(filename)
+
+        utils.utilities.do_lattice(self.config,
+                                   self.config.substitution_list[0],
+                                   self.config.track_beam["back_subs_overrides"])
+        if direction == "both":
+            station = self.config.track_beam["backwards_station"]
+            print([hit_list[station]["x"] for hit_list in hit_list_of_lists])
+            backwards_hits = [hit_list[station] for hit_list in hit_list_of_lists if station < len(hit_list)]
+            for hit in backwards_hits:
+                for var in "px", "py", "pz":
+                    hit[var] *= -1
+
+            print("    ... backwards - tracking", len(backwards_hits), "hits")
+            for i in self.config.track_beam["print_events"]:
+                print("      Event", i, end="  ")
+                for var in ["x", "y", "z", "px", "py", "pz"]:
+                    print(var+":", backwards_hits[i][var], end=" ")
+                print()
+
+            try:
+                hit_list_of_lists = tracking.track_many(backwards_hits)
+            except OSError:
+                pass
+            print("    ... found", [len(hit_list) for hit_list in hit_list_of_lists], "output hits\n    with first: ", end="")
+            print("    from", tracking.get_name_dict(), "\n")
+            self.save_tracking("backwards")
+        print("done")
+        os.chdir(here)
+        """
+
+    def beam_setting(self, setting):
+        if setting["beam"]["type"] == "last":
+            station = setting["beam"]["station"]
+            self.hit_list = [hit_list[station] for hit_list in self.last_tracking if station < len(hit_list)]
+        elif setting["beam"]["type"] == "beam_gen":
+            beam_gen = BeamShells(self.config, setting["beam"])
+            self.hit_list = beam_gen.gen_beam()
+        else:
+            raise ValueError("Did not recognise beam of type "+str(setting["beam"]["type"]))
+
+    def track_setting(self, setting): 
+        print("Starting setting", setting["name"], "#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#")      
+        self.tracking = utils.utilities.setup_tracking(self.config,
+                                                  setting["probe_files"],
+                                                  setting["beam"]["energy"])
+        utils.utilities.do_lattice(self.config,
+                                   self.config.substitution_list[0],
+                                   setting["subs_overrides"])
+        self.beam_setting(setting)
+        if setting["direction"] == "backwards":
+            for hit in self.hit_list:
+                for var in "px", "py", "pz":
+                    hit[var] *= -1
+        elif setting["direction"] != "forwards":
+            raise RuntimeError("Direction must be forwards or backwards")
+
+        print("    ... tracking", len(self.hit_list), "hits", setting["direction"])
+        for i in self.config.track_beam["print_events"]:
+            print("      Event", i, end="  ")
+            for var in ["x", "y", "z", "px", "py", "pz"]:
+                print(var+":", self.hit_list[i][var], end=" ")
             print()
-            self.tracking.track_many(self.hits_in, None)
-        print(os.getcwd(), probe_files)
-        self.tracking._read_probes(tunes_analysis)
-        #self.tracking._read_probes(phase_space_plots)
 
+        self.last_tracking = self.tracking.track_many(self.hit_list)
 
-    def reference(self):
-        """
-        Generate a reference particle
-        """
-        hit_dict = {}
-        hit_dict["pid"] = self.config.tracking["pdg_pid"]
-        hit_dict["mass"] = xboa.common.pdg_pid_to_mass[abs(hit_dict["pid"])]
-        hit_dict["charge"] = 1
-        hit_dict["x"] = 0.
-        hit_dict["kinetic_energy"] = self.energy
-        return Hit.new_from_dict(hit_dict, "pz")
+        print("    ... found", [len(hit_list) for hit_list in self.last_tracking], "output hits")
+        print("    from", self.tracking.get_name_dict())
 
-    def track(self):
-        try:
-            data = self.load_tune_data()
-            self.setup_workspace()
-            for i, item in enumerate(data):
-                self.fit_tune_data(item)
-                self.generate_beam()
-                self.run_tracking(i)
-        except:
-            raise
-        finally:
-            os.chdir(self.cwd)
+        self.save_tracking(setting["name"])
+
+        for filename in glob.glob("*.h5"):
+            os.unlink(filename)
+        print()
 
 def main(config):
     tracker = TrackBeam(config)
-    tracker.track()
+    tracker.setup()
+    tracker.do_tracking()
+
+"""
+Tracking 2 tracks
+    ... forwards -  2 hits
+x: 3778.0377273690738 y: -103.98094256513187 z: 0.0 px: 0.0 py: 0.0 pz: 75.09082484564964 
+Saving to /mnt/db89a8c2-6f6b-4c5c-bbc4-5534fb22ff7a/cr67/work/2017-07-07_isis2/vertical_isis2/output/double_triplet_baseline/single_turn_injection/track_bump_parameters_x_10.0_y_0.0_mm_3/track_beam/forwards
+    ... backwards -  2 hits
+x: 3778.037727369074 y: -8.470329472543003e-19 z: -103.98094256513187 px: -2.5431913411137762e-17 py: -75.0908214268802 pz: 1.5894945881961101e-18 
+"""
+
+"""
+None:
+Tracking 2 tracks
+    ... forwards -  2 hits
+x: 3778.0377273690738 y: -103.98094256513187 z: 0.0 px: 0.0 py: 0.0 pz: 75.09082484564964 
+Saving to /mnt/db89a8c2-6f6b-4c5c-bbc4-5534fb22ff7a/cr67/work/2017-07-07_isis2/vertical_isis2/output/double_triplet_baseline/single_turn_injection/track_bump_parameters_x_10.0_y_0.0_mm_3/track_beam/forwards
+    ... backwards -  2 hits
+x: -8.470329472543003e-19 y: -103.98094256513187 z: 3778.037727369074 px: -75.0908214268802 py: 1.5894945881961101e-18 pz: -2.5431913411137762e-17 
+"""

@@ -37,6 +37,7 @@ class StoreDataInMemory(object):
         self.ignore = config.tracking["ignore_events"]
         self.verbose = config.tracking["verbose"]
         self.dt_tolerance = config.tracking["dt_tolerance"]
+        self.station_dt_tolerance = config.tracking["station_dt_tolerance"]
         self.hit_dict_of_lists = {}
         try:
             self.coordinate_transform = \
@@ -58,7 +59,7 @@ class StoreDataInMemory(object):
         tmp_hit_list_of_lists = []
         for hit_list in hit_list_of_lists:
             tmp_hit_list = []
-            for i, hit in enumerate(hit_list):
+            for hit in hit_list:
                 x = hit["x"]
                 y = hit["z"]
                 px = hit["px"]
@@ -94,16 +95,35 @@ class StoreDataInMemory(object):
                 tmp_hit_list.append(hit_1)
             tmp_hit_list_of_lists.append(tmp_hit_list)
         if self.verbose > 10:
-            print("Cut", cut_count, "events using dt_tolerance", self.dt_tolerance)
+            print("Cut", cut_count, "hits using dt_tolerance", self.dt_tolerance)
         return tmp_hit_list_of_lists
 
-
-
-    def reference_coordinate_transform(self, hit_list_of_lists):
-        return hit
+    def reallocate_stations(self, list_of_list_of_hits):
+        if self.station_dt_tolerance <= 0.0:
+            return list_of_list_of_hits
+        max_station = [max([hit['station'] for hit in hit_list]) for hit_list in list_of_list_of_hits]
+        max_station = max(max_station)+1
+        for hit_list in list_of_list_of_hits:
+            if len(hit_list) == 0:
+                return
+            hit_0 = hit_list[0]
+            for hit_1 in hit_list[1:]:
+                if hit_1['t'] - hit_0['t'] > self.station_dt_tolerance:
+                    hit_1['station'] = hit_0['station']+max_station
+                    hit_0 = hit_1
+        return list_of_list_of_hits
 
     def no_coordinate_transform(self, hit_list_of_lists):
-        return hit
+        return hit_list_of_lists
+
+    def opal_coordinate_transform(self, hit_list_of_lists):
+        for hit_list in hit_list_of_lists:
+            for hit in hit_list:
+                hit_copy = hit.deepcopy()
+                for key_in, key_out in self.opal_dict.items():
+                    hit[key_out] = hit_copy[key_in]
+                hit.mass_shell_condition("energy")
+        return hit_list_of_lists
 
     def finalise(self):
         # convert from a dict of list of hits to a list of list of hits
@@ -116,15 +136,18 @@ class StoreDataInMemory(object):
             hit_list_of_lists[i] = sorted(hit_list, key = lambda hit: hit['t'])
         hit_list_of_lists = self.coordinate_transform(self, hit_list_of_lists)
         hit_list_of_lists = self.dt_cut(hit_list_of_lists)
+        hit_list_of_lists = self.reallocate_stations(hit_list_of_lists)
         self.last = hit_list_of_lists
         self.hit_dict_of_lists = {}
         return hit_list_of_lists
 
     coord_dict = {
         "none":no_coordinate_transform,
+        "opal":opal_coordinate_transform,
         "azimuthal":azimuthal_coordinate_transform,
-        "reference":reference_coordinate_transform,
     }
+
+    opal_dict = {"x":"z", "z":"x", "px":"pz", "pz":"px"}
 
 class OpalTracking(TrackingBase):
     """
@@ -152,9 +175,13 @@ class OpalTracking(TrackingBase):
         self.beam_filename = beam_filename
         self.lattice_filename = lattice_filename
         if type(output_filename) == type(""):
-            output_filename = {output_filename:None}
+            output_filename = {output_filename:(None, None)}
         elif type(output_filename) == type([]):
-            output_filename = dict([(name, None) for name in output_filename])
+            output_filename = dict([(name, (None, None)) for name in output_filename])
+        elif type(output_filename) == type({}):
+            pass
+        else:
+            raise(RuntimeError("Did not understand filename type "+str(output_filename)))
         self.output_name_dict = output_filename
         self.opal_path = opal_path
         if not os.path.isfile(self.opal_path):
@@ -162,7 +189,8 @@ class OpalTracking(TrackingBase):
                   " Check that this points to the opal executable.")
         self.ref = reference_hit
         self.last = None
-        self.allow_duplicate_station = False
+        self.pass_through_analysis = None
+        self.station_dt_tolerance = 500.0
         self.do_tracking = True
         self.log_filename = log_filename
         if self.log_filename == None:
@@ -172,7 +200,9 @@ class OpalTracking(TrackingBase):
         self.mpi = mpi
         self.flags = []
         self.clear_path = None
+        self.min_track_number = 1 # minimum number of tracks
         self._read_probes = self._read_ascii_probes
+        self.name_dict = {}
 
     def get_name_dict(self):
         """
@@ -182,20 +212,21 @@ class OpalTracking(TrackingBase):
         # expand names by globbing each item in output_name_dict, while keeping
         # the station mapping
         for name in self.output_name_dict.keys():
-            station = self.output_name_dict[name]
+            station, ev = self.output_name_dict[name]
             name_list = glob.glob(name)
             for name in name_list:
-                name_dict[name] = station
+                name_dict[name] = (station, ev)
         # if station is None, assign a station
         used_station_list = list(name_dict.values())
         default_station = 0
         for name in sorted(name_dict.keys()):
-            station = name_dict[name]
-            if station == None:
+            station, ev = name_dict[name]
+            if (station, ev) == (None, None):
                 while default_station in used_station_list:
                     default_station += 1
-                name_dict[name] = default_station
+                name_dict[name] = (default_station, 0)
                 used_station_list.append(default_station)
+        self.name_dict = name_dict
         return name_dict
 
     def get_name_list(self):
@@ -234,7 +265,7 @@ class OpalTracking(TrackingBase):
         """
         return self.track_many([hit])[0]
         
-    def track_many(self, list_of_hits, pass_through_analysis = None):
+    def track_many(self, list_of_hits):
         """
         Track many hits through Opal
 
@@ -248,7 +279,8 @@ class OpalTracking(TrackingBase):
             print("Read probes")
         hit_list_of_lists = self._read_probes()
         if self.verbose > 30:
-            print("save")
+            lengths = [len(hit_list) for hit_list in hit_list_of_lists]
+            print("Read", len(hit_list_of_lists), "tracks with length", lengths, ". Saving.")
         self.save()
         if self.verbose > 30:
             print("Return")
@@ -289,7 +321,7 @@ class OpalTracking(TrackingBase):
         p_mass = common.pdg_pid_to_mass[2212]
         fout = open(self.beam_filename, "w")
         # OPAL goes into odd modes if there are < 2 entries in the beam file
-        while len(list_of_hits) > 0 and len(list_of_hits) < 3:
+        while len(list_of_hits) > 0 and len(list_of_hits) < self.min_track_number:
             list_of_hits.append(list_of_hits[-1])
         print(len(list_of_hits), file=fout)
         for i, hit in enumerate(list_of_hits):
@@ -330,14 +362,6 @@ class OpalTracking(TrackingBase):
                                    os.path.join(os.getcwd(), self.log_filename))
             except:
                 sys.excepthook(*sys.exc_info())
-
-    def _remove_duplicate_stations(self, list_of_hit_dicts):
-        if self.allow_duplicate_station:
-            return list_of_hit_dicts
-        dict_of_hit_dicts = {} # temp mapping of station to hit_dict
-        for hit_dict in list_of_hit_dicts:
-            dict_of_hit_dicts[station] = hit_dict # overwrites if a duplicate
-        return list(dict_of_hit_dicts.values()) # list of hit dicts
 
     def set_file_format(self, file_format):
         if file_format == "ascii":
@@ -406,17 +430,19 @@ class OpalTracking(TrackingBase):
         for file_name, station in sorted(file_dict.items()):
             try:
                 file_list.append((h5py.File(file_name, 'r'), station))
+                print("Opened", file_name)
             except OSError:
                 pass
         hit = ""
-        for fin, station in file_list:
-            hit_generator = self.generate_h5_step(fin, station)
+        for fin, tup in file_list:
+            station, ev = tup
+            hit_generator = self.generate_h5_step(fin, ev, station)
             for event, hit in hit_generator:
                 self.pass_through_analysis.process_hit(event, hit)
         self.last = self.pass_through_analysis.finalise()
         return self.last
 
-    def generate_h5_step(self, h5_file, station):
+    def generate_h5_step(self, h5_file, ev, station):
         for key in h5_file.keys():
             if key[:5] != "Step#":
                 if self.verbose > 10:
@@ -443,6 +469,7 @@ class OpalTracking(TrackingBase):
                     for key in self.print_keys:
                         print(str(round(hit[key], 3)).ljust(8), end=' ')
                     print()
+                hit["event_number"] += ev
                 yield hit["event_number"], hit
 
     h5_key_to_xboa_key = {"y":"x", "z":"y", "x":"z", "time":"t",

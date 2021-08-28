@@ -1,4 +1,4 @@
 *.pyc
 output
 env.sh
-
+logs/*.log

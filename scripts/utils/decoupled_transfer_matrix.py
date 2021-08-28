@@ -37,7 +37,7 @@ class DecoupledTransferMatrix(object):
     Note that from the definition of t and r, it follows that for some phase
     space vector in the coupled space u_2 = m u_1
     """
-    def __init__(self, transfer_matrix):
+    def __init__(self, transfer_matrix, normalise = False):
         """
         Calculate the decoupling transformation
         - transfer_matrix: a 2Nx2N list of lists whose elements make up the
@@ -49,6 +49,7 @@ class DecoupledTransferMatrix(object):
         found (e.g. lattice is not stable). 
         """
         self.m = numpy.array(transfer_matrix)
+        print("TransferMatrx\n", self.m)
         if self.m.shape[0] != self.m.shape[1]:
             raise ValueError("Transfer matrix was not square")
         if (self.m.shape[0]/2)*2 != self.m.shape[0]:
@@ -59,6 +60,9 @@ class DecoupledTransferMatrix(object):
               str(self.det_m - 1)+" - DecoupledTransferMatrix.det_tolerance was "+\
               str(self.det_tolerance) )
         self.dim = int(self.m.shape[0]/2)
+        print("Det m", self.det_m)
+        if normalise:
+            self._force_normalise()
         self.m_evalue, self.m_evector = numpy.linalg.eig(self.m)
         self.t_evector = None
         self.t_evalue = None
@@ -69,6 +73,9 @@ class DecoupledTransferMatrix(object):
         self.phase = [None]*self.dim
         self.chol_inv = None
         self._get_decoupling()
+
+    def _force_normalise(self):
+        self.m /= numpy.linalg.det(self.m)**(1.0/self.m.shape[0])
 
     def _get_decoupling(self):
         """
@@ -88,6 +95,7 @@ class DecoupledTransferMatrix(object):
             j = 2*i
             #evector = numpy.transpose(self.m_evector)[i]
             evector = numpy.transpose(self.m_evector)[j]
+            print("Evector\n", evector)
             phi_i = numpy.angle(evector[j])
             exp_phi_i = numpy.exp(1j*phi_i)
             try:
@@ -118,11 +126,11 @@ class DecoupledTransferMatrix(object):
             t_test[j, j+1] = sign*beta_i*math.sin(phase_i)
             t_test[j+1, j] = -sign*gamma_i*math.sin(phase_i)
         self.r = numpy.dot(self.m_evector, numpy.linalg.inv(par_t_evector))
-        self.r = self.r/numpy.linalg.det(self.r)**(1./self.dim)
+        self.r = self.r/numpy.linalg.det(self.r)**(1./2./self.dim)
         self.r_inv = numpy.linalg.inv(self.r)
         #self.t = numpy.dot(self.r_inv, numpy.dot(self.m, self.r))
         self.t = t_test
-        self.m = numpy.dot(self.r, numpy.dot(self.t, self.r_inv))
+        #self.m = numpy.dot(self.r, numpy.dot(self.t, self.r_inv))
         self.t_evalue = numpy.array([0+0j]*(2*self.dim))
         for i in range(0, 2*self.dim, 2):
             t_quad = self.t[i:i+2, i:i+2]
@@ -256,7 +264,10 @@ class DecoupledTransferMatrix(object):
         aa_vector = [None]*(self.dim*2-1)+[r*r]
         for i in range(self.dim*2-1):
             try:
-                aa_vector[i] = math.acos(c_vector[i]/r)
+                if r == 0.0:
+                    aa_vector[i] = 0.0
+                else:
+                    aa_vector[i] = math.acos(c_vector[i]/r)
             except ValueError:
                 aa_vector[i] = 0.
             r *= math.sin(aa_vector[i])
@@ -308,23 +319,9 @@ class DecoupledTransferMatrix(object):
         print(self.m_evector)
         print("M evalue")
         print(self.m_evalue)
-        for i in range(self.dim):
-            j = 2*i
-            cos_mu = (self.t[j, j]+self.t[j+1, j+1])/2.
-            print("Cos", i, cos_mu, math.cos(self.phase[i]))
-            j_matrix = numpy.array([
-                [self.t[j, j]-cos_mu, self.t[j, j+1]],
-                [self.t[j+1, j], self.t[j+1, j+1]-cos_mu]
-            ])
-            det_j = cmath.sqrt(numpy.linalg.det(j_matrix))
-            j_matrix /= det_j
-            print("Sin", i, det_j, math.sin(self.phase[i]))
-            print("Beta", i, j_matrix[0, 1], self.v_t[j, j])
-            print("Alpha", i, j_matrix[0, 0], -j_matrix[1, 1], -self.v_t[j, j+1])
-            print("Gamma", i, -j_matrix[1, 0], self.v_t[j+1, j+1])
         print("T evector")
         print(self.t_evector)
-        print("R")
+        print("R (det: ", numpy.linalg.det(self.r), ")")
         print(self.r)
         print("T")
         print(self.t)

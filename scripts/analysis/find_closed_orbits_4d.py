@@ -8,13 +8,12 @@ import time
 
 import ROOT
 import numpy
-numpy.seterr('raise')
+numpy.seterr('warn')
 numpy.set_printoptions(linewidth=200)
 
 from xboa.hit import Hit
 import utils.utilities
 import xboa.common
-
 
 from PyOpal.polynomial_coefficient import PolynomialCoefficient
 from PyOpal.polynomial_map import PolynomialMap
@@ -38,6 +37,7 @@ class ClosedOrbitFinder4D(object):
         self.subs_tracking = {}
         self.output_list = []
         self.print_list = []
+        self.py_opal_setup = False
         self.get_tracking(True)
 
     def get_tracking(self, clear):
@@ -70,7 +70,6 @@ class ClosedOrbitFinder4D(object):
         ]
         return numpy.array(rotation_matrix)
 
-
     def get_vector(self, hit_list):
         tm_list = []
         for hit in hit_list:
@@ -78,19 +77,23 @@ class ClosedOrbitFinder4D(object):
             tm_list.append(vector)
         return tm_list
 
-    def track_many(self, seed_list, t, is_final):
+    def track_many(self, seed_list, t, final_subs):
         overrides = self.config_co["subs_overrides"]
-        if is_final:
-            overrides = self.config_co["final_subs_overrides"]
+        if final_subs:
+            overrides = self.config_co[final_subs]
         overrides["__n_particles__"] = len(seed_list)+1
         hit_list = []
+        os.chdir(self.run_dir)
+        self.subs_tracking = utils.utilities.do_lattice(self.config, self.subs, overrides)
+        if self.config_co["use_py_tracking"]:
+            self.tracking = utils.utilities.setup_py_tracking(self.config, self.run_dir, self.config_co["py_tracking_phi_list"])
         for seed in seed_list:
             hit = self.seed_to_hit(seed, t)
             hit_list.append(hit)
-        hit_list.insert(0, hit_list[0])
-        os.chdir(self.run_dir)
-        self.subs_tracking = utils.utilities.do_lattice(self.config, self.subs, overrides)
-        track_list = self.tracking.track_many(hit_list)
+        track_list = []
+        if len(hit_list) > 0:
+            hit_list.insert(0, hit_list[0])
+            track_list = self.tracking.track_many(hit_list)
         os.chdir(self.here)
         return track_list
 
@@ -122,7 +125,8 @@ class ClosedOrbitFinder4D(object):
         try:
             dm = self.get_decoupled(tm)
             print("Determinant:  ", numpy.linalg.det(dm.m))
-            print("Symplecticity:\n", dm.symplecticity(dm.m))
+            print("Symplecticity:")
+            print(self.str_matrix(dm.symplecticity(dm.m), fmt="20.2f"))
             print("Phase advance:", [dm.get_phase_advance(i)/math.pi/2. for i in range(2)])
         except Exception:
             sys.excepthook(*sys.exc_info())
@@ -214,7 +218,7 @@ class ClosedOrbitFinder4D(object):
     def print_ref_track(self, ref_track, seeds, tm):
         print("Reference track for seed", seeds)
         for i, hit in enumerate(ref_track):
-            ref_list = [hit[var] for var in self.var_list]
+            ref_list = [hit[var] for var in self.var_list+["t", "kinetic_energy"]]
             fmt = "10.6g"
             if not tm:
                 fmt = "14.10g"
@@ -265,6 +269,7 @@ class ClosedOrbitFinder4D(object):
             except Exception:
                 # if tm calculation fails, we abort with the last successful result
                 # stored in seeds (e.g. tracking not convergent)
+                print("Tracking found the following files:", self.tracking.name_dict)
                 sys.excepthook(*sys.exc_info())
                 break
             seeds = new_seeds
@@ -343,10 +348,18 @@ class ClosedOrbitFinder4D(object):
                     output = self.tm_co_fitter(seed)
                     output["seed_in"] = seed
                     output["seed_hit"] = self.seed_to_hit(output["seed"], 0.).dict_from_hit()
+                except Exception:
+                    sys.excepthook(*sys.exc_info())
+                if self.config_co["do_minuit"]:
+                    minuit_out = self.find_co_minuit(output["seed"])
+                    output["seed"] = minuit_out
+                    output["seed_hit"] = self.seed_to_hit(output["seed"], 0.).dict_from_hit()
+                try:
                     self.output_list[-1].append(output)
-                    a_track = self.track_many([output["seed"]]*3, 0., True)[1]
+                    a_track = self.track_many([output["seed"]]*3, 0., "final_subs_overrides")[1]
                     output["ref_track"] = [hit.dict_from_hit() for hit in a_track]
                     self.print_ref_track(a_track, output["seed"], None)
+                    self.track_many([], 0.0, "plotting_subs")
                 except Exception:
                     sys.excepthook(*sys.exc_info())
                 self.save_track_orbit()
@@ -365,6 +378,56 @@ class ClosedOrbitFinder4D(object):
         if overwrite:
             output = output_dir+"/"+self.config_co["output_file"]
             os.rename(tmp, output)
+
+    def find_co_minuit(self, seed):
+        print("Running minuit", seed)
+        seed_hit = self.seed_to_hit(seed, 0)
+        force = {"x'":0.0, "y'":0.0}
+        n_iterations = self.config_co["minuit_iterations"]
+        target_score = self.config_co["minuit_tolerance"]
+        self.opt_errs = {"x":1, "x'":0.1, "y":1, "y'":0.1}
+        self.iteration_number = 1
+        self.minuit = ROOT.TMinuit(len(self.var_list))
+        self.minuit_stations = [0, 1]
+        for i, var in enumerate(self.var_list):
+            if var in force:
+                seed_hit[var] = force[var]
+            self.minuit.DefineParameter(i, var, seed_hit[var], 1e-1, 0, 0)
+            if var in force:
+                self.minuit.FixParameter(i)
+
+        self.minuit.SetFCN(self.minuit_function)
+        self.minuit.Command("SIMPLEX "+str(n_iterations)+" "+str(target_score))
+        return self.get_minuit_hit()
+
+    def get_minuit_hit(self):
+        seed = [None]*4
+        for i, var in enumerate(self.var_list):
+            x = ROOT.Double()
+            err = ROOT.Double()
+            self.minuit.GetParameter(i, x, err)
+            seed[i]  = float(x)
+        hit = self.seed_to_hit(seed, 0)
+        return seed
+
+
+    def minuit_function(self, nvar, parameters, score, jacobian, err):
+        seed_in = self.get_minuit_hit()
+        hit_list = self.track_many([seed_in]*3, 0.0, False)[1]
+        print("Iteration", self.iteration_number, "with seed", seed_in)
+        for hit in hit_list:
+            for var in self.var_list:
+                print(var.ljust(4), format(hit[var], "14.10g"), end=" ")
+            print()
+        score[0] = 0.0
+        print("Scores")
+        for var in self.var_list:
+            value_list = [hit_list[i][var] for i in self.minuit_stations]
+            delta = numpy.std(value_list)
+            score[0] += delta/self.opt_errs[var]
+            print(var.ljust(4), format(delta, "14.10g"), end=" ")
+        print("Total", score[0])
+        self.iteration_number += 1
 
     run_index = 1
 

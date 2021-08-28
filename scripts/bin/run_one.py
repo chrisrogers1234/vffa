@@ -5,6 +5,7 @@ import importlib
 import subprocess
 import datetime
 
+import numpy
 import ROOT
 
 import xboa.common
@@ -15,6 +16,7 @@ import analysis.find_da
 import analysis.find_bump_parameters
 import analysis.build_bump_surrogate_model
 import analysis.track_bump
+import analysis.track_beam
 
 from utils import utilities
 
@@ -26,9 +28,10 @@ def get_config():
     config_file = sys.argv[1].replace(".py", "")
     config_file = config_file.split("scripts/")[1]
     config_file = config_file.replace("/", ".")
-    print("Using configuration module", config_file)
+    config_args = tuple(sys.argv[2:])
+    print("Using configuration module", config_file, "with arguments", config_args)
     config_mod = importlib.import_module(config_file)
-    config = config_mod.Config()
+    config = config_mod.Config(*config_args)
     return config_file_name, config
 
 def output_dir(config, config_file_name):
@@ -60,6 +63,8 @@ def main():
     output_dir(config, config_file_name)
     utilities.setup_gstyle()
     ROOT.gErrorIgnoreLevel = config.run_control["root_verbose"]
+    if config.run_control["random_seed"] != None:
+        numpy.random.seed(config.run_control["random_seed"])
     #master_substitutions(config)
     if config.run_control["find_closed_orbits_4d"]:
         analysis.find_closed_orbits_4d.main(config)
@@ -73,6 +78,9 @@ def main():
         analysis.build_bump_surrogate_model.main(config)
     if config.run_control["track_bump"]:
         analysis.track_bump.main(config)
+    if config.run_control["track_beam"]:
+        analysis.track_beam.main(config)
+    print("Finished with output in", config.run_control["output_dir"])
 
 if __name__ == "__main__":
     try:

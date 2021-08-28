@@ -29,6 +29,11 @@ class ClosedOrbitsPlotter(object):
         flattened = []
         for item in my_data:
             flattened += item
+            user_def = file_name.split("_x_")[1]
+            user_def = user_def.split("_y_")[0]
+            user_def = float(user_def)
+            for thing in item:
+                thing["substitutions"]["__position [mm]__"] = user_def
         self.tm_lambda = lambda tm: print("Rotation R:\n", numpy.real(tm.r),
                                           "\nM Symplecticity:\n", tm.symplecticity(tm.m),
                                           "\nM Det:", numpy.linalg.det(tm.m),
@@ -45,11 +50,35 @@ class ClosedOrbitsPlotter(object):
                          "y", lambda item: item["seed"][2],
                          "delta", self.get_co, None)
 
+    def do_plots_by_sub_2(self):
+        self.tm_lambda = self.tm_det
+        name = "abs(1-Determinant)"
+        canvas, mgraph = self.plot_item(name, self.get_tm, axis, None, None)
+        mgraph.Draw("AP")
+        canvas.SetLogx()
+        canvas.SetLogy()
+        canvas.Print(self.output_dir+"/"+axis_name+"_vs_determinant.png")
+
+        self.tm_lambda = self.tm_sym_xxp
+        name = "J(0,1)"
+        canvas, mgraph = self.plot_item(name, self.get_tm, axis, None, None)
+        mgraph.Draw("AP")
+        canvas.Print(self.output_dir+"/"+axis_name+"_vs_determinant.png")
+
     def do_plots_by_sub(self):
         subs_axes = utilities.get_substitutions_axis(self.data, self.subs_key)
         print(subs_axes)
         for axis in subs_axes:
             axis_name = utilities.sub_to_name(axis).lower().replace(" ", "_")
+            canvas, mgraph = None, None
+            for self.phase_advance_axis in 0, 1:
+                self.tm_lambda = self.tm_phase_advance
+                name = "Phase Advance "+str(self.phase_advance_axis)
+                canvas, mgraph = self.plot_item(name, self.get_tm, axis, canvas, mgraph)
+            mgraph.Draw("AP")
+            canvas.Print(self.output_dir+"/"+axis_name+"_vs_phase_advance.png")
+
+            continue
             for name in "x", "x'", "y", "y'":
                 canvas, mgraph = self.plot_item(
                     name,
@@ -59,13 +88,6 @@ class ClosedOrbitsPlotter(object):
                 name = name.replace("'", "p")
                 canvas.Print(self.output_dir+"/"+axis_name+"_vs_"+name+".png")
 
-            canvas, mgraph = None, None
-            for self.phase_advance_axis in 0, 1:
-                self.tm_lambda = self.tm_phase_advance
-                name = "Phase Advance "+str(self.phase_advance_axis)
-                canvas, mgraph = self.plot_item(name, self.get_tm, axis, canvas, mgraph)
-            mgraph.Draw("AP")
-            canvas.Print(self.output_dir+"/"+axis_name+"_vs_phase_advance.png")
             
             for self.phase_advance_axis in 0, 1:
                 canvas, mgraph = None, None
@@ -76,17 +98,32 @@ class ClosedOrbitsPlotter(object):
                 name = name.replace(" ", "_")
                 canvas.Print(self.output_dir+"/"+axis_name+"_vs_"+name+".png")
 
-            self.tm_lambda = self.tm_det
-            name = "Determinant"
-            canvas, mgraph = self.plot_item(name, self.get_tm, axis, None, None)
-            mgraph.Draw("AP")
-            canvas.Print(self.output_dir+"/"+axis_name+"_vs_determinant.png")
 
             name = "delta"
             canvas, mgraph = self.plot_item(name, self.get_co, axis, None, None)
             mgraph.Draw("AP")
-            #canvas.SetLogy()
+            canvas.SetLogx()
+            canvas.SetLogy()
             canvas.Print(self.output_dir+"/"+axis_name+"_vs_delta.png")
+
+            name = "abs(J(0, 1))"
+            self.tm_lambda = self.tm_symplex_01
+            canvas, mgraph = self.plot_item(name, self.get_tm, axis, None, None)
+            mgraph.Draw("AP")
+            canvas.SetLogx()
+            canvas.Print(self.output_dir+"/j01_vs_delta.png")
+
+
+            for var in ["x", "x'", "y", "y'"]:
+                self.sigma_var = var
+                name = "sigma_"+var
+                canvas, mgraph = self.plot_item(name, self.get_sigma, axis, None, None)
+                mgraph.Draw("AP")
+                canvas.SetLogx()
+                canvas.SetLogy()
+                canvas.Print(self.output_dir+"/"+axis_name+"_vs_"+name+".png")
+
+
 
 
     def plot_item_2(self, x_name, x_lambda, y_name, y_lambda, z_name, z_lambda, canvas):
@@ -186,7 +223,7 @@ class ClosedOrbitsPlotter(object):
         return self.tm_lambda(tm)
 
     def tm_det(self, tm):
-        det =  numpy.linalg.det(tm.m)
+        det =  abs(1-numpy.linalg.det(tm.m))
         return det
 
     def tm_phase_advance(self, tm):
@@ -194,6 +231,10 @@ class ClosedOrbitsPlotter(object):
         pa = sorted(pa)
         pa = abs(pa[self.phase_advance_axis]/2./math.pi)
         return pa
+
+    def tm_symplex_01(self, tm):
+        print("Symplecticity\n", tm.symplecticity(tm.m))
+        return abs(tm.symplecticity(tm.m)[0][1])
 
     def get_co(self, item):
         var_list = ["x", "x'", "y", "y'"]
@@ -205,6 +246,10 @@ class ClosedOrbitsPlotter(object):
         delta = [(ref_0[var]-ref_1[var])*units[var] for var in var_list]
         delta_mag = sum([x*x for x in delta])**0.5
         return delta_mag
+
+    def get_sigma(self, item):
+        ref = [Hit.new_from_dict(hit_dict)[self.sigma_var] for hit_dict in item["ref_track"]]
+        return numpy.std(ref)
 
     def parse_args(self, args):
         parser = argparse.ArgumentParser()

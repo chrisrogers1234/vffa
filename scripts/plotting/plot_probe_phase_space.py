@@ -62,16 +62,20 @@ class TransmissionCut(object):
         return hit['event_number'] not in self.accepted
 
 class PlotProbes(object):
-    def __init__(self, forwards_file_name_list, backwards_file_name_list, plot_dir):
+    def __init__(self, forwards_file_name_list, plot_dir):
         path = os.path.expandvars("${OPAL_EXE_PATH}/opal")
         mass = xboa.common.pdg_pid_to_mass[2212]
         ref = xboa.hit.Hit.new_from_dict({"pid":2212, "mass":mass, "charge":1.})
-        self.tracking = opal_tracking.OpalTracking("", "", ref, forwards_file_name_list, path)
+        file_name_dict = self.setup_stations(forwards_file_name_list) # setup a dict of file_name:station_number
+        print(file_name_dict)
+        self.tracking = opal_tracking.OpalTracking("", "", ref, file_name_dict, path)
         self.tracking.set_file_format("hdf5")
+        self.tracking.name_dict
         self.plot_dir = plot_dir
         my_config = config.Config()
         my_config.tracking["verbose"] = 100
         my_config.tracking["station_dt_tolerance"] = 1000.0
+        my_config.tracking["dt_tolerance"] = -1.0
         my_config.tracking["analysis_coordinate_system"] = "azimuthal"
         self.probe_data = opal_tracking._opal_tracking.StoreDataInMemory(my_config)
         self.tracking.pass_through_analysis = self.probe_data
@@ -87,6 +91,23 @@ class PlotProbes(object):
         self.fig_list = []
         self.shared_range = []
         self.s = 1
+
+    def setup_stations(self, file_name_globs):
+        file_name_list = []
+        for fname in file_name_globs:
+            file_name_list += glob.glob(fname)
+        endings = [os.path.split(fname)[1] for fname in file_name_list]
+        endings = sorted(list(set(endings)))
+        station_dict = {}
+        ev_counter = {}
+        for fname in file_name_list:
+            this_ending = os.path.split(fname)[1]
+            if this_ending not in ev_counter:
+                ev_counter[this_ending] = 0
+            ev_counter[this_ending] += 1
+            station_dict[fname] = (endings.index(this_ending), ev_counter[this_ending])
+        return station_dict
+
 
     def load_data(self):
         self.tracking._read_probes()
@@ -134,7 +155,7 @@ class PlotProbes(object):
                 action_angle[3] *= hit["p"]/hit["mass"]
                 coupled = [hit[var] for var in ["x", "x'", "y", "y'"]]
                 if self.will_cut_1(hit, decoupled, action_angle, hit_list[0]):
-                    n_cuts += 1
+                    n_cuts += 1                   
                     continue
                 if self.will_cut_2(hit, decoupled, action_angle, hit_list[0]):
                     station_not_list.append([this_station]+coupled+decoupled+action_angle+[hit[e] for e in extras])
@@ -185,7 +206,7 @@ class PlotProbes(object):
 
     def plot_phase_spaces(self):
         station_list = sorted(list(self.stations.keys()))
-        station_list = station_list[0:51:5]#+station_list[0:11:1]+station_list[60::10]+station_list[-2:-1:1]
+        station_list = station_list[0:26:5]+station_list[60::10]#+station_list[0:11:1]+station_list[60::10]+station_list[-2:-1:1]
         station_list = set(station_list)
         for station in station_list:
             h_list, n_list = self.get_hits(station)
@@ -197,7 +218,7 @@ class PlotProbes(object):
                 continue
             z_axis = None
             xlim, ylim = None, None
-            for name, hit_list, not_list in [("", h_list, n_list), ("not-", [], n_list), ("hit-", h_list, [])]:
+            for name, hit_list, not_list in [("", h_list, n_list)]:#, ("not-", [], n_list), ("hit-", h_list, [])]:
                 figure = matplotlib.pyplot.figure(figsize=(20,10))
                 axes = figure.add_subplot(2, 3, 1)
                 self.plot_phase_space(axes, hit_list, not_list, 1, 3, z_axis, station)
@@ -302,7 +323,7 @@ class PlotProbes(object):
     def build_colors(self, hit_list):
         self.color_dict = {}
         a4d_list = [hit[10]+hit[12] for hit in hit_list]
-        self.max_a4d = max(a4d_list)
+        self.max_a4d = max(a4d_list+[0.04])
         for hit in hit_list:
             self.color_dict[hit[14]] = self.color_hit(hit)
 
@@ -318,7 +339,7 @@ class PlotProbes(object):
 
 def main():
     DecoupledTransferMatrix.det_tolerance = 1.0
-    a_dir = "output/double_triplet_baseline/single_turn_injection/track_bump_parameters_x_10.0_y_0.0_mm_3/track_beam/"
+    a_dir = "output/double_triplet_baseline/single_turn_injection/track_bump_parameters_x_0.0_y_30.0_mm_4/track_beam/"
     output_dir = a_dir.split("/tmp/")[0]
     plot_dir = output_dir+"/plot_probe/"
     config = a_dir.split("/tmp/")
@@ -326,11 +347,9 @@ def main():
         shutil.rmtree(plot_dir)
     os.makedirs(plot_dir)
     for probe in ["1"]: #range(1, 3):
-        for_glob_name = a_dir+"forwards/RINGPROBE0"+str(probe)+".h5"
+        for_glob_name = a_dir+"forwards_*/RINGPROBE0"+str(probe)+".h5"
         forwards_file_name_list = glob.glob(for_glob_name)
-        back_glob_name = a_dir+"backwards/RINGPROBE0"+str(probe)+".h5"
-        backwards_file_name_list = [] #glob.glob(back_glob_name)
-        plotter = PlotProbes(forwards_file_name_list, backwards_file_name_list, plot_dir)
+        plotter = PlotProbes(forwards_file_name_list, plot_dir)
         plotter.co_param_list = [{
             "filename":os.path.join(a_dir, "../closed_orbits_cache"),
             "ref_to_bump_station_mapping":dict([(i,i) for i in range(1001)]),
@@ -338,7 +357,7 @@ def main():
         try:
             plotter.load_data()
         except IOError:
-            print("IOError trying", for_glob_name, back_glob_name)
+            print("IOError trying", for_glob_name)
             raise
         #plotter.stations = set([0])
         cut_station = 0
@@ -347,8 +366,8 @@ def main():
         plotter.cut_list_1.append(Cut("au", 0.1, operator.gt))
         plotter.cut_list_1.append(Cut("av", 0.1, operator.gt))
         plotter.cut_list_2.append(TransmissionCut(cut_hits))
-        plotter.cut_list_2.append(Cut2(10, 0.040, operator.gt, cut_hits))
-        plotter.cut_list_2.append(Cut2(12, 0.040, operator.gt, cut_hits))
+        #plotter.cut_list_2.append(Cut2(10, 0.040, operator.gt, cut_hits))
+        #plotter.cut_list_2.append(Cut2(12, 0.040, operator.gt, cut_hits))
         plotter.title_text_1 = "Cut at turn "+str(cut_station)
         plotter.plot_phase_spaces()
 

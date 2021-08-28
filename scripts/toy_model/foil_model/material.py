@@ -2,6 +2,9 @@ import json
 import math
 import copy
 
+import numpy.polynomial # hermite polynomials
+import xboa.common
+
 from . import particle
 from . import constants
 
@@ -13,6 +16,7 @@ class Material(object):
         self.elements_list = []
         self.X0 = 0.
         self.stripping_algorithm = "saha"
+        self.straggling_hermite = None
 
     def set_material(self, material_name):
         fin = open(self.materials_file)
@@ -52,6 +56,50 @@ class Material(object):
         for element in self.elements_list:
             dEdz += coefficient * element["z"]/element["a"]*element["fraction"]
         return -dEdz
+
+    def energy_straggling_moments(self, particle, thickness):
+        """
+        Calculate the energy straggling moments for an incident particle, following
+        Rotondi and Montagna NIM B 47 (1990).
+        """
+        m_e = xboa.common.pdg_pid_to_mass[11] # electron mass
+        eps_max = 2*m_e*particle.beta_rel**2*particle.gamma_rel**2/(1+2*particle.gamma_rel*m_e/particle.mass)
+        eta_const = 0.1536*particle.charge**2/particle.beta_rel**2*thickness
+        eta = 0.0
+        for element in self.elements_list:
+            eta += eta_const*element["z"]/element["a"]*element["fraction"]
+        kappa = eta/eps_max
+        #print("kappa", kappa, "eta", eta, "eps_max", eps_max)
+        alpha = [0.0 for i in range(6)]
+        for n in range(2, 6):
+            alpha[n] = eta**n/kappa**(n-1)*(1/(n-1) - particle.beta_rel**2/n)
+        mu = [1.0, 0.0, alpha[2], alpha[3], 3*alpha[2]**2+alpha[4], 10*alpha[2]*alpha[3]+alpha[5]]
+        return mu
+
+    def set_energy_straggling_distribution(self, particle, thickness):
+        """
+        Calculate the energy straggling for an incident particle, following
+        Rotondi and Montagna NIM B 47 (1990).
+        """
+        mu = self.energy_straggling_moments(particle, thickness)
+        sigma = mu[2]**0.5
+        mu_sig = [0.0, 0.0, 1.0]+[mu[i]/mu[2]**(i/2.0) for i in range(3, 6)] # mu[i]/sigma^i
+        fac = [math.factorial(i) for i in range(10)]
+        hermite_coeffs = [1, 0.0, 0.0,
+            1/fac[3]*mu_sig[3],
+            1/fac[4]*(mu_sig[4]-3),
+            1/fac[5]*(mu_sig[5]-10*mu_sig[3]),
+            10/fac[6]*mu_sig[3]**2,
+            35/fac[7]*mu_sig[3]*(mu_sig[4]-3),
+            280/fac[9]*mu_sig[3]**3
+        ]
+        self.straggling_hermite = numpy.polynomial.Hermite(hermite_coeffs)
+        return self.straggling_hermite
+
+    def energy_straggling(self, particle, thickness, delta):
+        mu = self.energy_straggling_moments(particle, thickness)
+        herm = self.set_energy_straggling_distribution(particle, thickness)
+        return herm(delta)*1./(2*math.pi*mu[2])**0.5 * math.exp(- delta*delta/2/mu[2])
 
     def stripping_cross_section_nakai(self, particle):
         """

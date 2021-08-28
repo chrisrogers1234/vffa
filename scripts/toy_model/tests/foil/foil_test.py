@@ -54,6 +54,26 @@ def momentum_change(material, kinetic_energy, column_density):
     print("For material with column density", column_density, "and incident KE", kinetic_energy, "dE/E", de_1/kinetic_energy, "dp/p", dp_over_p_1)
     return dp_over_p_1
 
+def energy_straggling(material, kinetic_energy, column_density):
+    #particle_0 = Particle.new_from_ke(kinetic_energy, 2212)
+    material = Material()
+    material.set_material("liquid_hydrogen")
+    thickness = 35.0 # cm
+    column_density = 35.0 *material.density
+
+    particle_0 = Particle.new_from_momentum(200.0, 13)
+    dE = material.energy_loss_dz(particle_0)*thickness
+    mu = material.energy_straggling_moments(particle_0, column_density)
+    print("dE:", dE, "mu:", mu)
+    for i in range(51):
+        delta = (i-5.0)/5.0
+        p = material.energy_straggling(particle_0, column_density, delta)
+        print(format(delta, "6.4g"), p)
+    print(material.straggling_hermite)
+    #f = material.energy_straggling_distribution(particle_0, column_density)
+    #for delta in range(100):
+    #    dE = delta/100.0
+    #    print(format(dE, "8.4g"), format(f(dE), "8.4g"))
 
 def scattering(material):
     particle = Particle.new_from_momentum(75.0, 2212)
@@ -82,11 +102,12 @@ def foil_test():
     foil = setup_foil()
     #fig = energy_loss(foil)
     #fig.savefig(out_dir+"foil_test_dedx.png")
-    #fig = scattering(foil)
-    #fig.savefig(out_dir+"foil_test_scattering.png")
-    dp_over_p_1 = momentum_change(foil, 3.0, 5e-6)
-    dp_over_p_2 = momentum_change(foil, 3.0, 20e-6)
-    print("Ratio", dp_over_p_1/dp_over_p_2)
+    fig = scattering(foil)
+    fig.savefig(out_dir+"foil_test_scattering.png")
+    #dp_over_p_1 = momentum_change(foil, 3.0, 5e-6)
+    #dp_over_p_2 = momentum_change(foil, 3.0, 20e-6)
+    #print("Ratio", dp_over_p_1/dp_over_p_2)
+    #energy_straggling(foil, 1000.0, 20e-6)
 
 if __name__ == "__main__":
     foil_test()

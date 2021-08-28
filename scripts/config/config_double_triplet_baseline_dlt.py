@@ -1,7 +1,7 @@
 import math
 import os
 
-def get_baseline_substitution():
+def get_baseline_substitution(offset):
     field_factor = 1.8
     injection_tof = 1016.091866
     baseline = {
@@ -21,17 +21,15 @@ def get_baseline_substitution():
         "__hdf5__":True,
         "__stepper__":"RK-4",
         "__spt_frequency__":1,
-        "__output_algorithm__":"RK4",
-        "__output_plane_tolerance__":1e-6,
         # main magnets
         "__bf__":-0.5/field_factor, #-0.25/0.44, # T
         "__bfa__":1.6, #-0.25/0.44, # T
         "__bfb__":-0.6, #-0.25/0.44, # T
-        "__bf_offset__":0.02,
+        "__bf_offset__":offset,
         "__bd__":0.1/field_factor, #0.25, #+0.20, # T
         "__bda__":1.6, #0.25, #+0.20, # T
         "__bdb__":-0.6, #0.25, #+0.20, # T
-        "__bd_offset__":0.02,
+        "__bd_offset__":offset,
         "__d_length__":0.24, # m
         "__f_length__":0.40, # m
         "__fd_gap__":0.08, # m # 0.08
@@ -119,16 +117,9 @@ def get_baseline_substitution():
         "__v_bump_3_dphi__":0.25,
         "__v_bump_4_dphi__":0.0,
         "__v_bump_5_dphi__":0.0,
-
-        "__quad_1_phi__":0.0,
-        "__quad_1_dphi__":0.0,
-        "__quad_1_grad__":0.0,
-        "__quad_1_scales__":[1.0, 1.0],
-        "__quad_1_times__":[-1e9, 1e9],
-
         "__foil_probe_1_phi__":3.095,
         "__foil_probe_1_dphi__":0.25/2.+0.025*math.pi/10.0,
-        "__foil_probe_2_phi__":2.905,
+        "__foil_probe_2_phi__":4.095,
         "__foil_probe_2_dphi__":0.25/2.+0.025*math.pi/10.0,
         "__septum_field__":-0.0,
         "__septum_length__":0.1, # m
@@ -144,8 +135,9 @@ class Config(object):
         delta = 0.1
         xp_ratio = 0.1
         tol = 1e-12
+        offset = 0.03
         self.find_closed_orbits = {
-            "seed":[[3739.4181596237268, 5.448327351942339e-06, -88.82695590394741, -4.80322539075928e-07]],#, 0., 3.]],
+            "seed":[[3778.1261886709094, 1.1313917415378683e-05, -103.52060453033312, 9.491741235656548e-06]],#, 0., 3.]],
             "deltas":[delta, delta*xp_ratio, delta, delta*xp_ratio],
             "adapt_deltas":False,
             "output_file":"closed_orbits_cache",
@@ -160,12 +152,9 @@ class Config(object):
             "us_cell":0,
             "ds_cell":1,
             "root_batch":0,
-            "max_iterations":0, 
+            "max_iterations":10, 
             "tolerance":0.00001,
             "do_plot_orbit":False,
-            "do_minuit":True,
-            "minuit_tolerance":1e-10,
-            "minuit_iterations":1000,
             "run_dir":"tmp/find_closed_orbits",
             "probe_files":"RINGPROBE*.h5",
             "overwrite":True,
@@ -187,7 +176,7 @@ class Config(object):
         }
         self.find_da = {
             "run_dir":"tmp/find_da/",
-            "probe_files":"RINGPROBE01.h5",
+            "probe_files":"RINGPROBE*.h5",
             "subs_overrides":{"__n_turns__":12.1, "__do_magnet_field_maps__":"False", "__step_size__":0.001},
             "get_output_file":"get_da",
             "scan_output_file":"scan_da",
@@ -198,7 +187,7 @@ class Config(object):
             "y_seed":1.,
             "min_delta":0.9,
             "max_delta":1000.,
-            "required_n_hits":10,
+            "required_n_hits":100,
             "dt_tolerance":0.5, # fraction of closed orbit dt
             "max_iterations":15,
             "decoupled":True,
@@ -374,37 +363,20 @@ class Config(object):
             "bump_probe_station":0,
         }
 
-        self.substitution_list = [get_baseline_substitution()]
-
-        self.track_beam = {
-            "closed_orbit_file":"closed_orbits_cache",
-            "eigen_emittances":[[1e-3, 1], [1, 1e-3], [1, 1], [2, 2], [4, 4]],
-            "n_per_dimension":5,
-            "variables":["x","px","y","py"],
-            "energy":3.0,
-            "probe_files":"RINGPROBE*.h5",
-            "subs_overrides":{
-                "__n_turns__":1.1,
-                "__do_magnet_field_maps__":"False"
-            },
-            "run_dir":"tmp/track_beam/",
-
-        }
+        self.substitution_list = [get_baseline_substitution(offset)]
         
         self.run_control = {
             "find_closed_orbits_4d":False,
             "find_tune":False,
-            "find_da":False,
+            "find_da":True,
             "find_bump_parameters":False,
             "build_bump_surrogate_model":False,
             "track_bump":False,
-            "track_beam":False,
             "clean_output_dir":False,
-            "output_dir":os.path.join(os.getcwd(), "output/double_triplet_baseline/baseline"),
+            "output_dir":os.path.join(os.getcwd(), "output/double_triplet_baseline/offset_scan/"+str(offset).ljust(4, "0")+"/"),
             "root_verbose":6000,
             "faint_text":'\033[38;5;243m',
-            "default_text":'\033[0m',
-            "random_seed":0,
+            "default_text":'\033[0m'
         }
 
         self.tracking = {
@@ -425,11 +397,10 @@ class Config(object):
             "file_format":"hdf5",
             "analysis_coordinate_system":"azimuthal",
             "dt_tolerance":1., # ns
-            "station_dt_tolerance":-1., # ns, if +ve and two hits are close together, reallocate station
             "py_tracking":{
                 "derivative_function":"u_derivative",
                 "atol":tol,
                 "rtol":tol,
-                "verbose":True,
+                "verbose":False,
             }
         }

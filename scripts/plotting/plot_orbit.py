@@ -9,20 +9,22 @@ import copy
 import math
 import glob
 import numpy
+import bisect
 import h5py
+import matplotlib
 
 from utils import utilities
 import plotting.plot_dump_fields as plot_dump_fields
 
 import matplotlib
-#try:
-#    import PyOpal.parser
-#    import PyOpal.field
-##except ImportError:
-#    print("Failed to import PyOpal")
+try:
+    import PyOpal.parser
+    import PyOpal.field
+except ImportError:
+    print("Failed to import PyOpal")
 
 MASS = 938.2720813
-TARGET = "ID1"
+TARGET = "ID0"
 Z_FLIP = 1
 
 try:
@@ -149,7 +151,7 @@ def parse_file(file_name, heading, types, test_function = None):
             for i, item in enumerate(heading):
                 data[item].append(words[i])
         line = fin.readline()[:-1]
-    print("Got data from file "+file_name)
+    print("Got", len(data['x']), "steps from file "+file_name)
     return data
 
 def parse_track_file(filename, test_function = None):
@@ -606,7 +608,6 @@ def plot_cartesian(output_dir, opal_run_dir, step_list, file_type):
     canvas, axes, graph = plot_x_y_projection(step_list, canvas)
     for format in ["png"]:
         canvas.Print(output_dir+"closed_orbit_plan_bz."+format)
-    return
 
     Colors.reset()
     canvas = None
@@ -828,6 +829,73 @@ def plot_orbit_field(output_dir, step_list_of_lists, canvas):
         canvas.Update()
         canvas.Print(output_dir+"/event_field_zoom.png")
 
+def get_field(x, y, z, t):
+    oob, bx, by, bz, ex, ey, ez = \
+                            PyOpal.field.get_field_value(x, y, z, t)
+    btot = (bx**2+by**2+bz**2)**0.5
+    etot = (ex**2+ey**2+ez**2)**0.5
+    field = {"bx":bx, "by":by, "bz":bz, "btot":btot,
+             "ex":bx, "ey":by, "ez":bz, "etot":btot, "oob":oob}
+    return field
+
+def get_label():
+    labels =  {"bx":"$B_{x}$ [T]", "by":"$B_{y}$ [T]", "bz":"$B_{z}$ [T]",
+               "btot":"$B_{tot}$ [T]",
+               "ex":"E_{x} [?]", "ey":"E_{y} [?]", "ez":"E_{z} [?]",
+               "etot":"E_{tot} [?]",}
+    return labels
+
+def plot_field_t(output_dir, step_list, cell_pos_list, var, t_list):
+    radius = 3.74
+    n_cells = 10
+    figure = matplotlib.pyplot.figure()
+    axes = figure.add_subplot(1, 1, 1)
+    for cell_pos in cell_pos_list:
+        phi = cell_pos*math.pi*2.0/n_cells
+        r_index = bisect.bisect_left(step_list['phi'], phi)
+        radius = step_list['r'][r_index]
+        x = radius*math.cos(phi)
+        y = radius*math.sin(phi)
+        z = 0.0
+        y_list = []
+        for t in t_list:
+            field = get_field(x, y, z, t)
+            y_list.append(field[var])
+        axes.plot(t_list, y_list, label="phi: "+format(cell_pos, "6.2f")+" cells"+" r: "+format(radius, "5.3g")+" m")
+        print("Plotting field at", cell_pos, "r", radius)
+    ylabel =get_label()[var]
+    axes.set_xlabel("t [ns]")
+    axes.set_ylabel(ylabel)
+    axes.legend()
+    figure.savefig(os.path.join(output_dir, var+".png"))
+
+def plot_orbit_phi_z(output_dir, step_list_of_lists):
+    radius = 3.74
+    n_cells = 10
+    figure = matplotlib.pyplot.figure()
+    axes = figure.add_subplot(1, 1, 1)
+    for cell_pos in cell_pos_list:
+        phi = cell_pos*math.pi*2.0/n_cells
+        x = radius*math.cos(phi)
+        y = radius*math.sin(phi)
+        z = 0.0
+        y_list = []
+        for t in t_list:
+            oob, bx, by, bz, ex, ey, ez = \
+                                    PyOpal.field.get_field_value(x, y, z, t)
+            btot = (bx**2+by**2+bz**2)**0.5
+            etot = (ex**2+ey**2+ez**2)**0.5
+            field = {"bx":bx, "by":by, "bz":bz, "btot":btot,
+                     "ex":bx, "ey":by, "ez":bz, "etot":btot,}
+            y_list.append(field[var])
+        axes.plot(t_list, y_list, label="pos: "+str(cell_pos)+" cells")
+    ylabel = {"bx":"$B_{x}$ [T]", "by":"$B_{y}$ [T]", "bz":"$B_{z}$ [T]", "btot":"$B_{tot}$ [T]",
+              "ex":"E_{x} [?]", "ey":"E_{y} [?]", "ez":"E_{z} [?]", "etot":"E_{tot} [?]",}[var]
+    axes.set_xlabel("t [ns]")
+    axes.set_ylabel(ylabel)
+    axes.legend()
+
+
 def get_delta_data(ref_list, test_list, param, phi_lim):
     ref_index = 0
     test_index = 0
@@ -916,13 +984,13 @@ def plot_delta(output_dir, test_list_of_lists, ref_list_of_lists, test_label, re
 
 
 def main(output_dir, run_dir, run_file_list, lattice_file, file_type):
-    #load_lattice(lattice_file)
     canvas = None #get_machida_field()
+    period = 1016.1
     output_dir += "/"
     opal_run_dir = output_dir+run_dir+"/"
     print("OPAL RUN DIR", opal_run_dir)
     step_list_of_lists = []
-    test = lambda words: z_out_of_bounds(words) or phi_almost_2pi(words)
+    test = lambda words: z_out_of_bounds(words)# or phi_almost_2pi(words)
     for run_file in run_file_list:
         # stop loading if z goes out of range
         data = parse_track_file(run_file,  test)
@@ -934,11 +1002,31 @@ def main(output_dir, run_dir, run_file_list, lattice_file, file_type):
     if len(test_list_of_lists) > 0 and len(ref_list_of_lists) > 0:
         plot_delta(output_dir, test_list_of_lists, ref_list_of_lists, "Distorted", "undistorted") # plots test-ref
     try:
+        load_lattice(lattice_file)
         plot_orbit_field(output_dir, step_list_of_lists, canvas)
-    except ValueError:
+        plot_field_t(output_dir,
+                     step_list_of_lists[0], 
+                     [1.0, 2.0, 3.07, 4.0, 5.0],
+                     "btot",
+                     [period/10.0*i for i in range(-10, 121)])
+        plot_field_t(output_dir,
+                     step_list_of_lists[0], 
+                     [1.0, 2.0, 3.07, 4.0, 5.0],
+                     "bz",
+                     [period/10.0*i for i in range(-10, 121)])
+        plot_field_t(output_dir,
+                     step_list_of_lists[0], 
+                     [1.0, 2.0, 3.07, 4.0, 5.0],
+                     "bx",
+                     [period/10.0*i for i in range(-10, 121)])
+        plot_field_t(output_dir,
+                     step_list_of_lists[0], 
+                     [1.0, 2.0, 3.07, 4.0, 5.0],
+                     "by",
+                     [period/10.0*i for i in range(-10, 121)])
+    except (ValueError, RuntimeError):
         sys.excepthook(*sys.exc_info())
     return
-
     step_statistics(step_list)
 
 if __name__ == "__main__":
@@ -946,4 +1034,5 @@ if __name__ == "__main__":
     args = parse_args(sys.argv)
     #CoordinateTransform.test_coordinate_transform()
     main(*args)
+    matplotlib.pyplot.show(block=False)
     input("Press <CR> to finish")

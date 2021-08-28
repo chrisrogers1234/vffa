@@ -1,7 +1,7 @@
 import math
 import copy
 import os
-from . import config_triplet_baseline as config
+from . import config_double_triplet_baseline as config
 
 class Config(config.Config):
     def __init__(self):
@@ -31,10 +31,10 @@ class Config(config.Config):
         sub["__foil_probe_dphi__"] = 0.25/2.+0.025*math.pi/10.
         self.substitution_list = [sub]
 
-        self.run_control["output_dir"] = os.path.join(os.getcwd(), "output/triplet_baseline/correlated_painting/fields__0.1_T/")
+        self.run_control["output_dir"] = os.path.join(os.getcwd(), "output/double_triplet_baseline/correlated_painting/fields__0.1_T/")
         self.run_control["find_closed_orbits_4d"] = False
         self.run_control["find_da"] = False
-        self.run_control["find_bump_parameters"] = False
+        self.run_control["find_bump_parameters"] = True
         self.run_control["track_bump"] = True
 
         self.tracking["dt_tolerance"] = 1.
@@ -50,7 +50,7 @@ class Config(config.Config):
         bumps = BUMP_GLOBAL
         momentum = 75.0
         delta = [-0.0, 0.52, 0.0, -1.13]
-        bumps = [bumps[0], bumps[12], bumps[24], bumps[32]]
+        bumps = [bumps[0],]# bumps[12], bumps[24], bumps[32]]
         bumps = [[a_bump[0], a_bump[1]*momentum, a_bump[2], a_bump[3]*momentum] for a_bump in bumps]
         bumps = [(0, [a_bump[i]-bumps[-1][i]+delta[i] for i in range(4)]) for a_bump in bumps] 
         self.find_bump_parameters = {

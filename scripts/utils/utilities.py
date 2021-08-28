@@ -1,6 +1,7 @@
 import copy
 import os
 import shutil
+import io
 
 import numpy
 import ROOT
@@ -11,13 +12,7 @@ import xboa.hit
 
 from opal_tracking import OpalTracking
 from opal_tracking import StoreDataInMemory
-
-def clear_dir(dir_name):
-    try:
-        shutil.rmtree(dir_name)
-    except OSError:
-        pass
-    os.makedirs(dir_name)
+from opal_tracking import PyOpalTracking
 
 def sub_to_name(sub_key):
     sub_name = sub_key[2:-2]
@@ -41,9 +36,26 @@ def clear_dir(a_dir):
         pass
     os.makedirs(a_dir)
 
+def preprocess_subs(subs):
+    subs_tmp = copy.deepcopy(subs)
+    for key, value in subs_tmp.items():
+        if type(value) == type([]):
+            list_str = "{"
+            for list_item in value[:-1]:
+                list_str += str(list_item)+", "
+            list_str += str(value[-1])+"}"
+            subs[key] = list_str
+        elif value is True:
+            subs[key] = "TRUE"
+        elif value is False:
+            subs[key] = "FALSE"
+    return subs
+
+
 def do_lattice(config, subs, overrides):
     subs = copy.deepcopy(subs)
     subs.update(overrides)
+    subs = preprocess_subs(subs)
     lattice_in = config.tracking["lattice_file"]
     lattice_out = config.tracking["lattice_file_out"]
     xboa.common.substitute(lattice_in, lattice_out, subs)
@@ -78,6 +90,18 @@ def setup_tracking(config, probes, ref_energy):
     tracking.pass_through_analysis = StoreDataInMemory(config)
     return tracking
 
+PY_OPAL_TRACKING = None
+def setup_py_tracking(config, run_dir, phi_list):
+    global PY_OPAL_TRACKING
+    if PY_OPAL_TRACKING is not None:
+        print("Warning - tried to setup PyOpal again - abort")
+        return PY_OPAL_TRACKING
+    lattice = config.tracking["lattice_file_out"]
+    tracking = PyOpalTracking(config, run_dir)
+    tracking.step_list = phi_list
+    PY_OPAL_TRACKING = tracking
+    return tracking
+
 def tune_lines(canvas, min_order=0, max_order=8):
     canvas.cd()
     for x_power in range(0, max_order):
@@ -106,8 +130,12 @@ def get_substitutions_axis(data, subs_key):
     for item in data:
         subs = item[subs_key]
         for key in list(subs.keys()):
-            if subs[key] != subs_ref[key]:
-                #print key, subs[key], subs_ref[key]
+            try:
+                comp = subs[key] == subs_ref[key]
+            except KeyError:
+                print("Warning - missing ", key, "treating as same")
+                comp = True
+            if not comp:
                 try:
                     float(subs[key])
                     axis_candidates[key] = []
@@ -150,6 +178,12 @@ def get_groups(data, group_axis, subs_key):
         group_dict[new_key] = {'item_list':tmp_group_dict[key]}
         print(new_key, ":", group_dict[new_key])
     return group_dict
+
+def matplot_marker_size(x_points):
+    marker_size = 1
+    if len(x_points):
+        marker_size = 100/len(x_points)**0.5
+    return marker_size
 
 def setup_gstyle():
     stops = [0.0000, 0.1250, 0.2500, 0.3750, 0.5000, 0.6250, 0.7500, 0.8750, 1.0000]

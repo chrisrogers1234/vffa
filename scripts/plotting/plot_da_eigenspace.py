@@ -4,8 +4,8 @@ import xboa.common as common
 import da_finder
 
 P_MASS = common.pdg_pid_to_mass[2212]
-MIN_N_CELLS = 600
-CELL_STEP = 12
+MIN_N_CELLS = 100
+CELL_STEP = 10
 
 def cleanup(da_element):
     cell_dirty_ending = -5
@@ -182,9 +182,7 @@ def plot_acceptance(da_list, eigenspace_key):
     name = "acceptance_eigenspace_"+str(da_eigenspace)
     for format in "png", "root", "pdf":
         canvas.Print(plot_dir+name+"."+format)
-
-# 68 looks good
-
+        
 def main():
     da_list = da_finder.load_closed_orbits("baseline/closed_orbits_1_MeV_with_da_tmp")
     print(len(da_list), list(da_list[0].keys()))

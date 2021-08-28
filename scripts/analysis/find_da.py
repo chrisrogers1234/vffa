@@ -200,7 +200,7 @@ class DAFinder(object):
             my_time = time.time()
             a_hit = self.seed_to_hit(co_element, co_delta)
             try:
-                hits = self.tracking.track_many([a_hit])[1]
+                hits = self.tracking.track_many([a_hit])[-1]
             except RuntimeError:
                 sys.excepthook(*sys.exc_info())
                 print("Never mind, keep on going...")

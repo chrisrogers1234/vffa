@@ -2,6 +2,7 @@
 Script to find the RF set up; drives find closed orbit
 """
 
+import time
 import os
 import sys
 import copy
@@ -148,6 +149,8 @@ class FindBumpParameters(object):
         except Exception:
             sys.excepthook(*sys.exc_info())
             print("Minuit failed")
+            if self.config.find_bump_parameters["stop_on_fail"]:
+                raise
         print("done minuit")
 
     def run_platypus(self, algorithm):
@@ -195,9 +198,13 @@ class FindBumpParameters(object):
             raise RuntimeError("Did not recognise algorithm "+str(algorithm))
         print("Finished optimisation")
         self.overrides = self.config.find_bump_parameters["final_subs_overrides"]
-        print("Doing final tracking")
-        self.track_one(self.bump_fields)
-        print("Done final tracking")
+        if self.overrides != None:
+            print("Doing final tracking")
+            self.track_one(self.bump_fields)
+            print("Done final tracking with overrides = {")
+            for key in sorted(self.overrides.keys()):
+                print("   '"+key+"' :", self.overrides[key], ",")
+            print("}")
         self.store_data()
         print("End of optimisation loop\n\n")
 
@@ -278,8 +285,8 @@ class FindBumpParameters(object):
               "        |  r_x      r_px      r_y       r_py")
         for i, hit in enumerate(hit_list):
             print(format(hit["station"], "6"),
-                  format(hit["x"], "12.9g"), format(hit["px"], "8.4g"),
-                  format(hit["y"], "8.4g"), format(hit["py"], "8.4g"),
+                  format(hit["x"], "14.9g"), format(hit["px"], "14.9g"),
+                  format(hit["y"], "14.9g"), format(hit["py"], "14.9g"),
                   "|", format(hit["t"], "12.5g"), end='| ')
             au, av = 0., 0.
             if hit["station"] in target_co.keys():
@@ -319,15 +326,16 @@ class FindBumpParameters(object):
         self.iteration += 1
         if self.iteration > self.max_iterations:
             raise StopIteration("Hit maximum iteration")
-        pos_scale = self.optimisation["position_tolerance"]
-        mom_scale = self.optimisation["momentum_tolerance"]
+        psv_tolerance = self.optimisation["psv_tolerance"]
         a_scale = self.config.find_bump_parameters["amplitude_tolerance"]
         b_scale = self.config.find_bump_parameters["field_tolerance"]
         target_fields = self.config.find_bump_parameters["target_fields"]
 
         print("Running iteration", self.iteration)
+        delta = time.time()
         fields = self.get_fields_from_parameters(parameters)
         hit_list = self.track_one(fields)
+        delta = time.time()-delta
         x_score, px_score, z_score, pz_score, au_score, av_score = self.get_score(hit_list)
         b_score = [(fields[key] - target_fields[key])**2/b_scale**2 for key in target_fields ]
         print("Bump fields:")
@@ -341,14 +349,15 @@ class FindBumpParameters(object):
             else:
                 a_in=a_out
             print(a_in, key.replace("_", " "), str(value), a_out)
-        score_list = [x_score/pos_scale**2,
-               px_score/mom_scale**2,
-               z_score/pos_scale**2,
-               pz_score/mom_scale**2,
+        score_list = [x_score/psv_tolerance[0]**2,
+               px_score/psv_tolerance[1]**2,
+               z_score/psv_tolerance[2]**2,
+               pz_score/psv_tolerance[3]**2,
                au_score/a_scale**2,
                av_score/a_scale**2]+b_score
         self.score = sum(score_list)
 
+        print("Tracked for time", delta, "s")
         print("Residuals are RMS*(penalty due to missing hits)")
         print("    x RMS residual ", format(x_score**0.5, "12.4g"))
         print("    px RMS residual", format(px_score**0.5, "12.4g"))
@@ -369,7 +378,6 @@ class FindBumpParameters(object):
                 print(utilities.sub_to_name(key), subs[key], end=' ')
             self.first_tracking = False
         self.overrides.update(fields)
-        print("OVERRIDES", self.overrides)
         utilities.do_lattice(self.config, self.subs, self.overrides)
 
     def cuts(self, hit_list):
@@ -402,7 +410,7 @@ class FindBumpParameters(object):
         test_hit["pz"] = (tracking.ref["p"]**2-test_hit["px"]**2)**0.5
         print("Reference kinetic energy:", tracking.ref["kinetic_energy"])
         print("Seed kinetic energy:     ", test_hit["kinetic_energy"], flush=True)
-        hit_list = tracking.track_many([test_hit])[1]
+        hit_list = tracking.track_many([test_hit])[0]
         print("Station to probe mapping:\n   ", end=' ')
         for i, fname in enumerate(tracking.get_name_list()):
             print("("+str(i)+",", fname+")", end=' ')

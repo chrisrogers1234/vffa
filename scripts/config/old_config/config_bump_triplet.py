@@ -1,7 +1,7 @@
 import math
 import copy
 import os
-from . import config_triplet_baseline as config
+from . import config_double_triplet_baseline as config
 
 class Config(config.Config):
     def __init__(self):
@@ -32,7 +32,7 @@ class Config(config.Config):
         self.substitution_list = [sub]
 
 
-        self.run_control["output_dir"] = os.path.join(os.getcwd(), "output/triplet_baseline/vertical_kicks")
+        self.run_control["output_dir"] = os.path.join(os.getcwd(), "output/double_triplet_baseline/vertical_kicks")
         self.run_control["find_closed_orbits_4d"] = True
         self.run_control["find_da"] = False
         self.run_control["find_bump_parameters"] = True

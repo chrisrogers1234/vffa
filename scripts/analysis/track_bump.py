@@ -24,12 +24,13 @@ class TrackBump(object):
         self.tmp_dir = os.path.join(self.config.run_control["output_dir"],
                                self.config.track_bump["run_dir"])
         self.subs = {}
-        self.tracking_result = []
+        self.tracking = None
         self.bump_data = []
         self.output = []
         self.injection_orbit = self.config.track_bump["injection_orbit"]
         self.file_index = 0
         self.data_dict = {}
+
 
     def clear_dir(self):
         lattice_name = self.config.tracking["lattice_file_out"].split(".")[0]
@@ -80,17 +81,29 @@ class TrackBump(object):
     def track_bumps(self):
         self.clear_dir()
         self.load_bump_parameters()
-        print("Back tracking using injection orbit:", self.injection_orbit)
         for i, key in enumerate(sorted(self.data_dict.keys())):
             bump = self.data_dict[key]
             if "field_list" not in bump or "proton_orbit" not in bump:
                 print("Skipping key", key)
                 continue
             self.subs = self.config.substitution_list[key[0]]
-            if i == 0:
-                self.back_track(bump["field_list"])
             self.print_bump(key, bump)
-            self.fore_track(bump["field_list"], bump["proton_orbit"])
+            track = self.fore_track(bump["field_list"], bump["proton_orbit"])
+            if i == self.config.track_bump["injection_bump"]:
+                back_subs = self.subs
+                self.get_injection_orbit(track)
+        print("Back tracking using injection orbit:", self.injection_orbit)
+        self.subs = back_subs
+        self.back_track(bump["field_list"])
+
+
+    def get_injection_orbit(self, track):
+        if self.injection_orbit != None:
+            print("Using user-supplied injection orbit", self.injection_orbit)
+            return
+        var_list = ["x", "px", "y", "py"] 
+        self.injection_orbit = [track[0][0][var] for var in var_list]
+        print("Found injection orbit", self.injection_orbit, "from probe files", self.tracking.name_dict)
 
     def print_bump(self, key, bump):
         print("Fore tracking bump with subs list:", key[0], "bump index", key[1])
@@ -130,17 +143,18 @@ class TrackBump(object):
         foil_probe = self.config.track_bump["foil_probe_files"]
         energy = self.config.track_bump["energy"]
         self.do_substitutions(fields, foil_phi, +1.0)
-        tracking = utilities.setup_tracking(self.config, foil_probe, energy)
+        self.tracking = utilities.setup_tracking(self.config, foil_probe, energy)
         test_hit = utilities.reference(self.config, energy,
                                        proton_orbit[0], proton_orbit[1],
                                        proton_orbit[2], proton_orbit[3])
         try:
-            tracking.track_many([test_hit])
+            track = self.tracking.track_many([test_hit])
         except OSError: # did not load any output files - we don't care
-            pass
+            track = None
         lattice_name = self.config.tracking["lattice_file_out"].split(".")[0]
         os.rename(lattice_name+"-trackOrbit.dat",
                   lattice_name+"-trackOrbit-fore-"+str(self.file_index)+".dat")
+        return track
 
     def back_track(self, fields):
         self.file_index += 1
@@ -157,12 +171,13 @@ class TrackBump(object):
         test_hit["py"] *= -1
         test_hit["pz"] *= -1
         try:
-            tracking.track_many([test_hit])
+            track = tracking.track_many([test_hit])
         except OSError: # did not load any output files - we don't care
-            pass
+            track = None
         lattice_name = self.config.tracking["lattice_file_out"].split(".")[0]
         os.rename(lattice_name+"-trackOrbit.dat",
                   lattice_name+"-trackOrbit-back-"+str(self.file_index)+".dat")
+        return track
 
 def track_painting(self, bump_list):
         foil_probe = self.config.track_bump["foil_probe_files"]

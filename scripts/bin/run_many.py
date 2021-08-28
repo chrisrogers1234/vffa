@@ -3,13 +3,24 @@ import os
 import sys
 import subprocess
 import glob
+import atexit
+import signal
 
 PROC_QUEUE = []
 PROC_RUNNING = []
 UNIQUE_ID = 0
-N_PROCS = 5
+N_PROCS = 2
 TARGET_SCRIPT = "run_sim.py"
 TIME_0 = time.time()
+
+def do_at_exit():
+    pgid = os.getpgid(os.getpid())
+    print("Killing all child processes of process group", pgid, "... good bye")
+    print("Daisy, daisy, give me your answer do")
+    print("I'm... half ... crazy ... ...")
+    print("all ... ... for ...")
+    print("the ... ... ...")
+    os.killpg(pgid, signal.SIGKILL)
 
 def will_make_new_procs(temp_proc_queue):
     global PROC_QUEUE, N_PROCS
@@ -73,7 +84,20 @@ def is_scarf():
     uname = str(subprocess.check_output(['uname', '-a']))
     return uname.find('scarf.rl.ac.uk') > -1
 
-def main(configs):
+def load_configs(file_name):
+    print("Loading configs from ", file_name)
+    fin = open(file_name)
+    job_list = []
+    for line in fin.readlines():
+        line = line.rstrip()
+        job_list.append(line.split())
+    for job in job_list:
+        print (job)
+    return job_list
+
+def main(config_file):
+    atexit.register(do_at_exit)
+    configs = load_configs(config_file)
     if os.getenv("OPAL_EXE_PATH") == None:
         raise ValueError("No OPAL_EXE_PATH set")
     global N_PROCS, TARGET_SCRIPT, UNIQUE_ID
@@ -82,9 +106,11 @@ def main(configs):
     if is_scarf():
         N_PROCS = 150
     for config in configs:
-        log_file = config.split("/")[-1]
+        log_file = config[0].split("/")[-1]
         log_file = log_file[:-3]
-        proc_tuple = (["python", "scripts/bin/run_one.py", config], log_file)
+        if len(config) > 0:
+            log_file = log_file+"_"+"_".join(config[1:])
+        proc_tuple = (["python", "scripts/bin/run_one.py"]+config, log_file)
         PROC_QUEUE.append(proc_tuple)
     print(len(PROC_QUEUE), "jobs")
     while len(PROC_QUEUE) > 0 or len(PROC_RUNNING) > 0:
@@ -94,7 +120,10 @@ def main(configs):
         time.sleep(5)
 
 if __name__ == "__main__":
-    main(sys.argv[1:])
+    if len(sys.argv) != 2:
+        print("Usage: python scripts/run_many.py <job_file>")
+        sys.exit(1)
+    main(sys.argv[1])
     print("\nFinished")
 
 
