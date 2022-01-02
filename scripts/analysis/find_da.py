@@ -28,6 +28,9 @@ class DAFinder(object):
         self.fout_get_tmp = None
         self.required_n_hits = config.find_da["required_n_hits"]
         self.max_iterations = config.find_da["max_iterations"]
+        self.save_dir = os.path.join(self.config.run_control["output_dir"],
+                                     self.config.find_da["save_dir"])
+        print("Saving tracking output to", self.save_dir)
         self.tracking = self.setup()
         self.var_list = ["x", "px", "y", "py"]
         DecoupledTransferMatrix.det_tolerance = 1.
@@ -204,6 +207,9 @@ class DAFinder(object):
             except RuntimeError:
                 sys.excepthook(*sys.exc_info())
                 print("Never mind, keep on going...")
+            if self.config.find_da["save_dir"]:
+                save_dir = os.path.join(self.save_dir, axis+"_"+str(iteration))               
+                self.tracking.save(save_dir)
             t_hits = self.time_cut(hits)
             self.data.append([co_delta[axis_i], [a_hit.dict_from_hit() for a_hit in t_hits]])
             self.data = sorted(self.data)

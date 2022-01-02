@@ -46,6 +46,7 @@ REAL OUTPUT_PLANE_TOLERANCE=__output_plane_tolerance__;
 
 ////////// MAIN MAGNETS/////////
 REAL BF=__bf__;
+STRING ENDFIELD="__end_field_model__";
 REAL BFA=__bfa__;
 REAL BFB=__bfb__;
 REAL BF_OFFSET=__bf_offset__; // distance from centre line to BF A and BF B [m]
@@ -216,6 +217,7 @@ REAL BF_B=BF*BFB;
 
 
 magnetF_A: VERTICALFFAMAGNET,
+          END_FIELD_MODEL=__end_field_model__,
           B0=BF_A,
           FIELD_INDEX=M_INDEX,
           MAX_HORIZONTAL_POWER=MAX_HORIZONTAL_POWER,
@@ -227,6 +229,7 @@ magnetF_A: VERTICALFFAMAGNET,
           BB_LENGTH=BB_LENGTH;
 
 magnetF_B: VERTICALFFAMAGNET,
+          END_FIELD_MODEL=__end_field_model__,
           B0=BF_B,
           FIELD_INDEX=M_INDEX,
           MAX_HORIZONTAL_POWER=MAX_HORIZONTAL_POWER,

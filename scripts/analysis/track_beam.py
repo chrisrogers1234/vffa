@@ -30,6 +30,37 @@ class BeamGen(object):
     def gen_beam(self):
         raise NotImplementedError("Not implemented")
 
+    @classmethod
+    def beam_setting(cls, beam, config):
+        #if setting["beam"]["type"] == "last":
+        #    station = setting["beam"]["station"]
+        #    hit_list = [hit_list[station] for hit_list in self.last_tracking if station < len(hit_list)]
+        if beam["type"] == "beam_gen":
+            beam_gen = BeamShells(config, beam)
+            hit_list = beam_gen.gen_beam()
+        elif beam["type"] == "grid":
+            beam_gen = BeamGrid(config, beam)
+            hit_list = beam_gen.gen_beam()
+        elif beam["type"] == "multibeam":
+            beam_gen = MultiBeam(config, beam)
+            hit_list = beam_gen.gen_beam()
+        else:
+            raise ValueError("Did not recognise beam of type "+str(setting["beam"]["type"]))
+        return hit_list
+
+class MultiBeam(object):
+    def __init__(self, config, beam):
+        self.config = copy.deepcopy(config)
+        self.beam = beam
+        self.beam_list = []
+
+    def gen_beam(self):    
+        hit_list = []
+        for beam in self.beam["beam_list"]:
+            hit_list += BeamGen.beam_setting(beam, self.config)
+        return hit_list
+
+
 class BeamShells(BeamGen):
     def __init__(self, config, beam):
         self.config = copy.deepcopy(config)
@@ -117,7 +148,6 @@ class BeamShells(BeamGen):
             hit_list.append(hit)
         return hit_list
 
-
     def gen_beam(self):
         self.load_closed_orbit()
         hit_list = []
@@ -133,6 +163,63 @@ class BeamShells(BeamGen):
                 psv_list = self.get_psv_list(aa_list) # phase space vector
                 hit_list += self.get_hit_list(psv_list) # hit
         return hit_list
+
+class BeamGrid(BeamGen):
+    def __init__(self, config, beam):
+        self.config = config
+        self.beam = beam
+        self.dim = len(beam["start"])
+        self.reference = beam["reference"]
+        self.start = beam["start"]
+        self.stop = beam["stop"]
+        self.nsteps = beam["nsteps"]
+        self.step = [0.0 for i in range(self.dim)]
+        self.hit_list = []
+        for i in range(self.dim):
+            if self.nsteps[i] == 1:
+                continue
+            self.step[i] = (beam["stop"][i]-beam["start"][i])/(beam["nsteps"][i]-1)
+        
+    def gen_grid(self):
+        point = [0, 0, 0, 0, 0, 0]
+        self.hit_list.append(copy.deepcopy(point))
+        while True:
+            for i in range(self.dim-1):
+                if point[i] == self.nsteps[i]:
+                    point[i] = 0
+                    point[i+1] += 1
+            if point[self.dim-1] == self.nsteps[self.dim-1]:
+                break         
+            self.hit_list.append(copy.deepcopy(point))
+            point[0] += 1
+
+    def gen_hits(self):
+        print("Tracking following particles:")
+        hit_list = []
+        for point in self.hit_list:
+            print("Adding", point)
+            mass = xboa.common.pdg_pid_to_mass[2212]
+            energy = self.beam["energy"]+mass
+            pz = (energy**2-mass**2)**0.5
+            hit_dict = {"energy":energy, "mass":mass, "pid":2212, "pz":pz}
+            for i in range(self.dim):
+                point[i] = self.start[i]+point[i]*self.step[i]
+            for i, var in enumerate(self.config.track_beam["variables"]):
+                hit_dict[var] = point[i]
+            hit = xboa.hit.Hit.new_from_dict(hit_dict, "pz")
+            hit_list.append(hit)
+        if self.reference:
+            ref_dict = {"energy":energy, "mass":mass, "pid":2212, "pz":pz}
+            for i, var in enumerate(self.config.track_beam["variables"]):
+                ref_dict[var] = self.reference[i]
+            ref_hist = xboa.hit.Hit.new_from_dict(ref_dict, "pz")
+            hit_list = [ref_hist]+hit_list
+        self.hit_list = hit_list
+
+    def gen_beam(self):
+        self.gen_grid()
+        self.gen_hits()
+        return self.hit_list
 
 
 class TrackBeam(object):
@@ -172,72 +259,12 @@ class TrackBeam(object):
         print("done")
         os.chdir(here)
 
-    def dummy():
-        """
-        self.tracking = utils.utilities.setup_tracking(self.config,
-                                                  setting["probe_files"],
-                                                  self.config.track_beam["energy"])
-        utils.utilities.do_lattice(self.config,
-                                   self.config.substitution_list[0],
-                                   self.config.track_beam["fore_subs_overrides"])
-
-        print("Tracking", len(self.hit_list), "tracks")
-        direction = self.config.track_beam["direction"]
-        if direction == "forwards" or direction == "both":
-
-            print("    ... forwards - tracking", len(self.hit_list), "hits")
-            for i in self.config.track_beam["print_events"]:
-                print("      Event", i, end="  ")
-                for var in ["x", "y", "z", "px", "py", "pz"]:
-                    print(var+":", self.hit_list[i][var], end=" ")
-                print()
-
-            hit_list_of_lists = tracking.track_many(self.hit_list)
-            print("    ... found", [len(hit_list) for hit_list in hit_list_of_lists], "output hits")
-            print("    from", tracking.get_name_dict(), "\n")
-            self.save_tracking("forwards")
-
-            for filename in glob.glob("*.h5"):
-                os.unlink(filename)
-
-        utils.utilities.do_lattice(self.config,
-                                   self.config.substitution_list[0],
-                                   self.config.track_beam["back_subs_overrides"])
-        if direction == "both":
-            station = self.config.track_beam["backwards_station"]
-            print([hit_list[station]["x"] for hit_list in hit_list_of_lists])
-            backwards_hits = [hit_list[station] for hit_list in hit_list_of_lists if station < len(hit_list)]
-            for hit in backwards_hits:
-                for var in "px", "py", "pz":
-                    hit[var] *= -1
-
-            print("    ... backwards - tracking", len(backwards_hits), "hits")
-            for i in self.config.track_beam["print_events"]:
-                print("      Event", i, end="  ")
-                for var in ["x", "y", "z", "px", "py", "pz"]:
-                    print(var+":", backwards_hits[i][var], end=" ")
-                print()
-
-            try:
-                hit_list_of_lists = tracking.track_many(backwards_hits)
-            except OSError:
-                pass
-            print("    ... found", [len(hit_list) for hit_list in hit_list_of_lists], "output hits\n    with first: ", end="")
-            print("    from", tracking.get_name_dict(), "\n")
-            self.save_tracking("backwards")
-        print("done")
-        os.chdir(here)
-        """
-
     def beam_setting(self, setting):
         if setting["beam"]["type"] == "last":
             station = setting["beam"]["station"]
             self.hit_list = [hit_list[station] for hit_list in self.last_tracking if station < len(hit_list)]
-        elif setting["beam"]["type"] == "beam_gen":
-            beam_gen = BeamShells(self.config, setting["beam"])
-            self.hit_list = beam_gen.gen_beam()
         else:
-            raise ValueError("Did not recognise beam of type "+str(setting["beam"]["type"]))
+            self.hit_list = BeamGen.beam_setting(setting["beam"], self.config)
 
     def track_setting(self, setting): 
         print("Starting setting", setting["name"], "#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#")      
@@ -256,9 +283,13 @@ class TrackBeam(object):
             raise RuntimeError("Direction must be forwards or backwards")
 
         print("    ... tracking", len(self.hit_list), "hits", setting["direction"])
-        for i in self.config.track_beam["print_events"]:
+        if self.config.track_beam["print_events"] == "all":
+            print_events = [i for i in range(len(self.hit_list))]
+        else:
+            print_events = self.config.track_beam["print_events"]
+        for i in print_events:
             print("      Event", i, end="  ")
-            for var in ["x", "y", "z", "px", "py", "pz"]:
+            for var in ["x", "y", "z", "px", "py", "pz", "t"]:
                 print(var+":", self.hit_list[i][var], end=" ")
             print()
 

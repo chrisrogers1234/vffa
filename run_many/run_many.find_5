@@ -1,0 +1,13 @@
+scripts/config/config_find_bump.py 90    0
+scripts/config/config_find_bump.py 90   -5
+scripts/config/config_find_bump.py 90   -10
+scripts/config/config_find_bump.py 90   -15
+scripts/config/config_find_bump.py 90   -20
+scripts/config/config_find_bump.py 90   -25
+scripts/config/config_find_bump.py 90   -30
+scripts/config/config_find_bump.py 90   -35
+scripts/config/config_find_bump.py 90   -40
+scripts/config/config_find_bump.py 90   -45
+scripts/config/config_find_bump.py 90   -50
+scripts/config/config_find_bump.py 90   -55
+scripts/config/config_find_bump.py 90   -60

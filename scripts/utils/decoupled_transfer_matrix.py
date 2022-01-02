@@ -49,7 +49,10 @@ class DecoupledTransferMatrix(object):
         found (e.g. lattice is not stable). 
         """
         self.m = numpy.array(transfer_matrix)
-        print("TransferMatrx\n", self.m)
+        if normalise:
+            self.m = self.simplectify(self.m)
+        self.normalise = normalise
+        #print("TransferMatrx\n", self.m)
         if self.m.shape[0] != self.m.shape[1]:
             raise ValueError("Transfer matrix was not square")
         if (self.m.shape[0]/2)*2 != self.m.shape[0]:
@@ -60,9 +63,7 @@ class DecoupledTransferMatrix(object):
               str(self.det_m - 1)+" - DecoupledTransferMatrix.det_tolerance was "+\
               str(self.det_tolerance) )
         self.dim = int(self.m.shape[0]/2)
-        print("Det m", self.det_m)
-        if normalise:
-            self._force_normalise()
+        #print("Generated transfer matrix with det(m)", self.det_m)
         self.m_evalue, self.m_evector = numpy.linalg.eig(self.m)
         self.t_evector = None
         self.t_evalue = None
@@ -95,7 +96,7 @@ class DecoupledTransferMatrix(object):
             j = 2*i
             #evector = numpy.transpose(self.m_evector)[i]
             evector = numpy.transpose(self.m_evector)[j]
-            print("Evector\n", evector)
+            #print("Evector\n", evector)
             phi_i = numpy.angle(evector[j])
             exp_phi_i = numpy.exp(1j*phi_i)
             try:
@@ -108,10 +109,11 @@ class DecoupledTransferMatrix(object):
                 alpha_i = 0.
                 gamma_i = -1.
             phase_i = numpy.angle(self.m_evalue[j])
-            par_t_evector[j,   j] = cmath.sqrt(beta_i)*exp_phi_i
-            par_t_evector[j+1, j] = 1./cmath.sqrt(beta_i)*(-alpha_i+1j)*exp_phi_i
-            par_t_evector[j,   j+1] = numpy.conj(par_t_evector[j, j])
-            par_t_evector[j+1, j+1] = numpy.conj(par_t_evector[j+1, j])
+            c = 1j/cmath.sqrt(-2)
+            par_t_evector[j,   j] = cmath.sqrt(beta_i)*exp_phi_i*c
+            par_t_evector[j+1, j] = 1./cmath.sqrt(beta_i)*(-alpha_i+1j)*exp_phi_i*c
+            par_t_evector[j,   j+1] = cmath.sqrt(beta_i)/exp_phi_i*c #numpy.conj(par_t_evector[j, j])
+            par_t_evector[j+1, j+1] = 1./cmath.sqrt(beta_i)*(-alpha_i-1j)/exp_phi_i*c #numpy.conj(par_t_evector[j+1, j])
             sign = 1.
             if beta_i < 0:
                 phase_i = -phase_i
@@ -126,9 +128,11 @@ class DecoupledTransferMatrix(object):
             t_test[j, j+1] = sign*beta_i*math.sin(phase_i)
             t_test[j+1, j] = -sign*gamma_i*math.sin(phase_i)
         self.r = numpy.dot(self.m_evector, numpy.linalg.inv(par_t_evector))
-        self.r = self.r/numpy.linalg.det(self.r)**(1./2./self.dim)
+        if self.normalise:
+            self.r = self.r/numpy.linalg.det(self.r)**(1./2./self.dim)
         self.r_inv = numpy.linalg.inv(self.r)
         #self.t = numpy.dot(self.r_inv, numpy.dot(self.m, self.r))
+        #if self.normalise:
         self.t = t_test
         #self.m = numpy.dot(self.r, numpy.dot(self.t, self.r_inv))
         self.t_evalue = numpy.array([0+0j]*(2*self.dim))
@@ -138,6 +142,8 @@ class DecoupledTransferMatrix(object):
             self.t_evalue[i] = quad_evalue[0]
             self.t_evalue[i+1] = quad_evalue[1]
             self.t_evector[i:i+2, i:i+2] = quad_evector
+        if self.normalise:
+            self.m = numpy.dot(numpy.dot(self.r, self.t), self.r_inv)
         self.chol = numpy.linalg.cholesky(self.v_t)
         self.chol_inv = numpy.linalg.inv(self.chol)
 
@@ -160,7 +166,7 @@ class DecoupledTransferMatrix(object):
             v_m[i*2, i*2+1] *= eigen_emittances[i]
             v_m[i*2+1, i*2] *= eigen_emittances[i]
             v_m[i*2+1, i*2+1] *= eigen_emittances[i]
-        v_m = numpy.dot(numpy.dot(self.r, v_m), numpy.transpose(self.r))
+        v_m = numpy.dot(numpy.dot(self.r, v_m), self.r_inv)
         return numpy.real(v_m)
 
 
@@ -261,7 +267,7 @@ class DecoupledTransferMatrix(object):
         """
         c_vector = self.get_cholesky_vector(coupled_phase_space_vector)
         r = numpy.linalg.norm(c_vector)
-        aa_vector = [None]*(self.dim*2-1)+[r*r]
+        aa_vector = [None]*(self.dim*2-1)+[r*r*4]
         for i in range(self.dim*2-1):
             try:
                 if r == 0.0:
@@ -284,6 +290,21 @@ class DecoupledTransferMatrix(object):
 
         return aa_vector
 
+    def coupled_to_action_angle_old(self, coupled_phase_space_vector):
+        """
+        Get the action-angle coordinates
+       - coupled_phase_space_vector: phase space vector in the coupled space
+        Returns a vector like (angle 0, action 0, ..., angle N, action N) where
+        angle is expressed in radians in domain [-PI, PI]
+        """
+        decoupled = self.decoupled(coupled_phase_space_vector)
+        c_vector = numpy.dot(self.chol_inv, decoupled)
+        aa_vector = [None]*(self.dim*2)
+        for i in range(0, 2*self.dim, 2):
+            aa_vector[i] = math.atan2(c_vector[i], c_vector[i+1])
+            aa_vector[i+1] = (c_vector[i]**2+c_vector[i+1]**2)
+        return aa_vector
+
     def coupled_to_action_angle(self, coupled_phase_space_vector):
         """
         Get the action-angle coordinates
@@ -291,12 +312,19 @@ class DecoupledTransferMatrix(object):
         Returns a vector like (angle 0, action 0, ..., angle N, action N) where
         angle is expressed in radians in domain [-PI, PI]
         """
-        c_vector = self.get_cholesky_vector(coupled_phase_space_vector)
+        decoupled = self.decoupled(coupled_phase_space_vector)
+        c_vector = numpy.dot(self.chol_inv, decoupled)
         aa_vector = [None]*(self.dim*2)
+        v_t_inv = numpy.linalg.inv(self.v_t)
         for i in range(0, 2*self.dim, 2):
+            dec = [decoupled[i], decoupled[i+1]]
+            v_loc = v_t_inv[i:i+2, i:i+2]
+            action = numpy.dot(dec, v_loc)
+            action = numpy.dot(action, numpy.transpose(dec))
             aa_vector[i] = math.atan2(c_vector[i], c_vector[i+1])
-            aa_vector[i+1] = c_vector[i]**2+c_vector[i+1]**2
+            aa_vector[i+1] = action
         return aa_vector
+
 
     def action_angle_to_coupled(self, action_angle_vector):
         """
@@ -306,8 +334,9 @@ class DecoupledTransferMatrix(object):
         """
         c_vector = [None]*(self.dim*2)
         for i in range(0, self.dim*2, 2):
-            c_vector[i+1] = math.cos(action_angle_vector[i])*action_angle_vector[i+1]**0.5
-            c_vector[i] = math.sin(action_angle_vector[i])*action_angle_vector[i+1]**0.5
+            action = action_angle_vector[i+1]
+            c_vector[i+1] = math.cos(action_angle_vector[i])*action**0.5
+            c_vector[i] = math.sin(action_angle_vector[i])*action**0.5
         decoupled =  numpy.dot(self.chol, c_vector)
         coupled = self.coupled(decoupled)
         return coupled
@@ -339,7 +368,7 @@ class DecoupledTransferMatrix(object):
         print(v_m_transported)
 
     @classmethod
-    def symplecticity(self, matrix):
+    def simplecticity(cls, matrix):
         """
         Returns matrix giving the degree of symplecticity.
         - matrix: 2N x 2N matrix
@@ -352,15 +381,37 @@ class DecoupledTransferMatrix(object):
             raise ValueError("Should be a square matrix")
         elif (matrix.shape[0]/2)*2 != matrix.shape[0]:
             raise ValueError("Should be a 2N x 2N matrix")
-        symp = numpy.zeros(matrix.shape)
-        for i in range(1, matrix.shape[0]):
-            symp[i, i-1] = -1.
-            symp[i-1, i] = +1.
         matrix_T = numpy.transpose(matrix)
+        simp = cls.get_metric(matrix.shape[0])
         # use S^T = -S
-        J = numpy.dot(matrix, numpy.dot(-symp, numpy.dot(matrix_T, symp)))
+        J = numpy.dot(matrix_T, simp)
+        J = numpy.dot(-simp, J)
+        J = numpy.dot(matrix, J)
         return J
 
+    @classmethod
+    def get_metric(cls, dimension):
+        symp = numpy.zeros((dimension, dimension))
+        for i in range(1, dimension, 2):
+            symp[i, i-1] = -1.
+            symp[i-1, i] = +1.
+        return symp
+
+    @classmethod
+    def simplectify(cls, matrix):
+        """
+        Follows Healy/Mackay COMMENT ON HEALY’S SYMPLECTIFICATION ALGORITHM EPAC06
+        """
+        if len(matrix.shape) != 2 or matrix.shape[0] != matrix.shape[1] or int(matrix.shape[0]/2)*2 != matrix.shape[0]:
+            raise ValueError("Not a square matrix of even length")
+        symp = cls.get_metric(matrix.shape[0])
+        identity = numpy.identity(matrix.shape[0])
+        v = numpy.dot((identity-matrix), numpy.linalg.inv(identity+matrix))
+        v = numpy.dot(symp, v)
+        w = (v + numpy.transpose(v))/2
+        mprime = identity+numpy.dot(symp, w)
+        mprime = numpy.dot(mprime, numpy.linalg.inv(identity-numpy.dot(symp, w)))
+        return mprime
 
     det_tolerance = 1e-6
 
@@ -384,6 +435,111 @@ def _random_rotated(dim):
         rot_matrix[i+1, 0] = -math.sin(angle)
         test_matrix = numpy.dot(numpy.transpose(rot_matrix), test_matrix)
     return test_matrix
+
+def test_aa():
+    a_u = 2.0*math.pi/8.0
+    a_v = 2.0*math.pi/6.0
+    m = numpy.array([
+            [ math.cos(a_u), math.sin(a_u),     0.0,     0.0],
+            [-math.sin(a_u), math.cos(a_u),     0.0,     0.0],
+            [0.0, 0.0, 0.5, 1.0],
+            [0.0, 0.0, 1.0, 0.5],
+    ])
+    print("M", numpy.linalg.det(m), "\n", m)
+    print("symplecticity\n", DecoupledTransferMatrix.symplecticity(m))
+    tm = DecoupledTransferMatrix(m)
+    print("R\n", tm.r)
+    return
+    print("Phi0:", tm.get_phase_advance(0)/2.0/math.pi)
+    print("Phi1:", tm.get_phase_advance(1)/2.0/math.pi)
+    print("beta ", tm.get_beta(0))
+    print("alpha", tm.get_alpha(0))
+    print("gamma", tm.get_gamma(0))
+    v_m = tm.get_v_m([1, 1]) #FACTOR 2 ERROR?
+    print("V with e:1,1", v_m)
+    v_mp = numpy.dot(m, v_m)
+    v_mp = numpy.dot(v_mp, numpy.transpose(m))
+    print("V transported", v_mp)
+    print ("v_t", tm.v_t)
+    print(numpy.linalg.det(v_m[0:2,0:2])**0.5)
+    print(tm.action_angle_to_coupled([math.pi/2.0, 1.0, math.pi/2.0, 1.0]))
+    print("cholesky det", numpy.linalg.det(tm.chol))
+
+def test_aa_2():
+    import json
+    m = open("output/arctan_baseline/baseline/closed_orbits_cache").read()
+    m = json.loads(m)
+    m = m[0]["tm"]
+    m = numpy.array([row[1:5] for row in m])
+    print("M:")
+    for row in m:
+        for element in row:
+            print(format(element, "8.4g"), end = " ")
+        print()
+    #print("Simplecticity 1:\n", DecoupledTransferMatrix.simplecticity(m))
+    #m = DecoupledTransferMatrix.simplectify(m)
+    #print("Simplecticity 2:\n", DecoupledTransferMatrix.simplecticity(m))
+    #DecoupledTransferMatrix.det_tolerance = 1
+    tm = DecoupledTransferMatrix(m, True)
+    print(tm.get_beta(0), tm.get_beta(1))
+
+    """
+    for phi_i in range(24+1):
+        phi = 90.0/12*phi_i
+        aa = [math.radians(phi), 10.0e-3/0.08, math.radians(phi), 10.0e-3/0.08]
+        coupled = tm.action_angle_to_coupled(aa)
+        print("phi:", phi, "x", coupled)
+    """
+    """ 
+    print("coupled to aa")
+    v_0 = numpy.linalg.inv(tm.get_v_m([1, 0]))
+    v_1 = numpy.linalg.inv(tm.get_v_m([0, 1]))
+    v_4d = tm.get_v_m([1, 1])
+    print ("4D decoupled\n", tm.v_t)
+    print ("4D matrix\n", v_4d)
+    v_4d /= numpy.linalg.det(v_4d)**0.25
+    print("DETERMINANT", numpy.linalg.det(v_4d))
+    v_4d_inv = numpy.linalg.inv(v_4d)
+    """
+    print("\nR")
+    print(tm.r)
+    print("\naa to coupled")
+    for coupled in [
+        [20.0, 0.0,  0.0, 0.0],
+        [0.0, 0.001, 0.0, 0.0],
+        [0.0, 0.0,  20.0, 0.0],
+        [0.0, 0.0,  0.0, 0.001],
+    ]:
+        aa_old = tm.coupled_to_action_angle_old(coupled)
+        recoupled = tm.action_angle_to_coupled(aa_old)
+        print("Coupled", coupled, "Decoupled", tm.decoupled(coupled))
+        print("AA1", tm.coupled_to_action_angle(coupled), "AA OLD", aa_old)
+        print("Coupled", coupled, "Recoupled", recoupled)
+
+    return
+    for x in range(0, 50, 5):
+        coupled = [x, 0, 0, 0]
+        print(coupled, "Decoupled", tm.decoupled(coupled))
+        aa = tm.coupled_to_action_angle(coupled)
+        """
+        print(coupled, v_4d_inv, numpy.transpose(coupled))
+        e_4d = numpy.dot(coupled, v_4d_inv)
+        e_4d = numpy.dot(e_4d, numpy.transpose(coupled))
+        print("Coupled", coupled)
+        """
+        print("x", x, "aa", aa)#, "e4d", e_4d)
+    for xp in range(0, 10, 2):
+        coupled = [0, 0, 0, xp/100]
+        print(coupled, "Decoupled", tm.decoupled(coupled))
+        aa = tm.coupled_to_action_angle(coupled)
+        print("x'", xp, "aa", aa)#, "e4d", e_4d)
+
+    for y in range(0, 50, 5):
+        coupled = [0, 0, y, 0]
+        print(coupled, "Decoupled", tm.decoupled(coupled))
+        aa = tm.coupled_to_action_angle(coupled)
+        print("y", y, "aa", aa)
+
 
 def test_decoupled_transport(matrix):
     """
@@ -432,5 +588,5 @@ def test_get_closed_ellipse():
     test_decoupled_transport(test_matrix)
 
 if __name__ == "__main__":
-    test_get_closed_ellipse()
+    test_aa_2()
 

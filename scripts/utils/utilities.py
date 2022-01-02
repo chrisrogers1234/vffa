@@ -2,6 +2,8 @@ import copy
 import os
 import shutil
 import io
+import sys
+import importlib
 
 import numpy
 import ROOT
@@ -13,6 +15,9 @@ import xboa.hit
 from opal_tracking import OpalTracking
 from opal_tracking import StoreDataInMemory
 from opal_tracking import PyOpalTracking
+
+import matplotlib
+import matplotlib.pyplot
 
 def sub_to_name(sub_key):
     sub_name = sub_key[2:-2]
@@ -210,3 +215,58 @@ def setup_gstyle():
         ROOT.gStyle.SetTitleSize(0.06, axis)
         ROOT.gStyle.SetTitleOffset(1.10, axis)
 
+def setup_da_figure(include_projections):
+    fig = matplotlib.pyplot.figure(figsize=(20, 10))
+    y, dy = 0.10, 0.35
+    if include_projections:
+        y, dy = 0.15, 0.30
+    axes = [
+        fig.add_subplot(2, 3, 1,  position=[0.06, 0.55, 0.26, 0.35]),
+        fig.add_subplot(2, 6, 7,  position=[0.06, y, 0.10, dy]),
+        fig.add_subplot(2, 6, 8,  position=[0.22, y, 0.10, dy]),
+        fig.add_subplot(2, 3, 2,  position=[0.38, 0.55, 0.26, 0.35]),
+        fig.add_subplot(2, 6, 9,  position=[0.38, 0.10, 0.10, 0.35]),
+        fig.add_subplot(2, 6, 10, position=[0.54, 0.10, 0.10, 0.35]),
+        fig.add_subplot(2, 3, 3,  position=[0.70, 0.55, 0.26, 0.35]),
+        fig.add_subplot(2, 6, 11, position=[0.70, 0.10, 0.10, 0.35]),
+        fig.add_subplot(2, 6, 12, position=[0.86, 0.10, 0.10, 0.35]),
+    ]
+
+    if include_projections:
+        axes += [
+            fig.add_subplot(2, 7, 13,  position=[0.06, 0.10, 0.10, 0.05]),
+            fig.add_subplot(2, 7, 14,  position=[0.22, 0.10, 0.10, 0.05]),
+        ]
+    return fig, axes
+
+def plot_id(figure, lattice, study, version, x=0.9, y=0.95):
+    text = lattice.replace("_", " ")
+    text += "\n"+study.replace("_", " ")
+    if version != "release":
+        text += " "+str(version)
+    else:
+        text += " "+str(version)
+    figure.text(x, y, text, fontsize=10)
+
+def directory_name(lattice, study, version):
+    dir_name = lattice.replace(" ", "_")+"_"+study.replace(" ", "_")
+    if version == "release":
+        dir_name += "r"
+    else:
+        dir_name += "_"+str(version)
+    dir_name += "/"
+    return dir_name
+
+def get_config():
+    if len(sys.argv) < 2:
+        print("Usage: python /path/to/run_one.py /path/to/config.py")
+        sys.exit(1)
+    config_file_name = sys.argv[1]
+    config_file = sys.argv[1].replace(".py", "")
+    config_file = config_file.split("scripts/")[1]
+    config_file = config_file.replace("/", ".")
+    config_args = tuple(sys.argv[2:])
+    print("Using configuration module", config_file, "with arguments", config_args)
+    config_mod = importlib.import_module(config_file)
+    config = config_mod.Config(*config_args)
+    return config_file_name, config

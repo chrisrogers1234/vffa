@@ -10,9 +10,19 @@ class DataHandler(object):
         self.dir_name_glob = file_name_glob
         self.sort_key_list = sort_key_list # distinguish datasets
         self.x_key = x_key # sort each individual dataset
-        self.run_summary_fname = "run_summary.json" # output from toy model
+        self.run_summary_fname = "run_summary_list.json" # output from toy model
         self.optimiser_results = "optimiser.json" # output from optimiser
         self.optimiser_keys = ["angle_u", "angle_v", "foil_angle", "beta_x", "alpha_x", "beta_y", "alpha_y"]
+
+    def load_output_list(self):
+        dir_name_list = glob.glob(self.dir_name_glob)
+        self.output_list = []
+        for item in dir_name_list: 
+            self.output_list += self.load_run_summary(item)
+        print("Loaded "+str(len(self.output_list))+" files with keys")
+        for key in sorted(self.output_list[0].keys()):
+            print(key)
+        self.muggle_data()
 
     def load_output(self):
         dir_name_list = glob.glob(self.dir_name_glob)
@@ -24,7 +34,7 @@ class DataHandler(object):
             optimiser_summary = self.load_optimiser_results(dir_name)
             output["optimiser_summary"] = optimiser_summary
             output_list.append(output)
-        print("Loaded "+str(len(output_list))+" files with keys")
+        print("Loaded "+str(len(output_list))+" items with keys")
         for key in sorted(output_list[0].keys()):
             print(key)
         self.output_list = output_list
@@ -42,8 +52,8 @@ class DataHandler(object):
 
     def load_optimiser_results(self, dir_name):
         file_name = os.path.join(dir_name, self.optimiser_results)
-        fin = open(file_name)
         try:
+            fin = open(file_name)
             output = json.loads(fin.read())
             return output
         except Exception:
@@ -229,8 +239,8 @@ def plots(data_set_list, out_dir, sort_key_list, sort_name_list, sort_unit_list,
 
 
 def main():
-    dir_base = "output/triplet_baseline/anticorrelated_painting/toy_model/"
-    file_glob = dir_base+"/*2e-05*/"
+    dir_base = "output/arctan_baseline/toy_model/horizontal-injection-on-p_v2/"
+    file_glob = dir_base
     out_dir = dir_base+"/"
     #file_glob = "output/triplet_baseline/single_turn_injection/toy_model_2/*/run_summary.json"
     sort_key_list = ["number_pulses", "target_emittance", "foil_column_density"]
@@ -239,7 +249,7 @@ def main():
     x_key = "pulse_emittance"
 
     data_handler = DataHandler(file_glob, sort_key_list, x_key)
-    data_handler.load_output()
+    data_handler.load_output_list()
     #output_list = data_handler.output_list[0:2]+data_handler.output_list[3:]
     #output_list = data_handler.output_list[2:4]
     #out_dir = dir_base+"/foil/"

@@ -9,7 +9,7 @@ import signal
 PROC_QUEUE = []
 PROC_RUNNING = []
 UNIQUE_ID = 0
-N_PROCS = 2
+N_PROCS = 3
 TARGET_SCRIPT = "run_sim.py"
 TIME_0 = time.time()
 
@@ -106,6 +106,7 @@ def main(config_file):
     if is_scarf():
         N_PROCS = 150
     for config in configs:
+        print("Setting config", config)
         log_file = config[0].split("/")[-1]
         log_file = log_file[:-3]
         if len(config) > 0:

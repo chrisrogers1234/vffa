@@ -21,6 +21,8 @@ from utils import utilities
 from toy_model.foil_model.material import Material
 from toy_model.foil_model.particle import Particle
 
+import analysis.rf_bucket
+
 numpy.set_printoptions(edgeitems=30, linewidth=200)
 P_MASS = 938.27208816
 
@@ -34,6 +36,7 @@ class ToyModel(object):
         #Run 101 with args [0.2116535191136668, -1.1802958558145478, 1.5605421957991457]Y MAX 10.0
         # injection setup
         self.momentum = 75.
+        self.rf_reference_momentum = 75*(1) # used to calculate RF frequency and plot RF buckets/etc
         self.max_turn = n_turns
         self.number_pulses = n_injection_turns
         self.number_per_pulse = 1000
@@ -51,10 +54,12 @@ class ToyModel(object):
             traj_end = [angle_u, 5., angle_v, 5.]
             self.default_bumps += [[(traj_end[j]-inj_end[j])*i/(n_trajectory_turns)+inj_end[j] for j in range(4)] for i in range(1, n_trajectory_turns+1)]
             #self.default_bumps = [[angle_u, i*1.3/(n_pulses-1.), angle_v, i*1.3/(n_pulses-1)] for i in range(n_pulses)] 
-        self.default_bumps = [["coupled", 0.0, 0.0, -40.0*i/(n_turns-1), 0.0] for i in range(n_turns)]
+        self.default_bumps = [["coupled", 0.0, 0.0, 0.0*i/(n_turns-1), 0.0] for i in range(n_turns)]
         self.default_injection = [math.pi/2, 0., 0.0, 0.0] # position of the injection orbit in aa coordinates
-        self.foil_edge = -1
+        self.closed_orbit_coords = [4357.790553052024, 0.0, 0.0, 0.0]
         self.foil_angle = math.degrees(math.pi)
+        self.foil_de_for_rf_bucket = 0.0 # for use in RF bucket calculation only
+        self.n_foil_sigma = 3 # number of sigma; set to < 0 to disable foil adjustment
 
         self.injection_ellipse_algorithm = "transfer_matrix" # transfer_matrix from_twiss or user_defined
         self.beta_x = 1.0 # beta [m]
@@ -63,55 +68,74 @@ class ToyModel(object):
         self.alpha_y = 0.0
         self.injection_ellipse = None
 
-        self.m_index = -1.28 # m^-1
+        self.m_index = -1.31 # m^-1
         self.pulse_emittance = 0.026
         self.dp_model = "gauss" # none gauss or fixed
         self.dp_over_p = 0.0013 # 0.0029 # sigma
-        self.max_dp_over_p = self.dp_over_p*3
+        self.max_dp_over_p = self.dp_over_p*3 # only used at injection time
         self.foil_material = "carbon"
         self.foil_column_density = 20e-6 # g/cm^2
         self.pid = 2212
-        self.n_foil_sigma = 3 # number of sigma; set to < 0 to disable foil adjustment
-        self.amplitude_acceptance = 20.0 # microns
+        self.amplitude_acceptance = 0.030 # mm
         self.dp_over_p_acceptance = 0.004 # +/- dp/p
 
+        self.beam_pulses = [[0.5-175.0/1149, 0.5+175.0/1149]] # time pulses relative to ring tof
+        self.harmonic_number = 2.0 # rf frequency = harmonic_number/ring_tof
+        self.rf_voltage = 0.004 # rf peak voltage [MV/turn]
+        self.rf_time_offset = 0.0 # rf time offset
+        self.momentum_offset_injection = True # assume dispersion matching for injected beam
+
         # execution parameters
+        self.lattice = "test"
+        self.study = "testing"
+        self.version = 1
         self.verbose = 8
+        self.verbose_particles = [0]
         self.n_cells = 10
         self.accumulate = False
         self.do_plots = True
-        self.plot_frequency = 1 #self.max_turn # controls whether to plot frames
+        self.plot_frequency = 5 #self.max_turn # controls whether to plot frames
         self.do_stats = True
         self.stats_frequency = self.max_turn # controls whether to plot frames
         self.do_movie = False
-        self.sleep_time = 1#0.1
+        self.sleep_time = 0.01#0.1
         self.f_size = 20
         self.l_size = 14
-        self.momentum_offset_injection = False
         self.do_scattering = True
         self.do_energy_loss = True
+        self.seed = None
 
         self.real_range = [25.0*self.amp_scale, 0.05*self.amp_scale, 25.0*self.amp_scale, 0.025*self.amp_scale]
-        self.real_centre = [0.0*self.amp_scale, 0.0*self.amp_scale, -20.0*self.amp_scale, 0.0*self.amp_scale]
+        self.real_centre = [0.0*self.amp_scale, 0.0*self.amp_scale, 0.0*self.amp_scale, 0.0*self.amp_scale]
 
         self.dec_range = [20.0*self.amp_scale, 0.05*self.amp_scale, 50.0*self.amp_scale, 0.025*self.amp_scale]
         self.dec_centre = [0.0*self.amp_scale, 0.0*self.amp_scale, 0.0*self.amp_scale, 0.0*self.amp_scale]
 
-        self.aa_range = [200, 1.5*self.amp_scale**2, 200, 1.5*self.amp_scale**2]
-        self.aa_centre = [0., self.aa_range[1]-0.1*self.amp_scale**2, 0., self.aa_range[3]-0.1*self.amp_scale**2]
+        self.aa_range = [200, 0.02, 200, 0.02]
+        self.aa_centre = [0., 0.02, 0., 0.02]
 
         # internal data
         self.bump_fields = []
         self.bump_orbits = []
         self.bump_tms = []
+        self.mass = xboa.common.pdg_pid_to_mass[self.pid]
+        self.beta_rel = self.momentum / (self.momentum**2+self.mass**2)**0.5 # beta = p/E
+        self.foil_edge = -1
+        self.rf_angular_frequency = 0.0
+        self.ring_tof = 0.0 # ring time of flight at nominal momentum self.momentum
+        self.circumference = 0.0 # assumed momentum independent (vffa)
         self.beam_data = numpy.empty_like([], shape=(0, 4))
         self.injection_orbit = None
+        self.in_longitudinal_acceptance = []
+        self.in_transverse_acceptance = []
         self.dp_over_p_data = []
+        self.t_data = []
         self.beam_injection_turn = []
         self.turn = 0
         self.foil_hits = [] # number of foil hits per particle
         self.foil_hit_positions = [] # positions of foil hits
         self.first_turn_positions = [] # positions of foil hits
+        self.rf_bucket_contours = None
         self.output_dir = ""
         self.reset_output()
         self.setup_material()
@@ -135,12 +159,23 @@ class ToyModel(object):
             "rms_emittance_v":0,
             "hits_per_turn":[],
             "beam_trajectory":[],
+            "n_outside_acceptance":0,
         }
 
 
-    def norm(self):
-        """conversion factor from normalised emittance coordinates"""
+    def _norm(self):
+        """conversion factor from normalised emittance coordinates
+        Normalised emittance = beta*gamma*geometric_emittance
+        To convert from normalised to geometric emittance MULTIPLY by norm
+        """
         return self.momentum/P_MASS
+
+    def geo_to_norm(self, geometric_emittance):
+        return geometric_emittance*self.momentum/P_MASS
+
+    def norm_to_geo(self, norm_emittance):
+        return norm_emittance*P_MASS/self.momentum
+
 
     def do_config(self, config):
         for key in config:
@@ -149,6 +184,11 @@ class ToyModel(object):
             else:
                 raise(KeyError("Did not recognise config key '"+str(key)+"'"))
         self.setup_material()
+        for fig in [self.fig, self.fig2, self.fig3, self.fig4]:
+            utilities.plot_id(fig, self.lattice, self.study, self.version)
+        #self.output_dir += utilities.directory_name("", self.study, self.version)
+        if self.seed != None:
+            numpy.random.seed(self.seed)
 
     def foil_edge_from_beam(self, n_sigma):
         ellipse = self.get_injection_ellipse()
@@ -186,7 +226,6 @@ class ToyModel(object):
             n_sigma = distance/ellipse[1][1]**0.5
         else:
             n_sigma = numpy.nan
-        print(centre, distance, n_sigma)
 
         return distance, n_sigma
 
@@ -196,8 +235,16 @@ class ToyModel(object):
         self.foil_thickness = self.foil_column_density/self.foil.density
 
     def setup_subplots(self):
-        self.fig3 = matplotlib.pyplot.figure(figsize=(20, 10))
+        self.fig = matplotlib.pyplot.figure(figsize=(20, 10))
         self.fig2 = matplotlib.pyplot.figure(figsize=(20, 10))
+        self.fig3 = matplotlib.pyplot.figure(figsize=(20, 10))
+        self.fig4 = matplotlib.pyplot.figure(figsize=(20, 10))
+
+        self.axes4 = [
+            self.fig4.add_subplot(1, 2, 1),
+            self.fig4.add_subplot(2, 2, 2),
+            self.fig4.add_subplot(2, 2, 4),
+        ]
         self.axes2 = [
             self.fig2.add_subplot(2, 3, 1),
             self.fig2.add_subplot(2, 3, 2),
@@ -206,7 +253,6 @@ class ToyModel(object):
             self.fig2.add_subplot(2, 3, 5),
             self.fig2.add_subplot(2, 3, 6),
         ]
-        self.fig = matplotlib.pyplot.figure(figsize=(20, 10))
         self.axes = [
             self.fig.add_subplot(2, 3, 1,  position=[0.06, 0.55, 0.26, 0.35]),
             self.fig.add_subplot(2, 6, 7,  position=[0.06, 0.15, 0.10, 0.30]),
@@ -263,6 +309,7 @@ class ToyModel(object):
                 dec_str = ' '.join([format(x, "8.4g") for x in tm.decoupled(orbit-self.injection_orbit)])
                 print("  Orbit", i, o_str, "  action angle", aa_str, "  decoupled", dec_str)
         self.reset_output()
+        self.build_bucket(will_replace = True)
         self.beam_data = numpy.empty_like([], shape=(0, 4))
         self.turn = 0
         self.beam_injection_turn = []
@@ -270,12 +317,18 @@ class ToyModel(object):
         self.foil_hit_positions = []
         self.first_turn_positions = []
         self.dp_over_p_data = []
+        self.in_longitudinal_acceptance = []
+        self.in_transverse_acceptance = []
+        self.t_data = []
+
+
 
     def load_closed_orbit(self):
         if self.verbose > 3:
             print("Loading closed orbits", self.closed_orbit)
         closed_orbit = json.loads(open(self.closed_orbit).readline())
         tm = closed_orbit[0]["tm"]
+        cell_time = closed_orbit[0]["ref_track"][1]["t"]
         one_cell = numpy.array([row[1:5] for row in tm])
         dm = decoupled_transfer_matrix.DecoupledTransferMatrix(one_cell)
         if self.verbose > 4:
@@ -286,9 +339,22 @@ class ToyModel(object):
         tm = copy.deepcopy(one_cell)
         for i in range(self.n_cells-1):
             tm = numpy.dot(tm, one_cell)
-        tm = decoupled_transfer_matrix.DecoupledTransferMatrix(tm)
+        tm = decoupled_transfer_matrix.DecoupledTransferMatrix(tm, normalise=True)
+        if self.verbose > 4:
+            print("Transfer matrix determinant", numpy.linalg.det(tm.m))
         tm.r/=numpy.linalg.det(tm.r)**0.25
         tm.r_inv/=numpy.linalg.det(tm.r_inv)**0.25
+        # ring tof comes from the closed orbit calculation
+        self.ring_tof = cell_time*self.n_cells
+        # circumference comes from the closed orbit and assumed CO momentum
+        self.circumference = self.ring_tof * self.beta_rel * xboa.common.constants["c_light"]
+        # RF cavities can be set for a different central p to the injected beam.
+        rf_beta = self.rf_reference_momentum/(self.rf_reference_momentum**2+self.mass**2)**0.5
+        rf_tof = self.circumference/rf_beta/xboa.common.constants["c_light"]
+        self.rf_angular_frequency = 2.0*math.pi*self.harmonic_number/rf_tof
+        if self.verbose > 4:
+            print("Found cell tof", cell_time, "ns and ring tof in", self.n_cells, "cells", self.ring_tof, "ns")
+
         self.bump_tms  = [tm]*(max(self.turn_bumper_index[1])+1)
 
     def default_bump_settings(self):
@@ -300,9 +366,9 @@ class ToyModel(object):
             if bump[0] == "action_angle":
                 tm = self.bump_tms[bump_index]
                 action_angle_bump = bump[1:]
-                action_angle_bump[1] *= self.norm()
-                action_angle_bump[3] *= self.norm()
-                coupled_bump = tm.action_angle_to_coupled(action_angle_bump)
+                action_angle_bump[1] = self.norm_to_geo(action_angle_bump[1])
+                action_angle_bump[3] = self.norm_to_geo(action_angle_bump[3])
+                coupled_bump = tm.action_angle_to_coupled(action_angle_bump) # expects geometric actions
             elif bump[0] == "coupled":
                 tm = self.bump_tms[bump_index]
                 coupled_bump = numpy.array(bump[1:])
@@ -349,6 +415,16 @@ class ToyModel(object):
         except StopIteration:
             pass
 
+    def print_particles(self):
+        targets = self.verbose_particles
+        if targets == None:
+            print("printing all particles")
+            targets = range(len(self.beam_data))
+        if len(targets) > 0:
+            print("Printing particle data for turn", self.turn)
+        for i in targets:
+            print(i, "u:", self.beam_data[i], "t, p:", self.t_data[i], self.dp_over_p_data[i])
+
     def do_one_turn(self):
         self.inject_one() # inject on the injection orbit in global coordinates
         if self.verbose > 7:
@@ -357,12 +433,18 @@ class ToyModel(object):
             print("  injection ", self.injection_orbit)
         if self.verbose > 10:
             print(self.beam_data)
+        self.print_particles()
         self.check_foil() # check for foil hits and apply foil physics
+        self.do_longitudinal() # do longitudinal model for one turn (assume we do this after the first scatter/foil hit)
         self.turn_summary() # plots and stats
-        self.transform_to_relative_coordinates(None, None) # transform to coordinates relative to momentum-dependent closed orbit
+        self.print_particles()
+        self.beam_data = self.transform_to_relative_coordinates(None, None) # transform to coordinates relative to momentum-dependent closed orbit
+        self.print_particles()
         self.turn_one()  # do one turn transfer matrix phase advance
         self.update_turn() # add one to turn (index); note this moves the position of the bump orbit
-        self.transform_to_absolute_coordinates(None, None) # transform to global coordinate system in new bumped coordinates
+        self.print_particles()
+        self.beam_data = self.transform_to_absolute_coordinates(None, None) # transform to global coordinate system in new bumped coordinates
+        self.print_particles()
 
     def print_aa(self):
         aa_hits = self.convert_to_aa(self.beam_data)
@@ -371,8 +453,8 @@ class ToyModel(object):
             print("Print aa", i, hit)
 
     def build_ellipse(self):
-        emit_x = self.pulse_emittance*self.norm()
-        emit_y = self.pulse_emittance*self.norm()
+        emit_x = self.norm_to_geo(self.pulse_emittance)
+        emit_y = self.norm_to_geo(self.pulse_emittance)
         beta_x = self.beta_x*1000.0 # convert to mm
         beta_y = self.beta_y*1000.0 # convert to mm
         gamma_x = (1+self.alpha_x**2)/beta_x
@@ -400,7 +482,7 @@ class ToyModel(object):
 
     def get_injection_ellipse(self):
         if self.injection_ellipse_algorithm == "transfer_matrix":
-            return self.get_transfer_matrix().get_v_m([self.pulse_emittance*self.norm()]*2)
+            return self.get_transfer_matrix().get_v_m([self.norm_to_geo(self.pulse_emittance)]*2)
         elif self.injection_ellipse_algorithm == "from_twiss":
             return self.build_ellipse()
         elif self.injection_ellipse_algorithm == "user_defined":
@@ -411,10 +493,28 @@ class ToyModel(object):
     def injecting(self):
         return len(self.beam_data) < self.number_pulses*self.number_per_pulse
 
+    def time_distribution(self, number):
+        time_bucket_list = [0.0]
+        for i, item in enumerate(self.beam_pulses):
+            time_bucket_list.append(time_bucket_list[-1]+item[1]-item[0])
+
+        t_list_total = list(numpy.random.uniform(0.0, time_bucket_list[-1], number))
+        t_list = []
+        #print("Injecting into buckets", [(t[0]*self.ring_tof, t[1]*self.ring_tof) for t in self.beam_pulses])
+        for t in t_list_total:
+            for i, time_bucket_upper in enumerate(time_bucket_list[1:]):
+                if t <= time_bucket_upper:
+                    t_bucketed = t-time_bucket_list[i]+self.beam_pulses[i][0]
+                    t_list.append(t_bucketed*self.ring_tof)
+
+                    break
+        self.t_data = self.t_data+t_list
+
     def inject_one(self):
         number = self.number_per_pulse
         events = numpy.zeros((number, 4))
         dp_over_p_list = [0 for i in range(number)]
+        total_length = 0.0
         n_successes = 0
         ellipse = self.get_injection_ellipse()
         while n_successes < self.number_per_pulse:
@@ -439,12 +539,14 @@ class ToyModel(object):
             n_successes += 1
         if not self.injecting():
             return
+        self.time_distribution(number)
         self.beam_data = numpy.append(self.beam_data,
                                       events,
                                       axis=0)
         self.dp_over_p_data += dp_over_p_list
         self.beam_injection_turn += [self.turn for i in range(number)]
         self.first_turn_positions += [(hit[0], hit[2]) for hit in events]
+
 
     def transform_to_relative_coordinates(self, beam_data, dp_over_p):
         # transform to coordinate system of bumped orbit
@@ -621,7 +723,6 @@ class ToyModel(object):
 
     def plot_spherical(self, ax1, ax2, ax3, lab1, lab2, lab3, rel_hits, aa_hits):
         tm = self.get_transfer_matrix()
-        print("Plot spherical")
         #rel_hits = self.transform_to_relative_coordinates(None, None)
         #aa_hits = [tm.coupled_to_nd_action_angles(hit) for hit in rel_hits]
         x_list = [math.degrees(hit[ax1]) for hit in aa_hits]
@@ -662,23 +763,25 @@ class ToyModel(object):
         axes.set_xlabel("$A$ [$\\mu$m]", fontsize=self.f_size)
         axes.tick_params(labelsize = self.l_size)
 
-    def acceptance_count(self, aa_hits):
-        count = 0
-        for i, hit in enumerate(aa_hits):
-            if hit[1] > self.amplitude_acceptance or \
-               hit[3] > self.amplitude_acceptance or \
-               abs(self.dp_over_p_data[i]) > self.dp_over_p_acceptance:
-                count += 1
-        self.output["n_outside_acceptance"] = count
-        return count
+    def check_acceptance(self, aa_hits):
+        self.in_transverse_acceptance = [hit[1] <= self.amplitude_acceptance and hit[3] <= self.amplitude_acceptance for hit in aa_hits]
+        if self.rf_voltage == 0.0:
+            self.in_longitudinal_acceptance = [True for hit in aa_hits]
+            return
+        t_data = [self.rf_bucket_contours.periodicarise(t, self.harmonic_number) for t in self.t_data]
+        self.in_longitudinal_acceptance = [self.rf_bucket_contours.inside_acceptance(t_data[i], dp, False)  for i, dp in enumerate(self.dp_over_p_data)]
 
+    def acceptance_count(self):
+        outside_acceptance = [not self.in_transverse_acceptance[i] or not self.in_longitudinal_acceptance[i] for i in range(len(self.in_longitudinal_acceptance))]
+        self.output["n_outside_acceptance"] = sum(outside_acceptance)
+        return self.output["n_outside_acceptance"]
 
     def amplitude_plots(self, aa_hits):
         #self.test_amplitude()
         #input("Press <CR> to continue")
-        self.make_a_plot(1, 3, "$A_{u}$ [$\\mu$m]", "$A_{v}$ [$\\mu$m]", self.axes[6], aa_hits, self.aa_centre, self.aa_range)
-        self.make_a_plot(0, 1, "$\\phi_{u}$ [deg]", "$A_{u}$ [$\\mu$m]", self.axes[7], aa_hits, self.aa_centre, self.aa_range)
-        self.make_a_plot(2, 3, "$\\phi_{v}$ [deg]", "$A_{v}$ [$\\mu$m]", self.axes[8], aa_hits, self.aa_centre, self.aa_range)
+        self.make_a_plot(1, 3, "$A_{u}$ [mm]", "$A_{v}$ [mm]", self.axes[6], aa_hits, self.aa_centre, self.aa_range)
+        self.make_a_plot(0, 1, "$\\phi_{u}$ [deg]", "$A_{u}$ [mm]", self.axes[7], aa_hits, self.aa_centre, self.aa_range)
+        self.make_a_plot(2, 3, "$\\phi_{v}$ [deg]", "$A_{v}$ [mm]", self.axes[8], aa_hits, self.aa_centre, self.aa_range)
         mean_au = numpy.mean([hit[1] for hit in aa_hits])
         mean_av = numpy.mean([hit[3] for hit in aa_hits])
         mean_a4 = numpy.mean([hit[1]+hit[3] for hit in aa_hits])
@@ -696,7 +799,7 @@ class ToyModel(object):
         return hits
 
     def convert_to_aa(self, coupled_hits):
-        norm = [180./math.pi, 1./self.norm(), 180./math.pi, 1./self.norm()] # normalised action in microns
+        norm = [180./math.pi, self.geo_to_norm(1.0), 180./math.pi, self.geo_to_norm(1.0)] # normalised action in microns
         tm = self.get_transfer_matrix()
         aa_hits = [tm.coupled_to_action_angle(hit) for hit in coupled_hits]
         aa_hits = [[u*norm[i] for i, u in enumerate(hit)] for hit in aa_hits]
@@ -730,6 +833,8 @@ class ToyModel(object):
         relative_hits = self.transform_to_relative_coordinates(copy.deepcopy(self.beam_data), None)
         decoupled_hits = self.convert_to_decoupled(relative_hits)
         aa_hits = self.convert_to_aa(relative_hits)
+        if self.will_do_plots() or self.will_do_stats():
+            self.check_acceptance(aa_hits)
         if self.will_do_plots():
             self.plot_one_turn(relative_hits, decoupled_hits, aa_hits)
         if self.will_do_stats():
@@ -764,10 +869,19 @@ class ToyModel(object):
         self.output["n_events"] = len(self.beam_data)
         self.output["beam_trajectory"] = [self.bump_orbits[i].tolist() for i in self.turn_bumper_index[1]]
 
-        self.acceptance_count(aa_hits)
+        self.acceptance_count()
 
+
+    def set_title(self, figure):
+        title = "Turn "+str(self.turn)+"    Bumper setting "+str(self.get_bumper_index()+1)
+        if self.injecting():
+            title += "    Injecting"
+        else:
+            title += "    Moving trajectory"
+        figure.suptitle(title)
 
     def plot_one_turn(self, relative_hits, decoupled_hits, aa_hits):
+        plot_summary = True
         hits = copy.deepcopy(self.beam_data)
         real_range = self.real_range
         real_centre = self.real_centre
@@ -775,17 +889,13 @@ class ToyModel(object):
         dec_range = self.dec_range
         dec_centre = self.dec_centre
 
-        title = "Turn "+str(self.turn)+"    Bumper setting "+str(self.get_bumper_index()+1)
-        if self.injecting():
-            title += "    Injecting"
-        else:
-            title += "    Moving trajectory"
-        self.fig.suptitle(title)
+        self.set_title(self.fig)
         if self.verbose > 8:
             print("Real mean", numpy.mean(hits, 0), "Real range", numpy.ptp(hits, 0))
         co_trajectory = numpy.array([self.bump_orbits[i] for i in self.turn_bumper_index[1]])
         specials = numpy.array([self.injection_orbit, self.get_bump_orbit()])
-        self.make_2d_hist(0, 2, "x [mm]", "y [mm]", self.axes2[0], hits, real_centre, real_range)
+        if plot_summary:
+            self.make_2d_hist(0, 2, "x [mm]", "y [mm]", self.axes2[0], hits, real_centre, real_range)
         self.make_a_plot(0, 2, "x [mm]", "y [mm]", self.axes[0], hits, real_centre, real_range)
         distance, n_sigma = self.beam_from_foil_edge()
         self.axes[0].text(0.05, 0.95, "Distance to foil: "+format(distance, "4.2g")+" mm ("+format(n_sigma, "4.2g")+" s.d.)", transform=self.axes[0].transAxes)
@@ -820,12 +930,15 @@ class ToyModel(object):
         if not self.accumulate: # in accumulate mode, subsequent turns write on top of each other and it becomes unreadable
             self.axes[5].text(0.05, 0.95, "$\\nu_v$: "+format(tune_v, "6.4g"), transform=self.axes[5].transAxes)
 
-        self.acceptance_count(aa_hits)
+        self.acceptance_count()
         self.amplitude_plots(aa_hits)
-        self.plot_spherical(0, 1, 2, "$\\phi_1$ [deg]", "$\\phi_2$  [deg]", "$\\phi_3$  [deg]", relative_hits, aa_hits)
+        if plot_summary:
+            self.plot_spherical(0, 1, 2, "$\\phi_1$ [deg]", "$\\phi_2$  [deg]", "$\\phi_3$  [deg]", relative_hits, aa_hits)
 
-        name = "turn_"+str(self.turn).rjust(5, "0")+".png"
+        name = "transverse_turn_"+str(self.turn).rjust(5, "0")+".png"
         self.fig.savefig(self.output_dir+name)
+        if self.rf_voltage > 0.0:
+            self.plot_longitudinal()
         if self.sleep_time > 0:
             matplotlib.pyplot.pause(self.sleep_time)
 
@@ -843,6 +956,96 @@ class ToyModel(object):
         elif bound == "u":
             n_delta = int(n_events*fraction)
             return dp_over_p_sorted[-1-n_delta]
+
+    def build_bucket(self, will_replace):
+        # note rf momentum may be different to nominal momentum
+        if not will_replace and not self.rf_bucket_contours is None:
+            return
+        if self.rf_voltage == 0.0:
+            return
+        real_estate_gradient = self.rf_voltage/self.circumference
+        frequency = self.rf_angular_frequency/2./math.pi
+        rf_time = 1./frequency*self.harmonic_number/2.0 # time at centre of an rf bucket
+        rf_mass = xboa.common.pdg_pid_to_mass[self.pid]
+        rf_energy = (self.rf_reference_momentum**2+self.mass**2)**0.5
+        t0 = 0.0
+        t1 = self.ring_tof
+        e0 = 0.0
+        e1 = 1e9
+        self.rf_bucket_contours = analysis.rf_bucket.RFBucket(real_estate_gradient, frequency, rf_time, rf_energy, self.mass, t0, t1, e0, e1)
+        self.rf_bucket_contours.y_var = "dp_over_p"
+        self.rf_bucket_contours.dz = self.circumference
+        self.rf_bucket_contours.central_p = self.momentum # NOT the synchronous particle; rather the particle central to dp_over_p, which may be different
+        self.rf_bucket_contours.pseudo_foil_de = self.foil_de_for_rf_bucket
+        fp0, fp1 = self.rf_bucket_contours.fixed_points()
+        for time in [fp0+1, fp1-1]:
+            self.rf_bucket_contours.add_contour(time)
+        acceptance = self.rf_bucket_contours.contours[-1]["area"]*0.75
+        self.rf_bucket_contours.add_acceptance_contour(acceptance)
+
+    def plot_longitudinal(self, highlight_acceptance=True):
+        if not self.accumulate:
+            for ax in self.axes4:
+                ax.clear()
+        marker_size = 10
+        if len(self.dp_over_p_data) > 0:
+            marker_size = 100/len(self.dp_over_p_data)**0.5
+        colors = matplotlib.pyplot.cm.coolwarm
+
+        axes = self.axes4[0]
+        plot_time = self.harmonic_number*self.rf_angular_frequency/2.0/math.pi
+        #t0_data = [t*plot_time for t in self.t_data]
+        #t0_data = [(t - math.floor(t))/plot_time for t in t0_data]
+        t0_data = [self.rf_bucket_contours.periodicarise(t, self.harmonic_number) for t in self.t_data]
+        dp_data = self.dp_over_p_data
+        self.rf_bucket_contours.plot_contours(axes)
+
+        in_acceptance = [self.rf_bucket_contours.inside_acceptance(t0_data[i], dp, False) for i, dp in enumerate(dp_data)]
+        t0_data_ii = [t0 for i, t0 in enumerate(t0_data) if self.in_longitudinal_acceptance[i] and self.in_transverse_acceptance[i]]
+        dp_data_ii = [dp for i, dp in enumerate(dp_data) if self.in_longitudinal_acceptance[i] and self.in_transverse_acceptance[i]]
+        t0_data_oi = [t0 for i, t0 in enumerate(t0_data) if not self.in_longitudinal_acceptance[i] and self.in_transverse_acceptance[i]]
+        dp_data_oi = [dp for i, dp in enumerate(dp_data) if not self.in_longitudinal_acceptance[i] and self.in_transverse_acceptance[i]]
+        t0_data_io = [t0 for i, t0 in enumerate(t0_data) if self.in_longitudinal_acceptance[i] and not self.in_transverse_acceptance[i]]
+        dp_data_io = [dp for i, dp in enumerate(dp_data) if self.in_longitudinal_acceptance[i] and not self.in_transverse_acceptance[i]]
+        t0_data_oo = [t0 for i, t0 in enumerate(t0_data) if not self.in_longitudinal_acceptance[i] and not self.in_transverse_acceptance[i]]
+        dp_data_oo = [dp for i, dp in enumerate(dp_data) if not self.in_longitudinal_acceptance[i] and not self.in_transverse_acceptance[i]]
+
+        my_count = "Number in longitudinal acceptance: "+str(len(t0_data_ii+t0_data_io))+"/"+str(len(self.in_longitudinal_acceptance))
+        for (color, t_data, p_data) in [("blue", t0_data_ii+t0_data_io, dp_data_ii+dp_data_io),
+                                        ("orange", t0_data_oi+t0_data_oo, dp_data_oi+dp_data_oo),
+                                        ]:
+            axes.scatter(t_data, p_data, c=color, marker="o", s=marker_size)
+        axes.text(0.95, 0.95, my_count, transform=axes.transAxes, horizontalalignment='right')
+        axes.set_xlabel("t [ns]", fontsize=self.f_size)
+        axes.set_ylabel("dp/p", fontsize=self.f_size)
+        axes.set_xlim([0.0, self.ring_tof])
+        pmin, pmax = [self.rf_bucket_contours.pmin()*1.5, self.rf_bucket_contours.pmax()*1.5]
+        axes.set_ylim([pmin, pmax])
+        axes = self.axes4[1]
+        z_list = [t/self.number_pulses for t in self.beam_injection_turn]
+        x_list = [hit[0] for hit in self.beam_data]
+        axes.scatter(x_list, self.dp_over_p_data, c=z_list, marker="o", cmap=colors, s=marker_size)
+        axes.plot([self.get_bump_orbit()[0]], [0], 'o', fillstyle='none')
+        axes.set_xlabel("x [mm]", fontsize=self.f_size)
+        axes.set_ylabel("dp/p", fontsize=self.f_size)
+        axes.set_xlim([self.real_centre[0]-self.real_range[0], self.real_centre[0]+self.real_range[0]])
+        axes.set_ylim([pmin, pmax])
+
+        axes = self.axes4[2]
+        x_list = [hit[2] for hit in self.beam_data]
+        axes.scatter(x_list, self.dp_over_p_data, c=z_list, marker="o", cmap=colors, s=marker_size)
+        axes.set_xlabel("y [mm]", fontsize=self.f_size)
+        y0 = self.get_bump_orbit()[2]
+        axes.plot([y0], [0], 'o', fillstyle='none')
+        axes.plot([pmin/self.m_index*1e3+y0, pmax/self.m_index*1e3+y0], [pmin, pmax], '-')
+        axes.set_ylabel("dp/p", fontsize=self.f_size)
+        axes.set_xlim([self.real_centre[2]-self.real_range[2], self.real_centre[2]+self.real_range[2]])
+        axes.set_ylim([pmin, pmax])
+
+        name = "longitudinal_turn_"+str(self.turn).rjust(5, "0")+".png"
+        self.set_title(self.fig4)
+        self.fig4.savefig(os.path.join(self.output_dir, name))
+
 
     def plot_foil_hits(self, range_, centre):
         n_bins = 50 #max(self.foil_hits)+2
@@ -878,6 +1081,17 @@ class ToyModel(object):
         axes.set_ylim(-range_[2]+centre[2], range_[2]+centre[2])
         axes.set_xlabel("x [mm]", fontsize=self.f_size)
         axes.set_ylabel("y [mm]", fontsize=self.f_size)
+
+    def do_longitudinal(self):
+        for i, time in enumerate(self.t_data):
+            p0 = self.momentum*(1+self.dp_over_p_data[i])
+            E0 = (p0**2+self.mass**2)**0.5
+            E1 = E0+self.rf_voltage*math.sin(self.rf_angular_frequency*time)
+            p1 = (E1**2-self.mass**2)**0.5
+            beta_rel = p1/E1
+            new_time = time + self.circumference/beta_rel/xboa.common.constants["c_light"]
+            self.dp_over_p_data[i] = p1/self.momentum - 1
+            self.t_data[i] = new_time
 
     def foil_model(self, event_number):
         if not self.do_scattering and not self.do_energy_loss:
@@ -947,17 +1161,27 @@ class ToyModel(object):
         #mencoder mf://turn*.png -mf w=800:h=600:fps=5:type=png -ovc lavc -lavcopts vcodec=msmpeg4:mbd=2:trell -oac copy -o injection.avi
         try:
             output = subprocess.check_output(["mencoder",
-                                    "mf://*.png",
+                                    "mf://transverse_turn_*.png",
                                     "-mf", "w=800:h=600:fps=5:type=png",
                                     "-ovc", "lavc",
                                     "-lavcopts", "vcodec=msmpeg4:vbitrate=2000:mbd=2:trell",
                                     "-oac", "copy",
-                                    "-o", "injection.avi"])
+                                    "-o", "transverse_injection.avi"])
+        except:
+            print("Movie failed")
+        try:
+            output = subprocess.check_output(["mencoder",
+                                    "mf://longitudinal_turn_*.png",
+                                    "-mf", "w=800:h=600:fps=5:type=png",
+                                    "-ovc", "lavc",
+                                    "-lavcopts", "vcodec=msmpeg4:vbitrate=2000:mbd=2:trell",
+                                    "-oac", "copy",
+                                    "-o", "longitudinal_injection.avi"])
         except:
             print("bob")
         os.chdir(here)
 
-    def finalise(self):
+    def finalise(self, will_clear = True):
         if not self.do_plots:
             return
         self.plot_foil_hits(self.real_range, self.real_centre)
@@ -966,11 +1190,14 @@ class ToyModel(object):
             self.movie()
         self.fig.savefig(self.output_dir+"phase_space_final.png")
         self.fig2.savefig(self.output_dir+"summary_final.png")
-        self.fig.clear()
-        matplotlib.pyplot.close(self.fig)
-        self.fig2.clear()
-        matplotlib.pyplot.close(self.fig2)
-        self.fig3.clear()
-        matplotlib.pyplot.close(self.fig3)
+        if will_clear:
+            self.fig.clear()
+            matplotlib.pyplot.close(self.fig)
+            self.fig2.clear()
+            matplotlib.pyplot.close(self.fig2)
+            self.fig3.clear()
+            matplotlib.pyplot.close(self.fig3)
+            self.fig4.clear()
+            matplotlib.pyplot.close(self.fig4)
 
     amp_scale = 3.0 # scaling for axes

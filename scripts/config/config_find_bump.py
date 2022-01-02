@@ -7,15 +7,15 @@ class Config(config.Config):
     def __init__(self, angle = None, r0 = None):
         super(Config, self).__init__()
         if angle == None:
-            angle = 0
+            angle = 180
         if r0 == None:
-            r0 = 10
+            r0 = 20
         ring_tof = 1016.091866
         n_angles = 1
         self.run_control["output_dir"] = os.path.join(os.getcwd(), 
-                "output/arctan_baseline/bump_quest/find_bump_r_"+str(r0)+"_theta_"+str(angle))
+                "output/arctan_baseline/single_turn_injection/bump_quest_v12/find_bump_r_"+str(r0)+"_theta_"+str(angle))
         angle = float(angle)
-        r0 = float(r0)
+        r0 = int(r0)
         self.run_control["find_closed_orbits_4d"] = False
         self.run_control["find_da"] = False
         self.run_control["find_bump_parameters"] = True
@@ -23,12 +23,13 @@ class Config(config.Config):
         self.find_closed_orbits["max_iterations"] = 2
         self.find_closed_orbits["subs_overrides"]["__n_turns__"] = 0.11
         self.find_closed_orbits["subs_overrides"]["__step_size__"] = 0.01
+        self.find_closed_orbits["subs_overrides"]["__do_bump__"] = False
         self.find_closed_orbits["final_subs_overrides"]["__n_turns__"] = 1
         self.find_closed_orbits["final_subs_overrides"]["__step_size__"] = 0.01
         self.find_closed_orbits["final_subs_overrides"]["__do_magnet_field_maps__"] = True
         self.find_closed_orbits["plotting_subs"]["__hdf5__"] = False
-        co = [4359.146701898182, 0.0, -105.96280230654187, 0.0] #[3778.0378374460206, 0.0, -103.98039263215223, 0.0]
-        bump = [(4, [r0*math.sin(math.radians(angle)), 0.0, r0*math.cos(math.radians(angle)), 0.0])]
+        co = self.find_closed_orbits["seed"][0]
+        bump = [(4, [i*math.sin(math.radians(angle)), 0.0, i*math.cos(math.radians(angle)), 0.0]) for i in [r0]]
         self.find_bump_parameters = {
             "n_h_bumps":5,
             "n_v_bumps":5,
@@ -38,14 +39,17 @@ class Config(config.Config):
             "magnet_min_field":-1.0,
             "magnet_max_field":+1.0,
             "max_iterations":4000,
+            "target_score":0.001,
             "field_tolerance":1e-4,
             "amplitude_tolerance":1.,
-            "tm_source":"../../baseline/closed_orbits_cache",
+            "tm_source":"../../..//baseline/closed_orbits_cache",
             "stop_on_fail":False,
             "subs_overrides":{
                 "__n_turns__":0.92,
                 "__do_magnet_field_maps__":False,
                 "__do_bump__":True,
+                "__do_foil__":False,
+                "__do_rf__":False,
                 "__step_size__":0.01,
             },
             "final_subs_overrides":{
@@ -54,9 +58,33 @@ class Config(config.Config):
                 "__do_bump__":True,
                 "__step_size__":0.01,
             },
-            "bump":bump, # beam at foil: 0   3744.07267    3.843    89.83    1.158
+            "bump":bump,
             "staged_optimisation":[{ # get foil position
                     "seed_fields": {
+                      "__h_bump_1_field__": -6.504114813432604e-05*r0/-25,
+                      "__v_bump_1_field__": -0.0017848457494012981*r0/-25,
+                      "__h_bump_2_field__": 0.0333635210082841*r0/-25,
+                      "__v_bump_2_field__": 0.0031425024028866044*r0/-25,
+                      "__h_bump_3_field__": -0.008714704209700774,
+                      "__v_bump_3_field__": -0.05011053481841232,
+                      "__h_bump_4_field__": 0.03595996696636594*r0/-25,
+                      "__v_bump_4_field__": 0.05588885158255952*r0/-25,
+                      "__h_bump_5_field__": 0.0427433760001128*r0/-25,
+                      "__v_bump_5_field__": -0.046275915940548806*r0/-25
+                    },
+                    "VERTICAL seed_fields NOT USED": {
+                        "__h_bump_1_field__": 0.009389375647487652*r0/-60,
+                        "__v_bump_1_field__": 0.020793285608949663*r0/-60,
+                        "__h_bump_2_field__": -0.006132646679571363*r0/-60,
+                        "__v_bump_2_field__": -0.00872351461761256*r0/-60,
+                        "__h_bump_3_field__": -0.0014452685356010075,
+                        "__v_bump_3_field__": -0.010060010683301646,
+                        "__h_bump_4_field__": -0.00407087907769943*r0/-60,
+                        "__v_bump_4_field__": 0.0035875877102686804*r0/-60,
+                        "__h_bump_5_field__": 0.008078700510867787*r0/-60,
+                        "__v_bump_5_field__": 0.014092378719788634*r0/-60
+                    },
+                    "zero_fields NOT USED":{
                        '__h_bump_1_field__' : 0.0 ,
                        '__h_bump_2_field__' : 0.0 ,
                        '__h_bump_3_field__' : -0.0 ,
@@ -72,36 +100,25 @@ class Config(config.Config):
                         #(0, [3783.04456, 3.96610487, -104.992411, -1.18323871]),
                         ]+[(station, co+tol) for station, tol in (
                             (1, []),
-                            (2, [10, 10, 10, 10]),
-                            (3, [10, 10, 10, 10]),
-                            (4, [0.001, 10, 0.001, 10]), # FOIL
-                            (5, [10, 10, 10, 10]),
-                            (6, [10, 10, 10, 10]),
+                            #(2, [100, 100, 100, 100]),
+                            #(3, [100, 100, 100, 100]),
+                            (4, [0.001, 0.001, 0.001, 0.001]), # FOIL
+                            #(5, [100, 100, 100, 100]),
+                            #(6, [100, 100, 100, 100]),
                             (7, []), # default tolerance
                             (8, []),
                             (9, [])
                         )]),
-                    "psv_tolerance":[0.00001, 0.00001, 0.00001, 0.00001], # default if no tolerance is given
+                    "psv_tolerance":[1e-2, 10, 1e-2, 10], # default if no tolerance is given
                     "fix_bumps":["__v_bump_-1_field__", "__h_bump_-1_field__",
                                  "__v_bump_-2_field__", "__h_bump_-2_field__",
-                                 "__v_bump_-3_field__", "__h_bump_-3_field__",
-                                 "__v_bump_-4_field__", "__h_bump_-4_field__",
-                                 "__v_bump_-5_field__", "__h_bump_-5_field__",],
-                },
-            ],
-            "dummy":[{ # get foil position
-                    "seed_fields":{},
-                    "target_orbit":dict([(i, co) for i in (7, 8)]),
-                    "psv_tolerance":[0.01, 0.01, 0.01, 0.01],
-                    "fix_bumps":["__v_bump_1_field__", "__h_bump_1_field__",
-                                 "__v_bump_2_field__", "__h_bump_2_field__",
                                  "__v_bump_3_field__", "__h_bump_3_field__",
                                  "__v_bump_-4_field__", "__h_bump_-4_field__",
                                  "__v_bump_-5_field__", "__h_bump_-5_field__",],
                 },
             ],
             "target_fields":{},
-            "seed_errors":[1e-3]*10,
+            "seed_errors":[1e-4]*10,
             "ref_probe_files":["FOILPROBE_1.h5", "RINGPROBE*.h5"], # sorted alphanumerically
             "run_dir":"tmp/find_bump/",
             "energy":3.0,

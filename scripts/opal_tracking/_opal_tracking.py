@@ -25,6 +25,7 @@ import os
 import glob
 import math
 import sys
+import shutil
 import h5py
 
 from xboa import common
@@ -153,7 +154,7 @@ class OpalTracking(TrackingBase):
     """
     Provides an interface to OPAL tracking routines for use by xboa.algorithms
     """
-    def __init__(self, lattice_filename, beam_filename, reference_hit, output_filename, opal_path, log_filename = None, save_dir = None, n_cores = 1, mpi = None):
+    def __init__(self, lattice_filename, beam_filename, reference_hit, output_filename, opal_path, log_filename = None, n_cores = 1, mpi = None):
         """
         Initialise OpalTracking routines
         - lattice_filename is the Opal lattice file that OpalTracking will use
@@ -195,7 +196,6 @@ class OpalTracking(TrackingBase):
         self.log_filename = log_filename
         if self.log_filename == None:
             self.log_filename = tempfile.mkstemp()[1]
-        self.save_dir = save_dir
         self.n_cores = n_cores
         self.mpi = mpi
         self.flags = []
@@ -235,16 +235,36 @@ class OpalTracking(TrackingBase):
         """
         return sorted(self.get_name_dict().keys())
 
-    def save(self):
+    def save(self, target_dir, save_all = True, clear_dir = False):
         """
-        If save_dir is defined, output files will be saved here; otherwise does 
-        nothing
+        Save to 
         """
-        if self.save_dir == None:
-            return
-        for probe_file in self.get_name_list():
-            target = os.path.join(self.save_dir, probe_file)
-            os.rename(probe_file, target)
+        if os.path.exists(target_dir):
+            if clear_dir: 
+                shutil.rmtree(target_dir)
+                os.makedirs(target_dir)
+        else:
+            os.makedirs(target_dir)
+        if save_all:
+            dir_list = []
+            for tgt in self.get_name_list():
+                dir_list.append(os.path.split(tgt)[0])
+            dir_list = set(dir_list)
+            name_list = []
+            for a_dir in dir_list:
+                name_list += glob.glob(os.path.join(a_dir, "*"))
+        else:
+            name_list = self.get_name_list()
+        if self.verbose > -10:
+            print("Saving", len(name_list), "files to", target_dir)
+        for src in name_list:
+            target = os.path.join(target_dir, src)
+            if os.path.isdir(src):
+                if os.path.isdir(target):
+                    shutil.rmtree(target)
+                shutil.copytree(src, target)
+            else:
+                shutil.copy2(src, target)
 
     def cleanup(self):
         """
@@ -281,7 +301,6 @@ class OpalTracking(TrackingBase):
         if self.verbose > 30:
             lengths = [len(hit_list) for hit_list in hit_list_of_lists]
             print("Read", len(hit_list_of_lists), "tracks with length", lengths, ". Saving.")
-        self.save()
         if self.verbose > 30:
             print("Return")
         return hit_list_of_lists
@@ -317,7 +336,7 @@ class OpalTracking(TrackingBase):
             print("Tracking in dir", os.getcwd(),
                   "\n   using logfile", self.log_filename)
         open(self.lattice_filename).close() # check that lattice exists
-        m, GeV = common.units["m"], common.units["GeV"]
+        metres, GeV, seconds = common.units["m"], common.units["GeV"], common.units["s"]
         p_mass = common.pdg_pid_to_mass[2212]
         fout = open(self.beam_filename, "w")
         # OPAL goes into odd modes if there are < 2 entries in the beam file
@@ -340,13 +359,16 @@ class OpalTracking(TrackingBase):
                     print()
                 if i == 1 and len(list_of_hits) > 2:
                     print("<", len(list_of_hits)-2, " more hits >")
-            x = (hit["x"]-self.ref["x"])/m
-            y = (hit["y"]-self.ref["y"])/m
-            z = (hit["z"]-self.ref["z"])/m
+            x = (hit["x"]-self.ref["x"])/metres
+            y = (hit["y"]-self.ref["y"])/metres
+            t = hit["t"]/seconds
             px = (hit["px"]-self.ref["px"])/p_mass
             py = (hit["py"]-self.ref["py"])/p_mass
             pz = (hit["pz"]-self.ref["pz"])/p_mass
-            print(x, px, z, pz, y, py, file=fout)
+            if abs(hit["z"]) > 1e-9:
+                print("Attempt to make hit with z non-zero", hit["z"])
+                raise RuntimeError("z is not available in distribution input")
+            print(x, px, y, py, t, pz, file=fout)
         fout.close()
         self.cleanup()
         old_time = time.time()

@@ -33,10 +33,17 @@ class PlotBump(object):
             self.load_closed_orbits(co_params)
         self.add_decoupled()
 
+    def sort_key(self, filename):
+        return float(filename.split("_r_")[1].split("_theta")[0])
+
     def load_files(self):
         index = 0
+        file_list = []
         for file_glob in self.file_list:
-            for file_name in sorted(glob.glob(file_glob)):
+            for file_name in glob.glob(file_glob):
+                file_list.append(file_name)
+        file_list = sorted(file_list, key=self.sort_key)
+        for file_name in file_list:
                 score, n_iterations = [], []
                 index += 1
                 if index % self.number_of_phases != 0:
@@ -122,8 +129,12 @@ class PlotBump(object):
                     print("hit:", i, "ev:", j, "track:", item["tracking"][i])
 
     def print_field_substitutions(self):
-        bump_data = [bump["bump_fields"] for bump in self.data]
-        print(json.dumps(bump_data, indent=2))
+        #bump_data = [bump["bump_fields"] for bump in self.data]
+        for bump in self.data:
+            bump_data = bump["bump_fields"]
+            if bump["target_orbit"] != None:
+                print("Score:", bump["score"], "Bump at probe", str(self.target_probe), bump["target_orbit"][str(self.target_probe)])
+            print(json.dumps(bump_data, indent=2))
 
     def plot_all_fields_2d(self, var_1, var_2):
         field_name_list = sorted(self.data[0]["bump_fields"])
@@ -206,7 +217,7 @@ class PlotBump(object):
         norm = None
         if logbar:
             norm = matplotlib.colors.LogNorm()
-        point_size = max(1, 10/n_points**0.5)
+        point_size = 10 #max(2, 10/n_points**0.5)
         scatter = axes.scatter(x_data, y_data, c=z_data, s=point_size, norm=norm)
         axes.set_title(name)
         suptitle = self.var[foil_var1]+" vs "+self.var[foil_var2]
@@ -221,19 +232,33 @@ class PlotBump(object):
         axes.get_figure().savefig(self.plot_dir+"/"+suptitle.replace(" ", "_")+".png")
         return scatter
 
-    def plot_fields(self, x_values):
+    def plot_fields(self, x_axis):
         bump_fields = {}
+        x_values = []
         for bump in self.data:
+            if self.score_cutoff and min(bump["score"]) > self.score_cutoff:
+                continue
             for key in bump["bump_fields"]:
                 if key not in bump_fields:
                     bump_fields[key] = []
                 bump_fields[key].append(bump["bump_fields"][key])
+
+            if type(x_axis) == type(0):
+                x_values.append(None)
+                for hit in bump["tracking"]:
+                    if hit[0] == self.target_probe:
+                        x_values[-1] = hit[x_axis]
+                        print("x", hit[1], "y", hit[3], "score:", bump["score"], bump["target_orbit"][str(self.target_probe)])
+                        break
+
         figure = matplotlib.pyplot.figure()
         axes = figure.add_subplot(1, 1, 1)
-        if type(x_values) == type(""):
-            x_name = x_values.replace("__", "").replace("_", " ").replace("field", "")
+        if type(x_axis) == type(""):
+            x_name = x_axis.replace("__", "").replace("_", " ").replace("field", "")
             axes.set_xlabel(x_name+" [T]")
-            x_values = bump_fields[x_values]
+            x_values = bump_fields[x_axis]
+        elif type(x_axis) == type(0):
+            axes.set_xlabel(self.var[x_axis])
         else:
             axes.set_xlabel("Setting number")
         axes.set_ylabel("Bump field [T]")
@@ -248,7 +273,7 @@ class PlotBump(object):
         axis_xrange[1] += (axis_xrange[1]-axis_xrange[0])*0.5
         axes.set_xlim(axis_xrange)
         axes.legend()
-        figure.savefig(self.plot_dir+"/bump_fields.png")
+        figure.savefig(self.plot_dir+"/bump_fields_"+str(x_axis)+".png")
 
     def angle_plot(self, bump_1, bump_2, y_var, axes, scale_factor=1.0):
         x_axis, y_axis = [], []
@@ -257,9 +282,10 @@ class PlotBump(object):
             bump_field_2 = item["bump_fields"][bump_2]
             bump_angle = math.atan2(bump_field_1, bump_field_2)
             x_axis.append(math.degrees(bump_angle))
+            y_axis.append(0)
             for hit in item["tracking"]:
                 if hit[0] == self.target_probe:
-                    y_axis.append(hit[y_var]*scale_factor)
+                    y_axis[-1] = hit[y_var]*scale_factor
                     break
         point_size = max(1, 10/len(x_axis)**0.5)
         label = self.var[y_var]
@@ -288,15 +314,16 @@ class PlotBump(object):
 
 def main(file_list):
     DecoupledTransferMatrix.det_tolerance = 1.0
-    output_dir = os.path.split(file_list[0])[0]
+    output_dir = os.path.split(file_list[0])[0]+"/../"
     plot_dir = os.path.join(output_dir, "plot_bump/")
 
     plotter = PlotBump(plot_dir)
+    plotter.score_cutoff = 1e9
     plotter.number_of_phases = 1
     plotter.flip_vertical = False
     plotter.file_list = file_list
-    plotter.co_files = [
-        {
+    plotter.co_files = []
+    void = [{
             "filename":os.path.join(output_dir, "closed_orbits_cache"),
             "ref_to_bump_station_mapping":{0:1, 1:2, 2:3, 3:4, 4:5, 5:6, 6:7, 7:8, 8:9, 9:10}
         },]+[
@@ -307,18 +334,19 @@ def main(file_list):
     ]
     plotter.setup()
 
-    plotter.target_probe = 0
+    plotter.target_probe = 4
     plotter.target_field = "__v_bump_2_field__"
-    plotter.plot_fields(plotter.target_field)
+    plotter.plot_fields(1)
+    plotter.plot_fields(3)
     plotter.plot_phased_var_2d(1, 3, ["score", "n_iterations"])
+    """
     for probe in [1, 2, 3, 0, 4, 5, 6, 7]:
         plotter.target_probe = probe
         try:
             plotter.plot_event_display(plotter.plot_lambda)
         except Exception:
             print("Failed at station", probe)
-        if probe == 0:
-            plotter.score_cutoff = 1e3
+    """
     plotter.print_field_substitutions()
 
     plotter.target_probe = 2
@@ -329,6 +357,7 @@ def main(file_list):
     plotter.angle_plot("__v_bump_1_field__", "__h_bump_1_field__", 12, axes, 1)
     axes.legend()
     figure.savefig(os.path.join(plot_dir, "kick_angle_to_field_angle.png"))
+    print("Used plot_dir", plot_dir)
 
 if __name__ == "__main__":
     main(sys.argv[1:])

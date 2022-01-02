@@ -232,12 +232,13 @@ class ClosedOrbitFinder4D(object):
             decoupled = tm.decoupled(coupled)
             print(self.str_matrix(decoupled))
 
-    def tm_co_fitter(self, seeds):
+    def tm_co_fitter(self, seeds, max_iter = None):
         output = {}
         dim = len(seeds)
         print("DIMENSION", dim)
         tolerance = self.config_co["tolerance"]
-        max_iter = self.config_co["max_iterations"]
+        if max_iter == None:
+            max_iter = self.config_co["max_iterations"]
         if max_iter == 0:
             return {
                 "seed":seeds,
@@ -351,9 +352,18 @@ class ClosedOrbitFinder4D(object):
                 except Exception:
                     sys.excepthook(*sys.exc_info())
                 if self.config_co["do_minuit"]:
+                    print("DOING MINUIT WITH seed", output["seed"])
                     minuit_out = self.find_co_minuit(output["seed"])
                     output["seed"] = minuit_out
                     output["seed_hit"] = self.seed_to_hit(output["seed"], 0.).dict_from_hit()
+                    try:
+                        print("DOING post seed with ", minuit_out)
+                        output = self.tm_co_fitter(minuit_out, 1)
+                        output["seed_hit"] = self.seed_to_hit(minuit_out, 0.).dict_from_hit()
+                    except Exception:
+                        print("\n*****************")
+                        print("Attempting to find the tune after minuit... raised an exception; lattice may be unstable.")
+                        print("*****************\n")
                 try:
                     self.output_list[-1].append(output)
                     a_track = self.track_many([output["seed"]]*3, 0., "final_subs_overrides")[1]
@@ -385,10 +395,10 @@ class ClosedOrbitFinder4D(object):
         force = {"x'":0.0, "y'":0.0}
         n_iterations = self.config_co["minuit_iterations"]
         target_score = self.config_co["minuit_tolerance"]
-        self.opt_errs = {"x":1, "x'":0.1, "y":1, "y'":0.1}
+        self.opt_errs = self.config_co["minuit_weighting"]
         self.iteration_number = 1
         self.minuit = ROOT.TMinuit(len(self.var_list))
-        self.minuit_stations = [0, 1]
+        self.minuit_stations = [self.config_co["us_cell"], self.config_co["ds_cell"]]
         for i, var in enumerate(self.var_list):
             if var in force:
                 seed_hit[var] = force[var]
@@ -415,7 +425,12 @@ class ClosedOrbitFinder4D(object):
         seed_in = self.get_minuit_hit()
         hit_list = self.track_many([seed_in]*3, 0.0, False)[1]
         print("Iteration", self.iteration_number, "with seed", seed_in)
-        for hit in hit_list:
+        for i, hit in enumerate(hit_list):
+            print(format(i, "4d"), end="")
+            if i in self.minuit_stations:
+                print("*", end=" ")
+            else:
+                print(" ", end=" ")
             for var in self.var_list:
                 print(var.ljust(4), format(hit[var], "14.10g"), end=" ")
             print()

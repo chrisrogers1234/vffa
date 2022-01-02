@@ -196,12 +196,41 @@ class PlotProbes(object):
         if z_axis != None:
             axes.get_figure().colorbar(scat)
 
+def main_ramp_fields():
+    DecoupledTransferMatrix.det_tolerance = 1.0
+    dir_1 = "output/arctan_baseline/ramp_fields_low_amplitude//track_beam/forwards/"
+    plot_dir = dir_1+"/plot_probe_physical/"
+    if os.path.exists(plot_dir):
+        shutil.rmtree(plot_dir)
+    os.makedirs(plot_dir)
+    probename = "RINGPROBE01.h5"
+    probe_list = [{
+        "file_name_list":glob.glob(dir_1+probename),
+        "color":"blue",
+        "momentum_scale":1,
+        "station":station,
+        "name":"ringprobe01"
+    } for station in range(41)]
+    plotter = PlotProbes(probe_list, plot_dir)
+    plotter.name = "name"
+    plotter.co_param_list = [{
+        "filename":os.path.join(dir_1, "../../closed_orbits_cache"),
+        "ref_to_bump_station_mapping":dict([(i,i) for i in range(1001)]),
+    },]
+    try:
+        plotter.load_data()
+    except IOError:
+        print("IOError trying", probename)
+        raise
+    plotter.plot()
+
+
 def main():
     DecoupledTransferMatrix.det_tolerance = 1.0
-    dir_1 = "output/double_triplet_baseline/single_turn_injection/track_bump_parameters_x_0.0_y_30.0_mm_4/track_beam/"
-    dir_2 = "output/double_triplet_baseline/single_turn_injection/track_bump_parameters_x_0.0_y_20.0_mm_3.1/track_beam/"
+    dir_1 = "output/arctan_baseline/bump_quest/track_v2_bump_r_40_theta_180/track_beam/"
+    dir_2 = "output/arctan_baseline/bump_quest/track_v2_bump_r_-1_theta_0/track_beam/"
     output_dir = dir_1.split("/tmp/")[0]
-    plot_dir = output_dir+"/plot_probe/"
+    plot_dir = output_dir+"/plot_probe_physical/"
     config = dir_1.split("/tmp/")
     if os.path.exists(plot_dir):
         shutil.rmtree(plot_dir)
@@ -229,7 +258,7 @@ def main():
             "station":0,
             "name":"unbumped"
         }
-        plotter = PlotProbes([forwards, backwards, reference], plot_dir)
+        plotter = PlotProbes([forwards, reference], plot_dir)
         plotter.name = name
         plotter.co_param_list = [{
             "filename":os.path.join(dir_1, "../closed_orbits_cache"),
@@ -243,6 +272,6 @@ def main():
         plotter.plot()
 
 if __name__ == "__main__":
-    main()
+    main_ramp_fields()
     matplotlib.pyplot.show(block=False)
     input("Done")

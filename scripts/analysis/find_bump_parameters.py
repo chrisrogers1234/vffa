@@ -96,7 +96,7 @@ class FindBumpParameters(object):
             print("No bump - could not find station", bump_station)
             return
         old_target_orbit = self.optimisation["target_orbit"][bump_station]
-        new_target_orbit = [old_target_orbit[i]+bump[i] for i in range(4)]
+        new_target_orbit = [old_target_orbit[i]+bump[i] for i in range(4)]+old_target_orbit[4:]
         self.optimisation["target_orbit"][bump_station] = new_target_orbit
         print("Bumped target orbit at station", bump_station,
               "from", old_target_orbit, "to", new_target_orbit)
@@ -145,7 +145,7 @@ class FindBumpParameters(object):
         self.setup_minuit()
         print("run minuit")
         try:
-            self.minuit.Command(algorithm+" "+str(self.max_iterations)+" 1.")
+            self.minuit.Command(algorithm+" "+str(self.max_iterations)+" "+str(self.config.find_bump_parameters["target_score"]))
         except Exception:
             sys.excepthook(*sys.exc_info())
             print("Minuit failed")
@@ -281,14 +281,14 @@ class FindBumpParameters(object):
         target_co = self.optimisation["target_orbit"]
         x_score, px_score, y_score, py_score, au_score, av_score = 0., 0., 0., 0., 0., 0.
         n_hits, denominator, penalty = self.get_n_hits(hit_list, target_co.keys())
-        print("station  x            px        y       py     | t           |",
-              "        |  r_x      r_px      r_y       r_py")
+        print("station    x              px             y              py         | t           |",
+              "        |      r_x     r_px     r_y      r_py | tolerances |")
+        psv_tolerance = self.optimisation["psv_tolerance"]
         for i, hit in enumerate(hit_list):
             print(format(hit["station"], "6"),
                   format(hit["x"], "14.9g"), format(hit["px"], "14.9g"),
                   format(hit["y"], "14.9g"), format(hit["py"], "14.9g"),
                   "|", format(hit["t"], "12.5g"), end='| ')
-            au, av = 0., 0.
             if hit["station"] in target_co.keys():
                 key = hit["station"]
                 r_x  = hit["x"] - target_co[key][0]
@@ -297,22 +297,25 @@ class FindBumpParameters(object):
                 r_py = hit["py"] - target_co[key][3]
                 print("orbit   |",
                       format(r_x, "8.3g"),  format(r_px, "8.3g"),
-                      format(r_y, "8.3g"),  format(r_py, "8.3g"))
+                      format(r_y, "8.3g"),  format(r_py, "8.3g"), end="")
                 self.target_hit = i
+                tol = copy.deepcopy(psv_tolerance)
+                for j in range(4):
+                    if j+4 < len(target_co[key]):
+                        tol[j] = target_co[key][j+4] 
+                print(" | tol |", format(tol[0], "8.3g"), format(tol[1], "8.3g"), format(tol[2], "8.3g"), format(tol[3], "8.3g"))
             else:
                 print("ignored |")
                 continue
-            x_score += r_x**2./denominator
-            px_score += r_px**2./denominator
-            y_score += r_y**2./denominator
-            py_score += r_py**2./denominator
-            au_score += au**2/denominator
-            av_score += av**2/denominator
+            x_score += (r_x/tol[0])**2./denominator
+            px_score += (r_px/tol[1])**2./denominator
+            y_score += (r_y/tol[2])**2./denominator
+            py_score += (r_py/tol[3])**2./denominator
         x_score = x_score*penalty
         px_score = px_score*penalty
         y_score = y_score*penalty
         py_score = py_score*penalty
-        return x_score, px_score, y_score, py_score, au_score, av_score
+        return x_score, px_score, y_score, py_score, 0, 0
 
     def minuit_function(self, nvar, parameters, score, jacobian, err):
         fields = self.get_fields_from_minuit()
@@ -326,7 +329,6 @@ class FindBumpParameters(object):
         self.iteration += 1
         if self.iteration > self.max_iterations:
             raise StopIteration("Hit maximum iteration")
-        psv_tolerance = self.optimisation["psv_tolerance"]
         a_scale = self.config.find_bump_parameters["amplitude_tolerance"]
         b_scale = self.config.find_bump_parameters["field_tolerance"]
         target_fields = self.config.find_bump_parameters["target_fields"]
@@ -349,10 +351,10 @@ class FindBumpParameters(object):
             else:
                 a_in=a_out
             print(a_in, key.replace("_", " "), str(value), a_out)
-        score_list = [x_score/psv_tolerance[0]**2,
-               px_score/psv_tolerance[1]**2,
-               z_score/psv_tolerance[2]**2,
-               pz_score/psv_tolerance[3]**2,
+        score_list = [x_score,
+               px_score,
+               z_score,
+               pz_score,
                au_score/a_scale**2,
                av_score/a_scale**2]+b_score
         self.score = sum(score_list)
@@ -363,8 +365,6 @@ class FindBumpParameters(object):
         print("    px RMS residual", format(px_score**0.5, "12.4g"))
         print("    z RMS residual ", format(z_score**0.5, "12.4g"))
         print("    pz RMS residual", format(pz_score**0.5, "12.4g"))
-        print("    au RMS residual", format(au_score**0.5, "12.4g"))
-        print("    av RMS residual", format(av_score**0.5, "12.4g"))
         print("    b score        ", format(sum(b_score)**0.5*b_scale, "12.4g"))
         print("score          ", format(self.score, "12.4g"), flush=True)
         print()
@@ -416,7 +416,7 @@ class FindBumpParameters(object):
             print("("+str(i)+",", fname+")", end=' ')
         print()
         hit_list = self.cuts(hit_list)
-        self.tracking_result = [[hit["station"], hit["x"], hit["px"], hit["y"], hit["py"]] for hit in hit_list]
+        self.tracking_result = [[hit["station"], hit["x"], hit["px"], hit["y"], hit["py"], hit["t"]] for hit in hit_list]
         return hit_list
 
     root_algorithms = ["simplex", "migrad"]

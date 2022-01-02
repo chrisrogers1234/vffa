@@ -101,7 +101,7 @@ class DAPlotter(object):
         return area
 
     def plot_da(self, max_n_points, plot_dir, target_variable):
-        stroke = 10
+        stroke = 1
         variables = utilities.get_substitutions_axis(self.data, "substitutions")
         plot_dir = os.path.join(plot_dir, "plot_da")
         utilities.clear_dir(plot_dir)
@@ -120,10 +120,10 @@ class DAPlotter(object):
                 if da_key not in list(item.keys()):
                     print("Did not find", da_key, "in keys", list(item.keys()), "... skipping")
                     continue
-                for axis1, axis2 in ('x', "px"), ('y', "py"):
+                for axis1, axis2 in ('x', "x'"), ('y', "y'"):
                     ax_index += 1
                     axes = figure.add_subplot(2, 4, ax_index)
-                    self.plot_one_da(item, da_key, axis1, axis2, max_n_points, axes, [100, 10], stroke)
+                    self.plot_one_da(item, da_key, axis1, axis2, max_n_points, axes, [200, 5/75], stroke)
 
                     continue
                     if axis1[0] not in da_key:
@@ -133,14 +133,15 @@ class DAPlotter(object):
                     for format in ["eps", "png", "root"]:
                         canvas.Print(plot_dir+"/"+plot_name+"."+format)
                         chol_canvas.Print(plot_dir+"/"+plot_name+"_cholesky."+format)
+                continue
                 da_row = self.get_da_row(item[da_key], max_n_points)
                 u_data, v_data = self.get_decoupled_data(item, da_key, index, axis1, axis2, stroke)
                 ax_index += 1
                 axes = figure.add_subplot(2, 4, ax_index)
-                self.make_plot(axes, u_data, da_row, da_key+" "+str(index)+": u vs pu", "u", "pu", [80, 0.20])
+                self.make_plot(axes, u_data, da_row, da_key+" "+str(index)+": u vs pu", "u", "pu", [4000, 0.2])
                 ax_index += 1
                 axes = figure.add_subplot(2, 4, ax_index)
-                self.make_plot(axes, v_data, da_row, da_key+" "+str(index)+": v vs pv", "v", "pv", [1000, 0.20])
+                self.make_plot(axes, v_data, da_row, da_key+" "+str(index)+": v vs pv", "v", "pv", [400, 5])
                 try:
                     u_acceptance = max([item1[0][0] for item1 in u_data if len(item1[0]) >= max_n_points])
                     v_acceptance = max([item1[0][0] for item1 in v_data if len(item1[0]) >= max_n_points])
@@ -157,6 +158,7 @@ class DAPlotter(object):
             plot_name = "da_"+str(index)
             for format in ["png"]:
                 figure.savefig(plot_dir+"/"+plot_name+"."+format)
+        return
 
         figure = matplotlib.pyplot.figure()
         axes = figure.add_subplot(1, 1, 1)
@@ -312,6 +314,8 @@ class DAPlotter(object):
             if mean_x == None:
                 mean_x = numpy.mean(x_data)
                 mean_y = numpy.mean(y_data)
+            x_data = [x - mean_x for x in x_data] 
+            y_data = [y - mean_y for y in y_data] 
             colour = "black"
             if i < da_row:
                 colour = "limegreen"
@@ -320,8 +324,8 @@ class DAPlotter(object):
             axes.scatter(x_data, y_data, s=1, c=colour)
             axes.set_xlabel(axis1+" ["+units[axis1]+"]")
             axes.set_ylabel(axis2+" ["+units[axis2]+"]")
-            axes.set_xlim(mean_x-scale[0]/2., mean_x+scale[0]/2.)
-            axes.set_ylim(mean_y-scale[1]/2., mean_y+scale[1]/2.)
+            axes.set_xlim(-scale[0]/2., +scale[0]/2.)
+            axes.set_ylim(-scale[1]/2., +scale[1]/2.)
 
     def get_seed(self, hit, ref):
         seed = [hit[var]-ref[var] for var in self.var_list]
@@ -392,7 +396,7 @@ class DAPlotter(object):
 def main():
     base_dir = "output/"
     #base_fname = base_dir+"/baseline/get_da.tmp"
-    min_n_hits = 10
+    min_n_hits = 100
     for file_name in glob.glob(sys.argv[1]):
         plotter = DAPlotter(file_name)
         #if file_name != base_fname:

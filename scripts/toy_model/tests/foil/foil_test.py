@@ -102,12 +102,12 @@ def foil_test():
     foil = setup_foil()
     #fig = energy_loss(foil)
     #fig.savefig(out_dir+"foil_test_dedx.png")
-    fig = scattering(foil)
-    fig.savefig(out_dir+"foil_test_scattering.png")
+    #fig = scattering(foil)
+    #fig.savefig(out_dir+"foil_test_scattering.png")
     #dp_over_p_1 = momentum_change(foil, 3.0, 5e-6)
     #dp_over_p_2 = momentum_change(foil, 3.0, 20e-6)
     #print("Ratio", dp_over_p_1/dp_over_p_2)
-    #energy_straggling(foil, 1000.0, 20e-6)
+    energy_straggling(foil, 1000.0, 20e-6)
 
 if __name__ == "__main__":
     foil_test()
